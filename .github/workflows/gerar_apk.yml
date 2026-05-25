@@ -1,0 +1,31 @@
+name: Fabricar APK Android
+
+on:
+  workflow_dispatch: # Cria o botão "Run workflow" para você apertar manualmente
+
+jobs:
+  build:
+    name: Compilar APK na Nuvem
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar os arquivos do projeto
+        uses: actions/checkout@v3
+
+      - name: ☕ Configurar Java 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'zulu'
+          java-version: '17'
+
+      - name: 🛠️ Dar permissão ao motor do Android
+        run: chmod +x ./gradlew
+
+      - name: 🚀 Construir o aplicativo (APK)
+        run: ./gradlew assembleDebug
+
+      - name: 📦 Disponibilizar o APK para Download
+        uses: actions/upload-artifact@v3
+        with:
+          name: SignalPlayTV-App
+          path: app/build/outputs/apk/debug/*.apk
