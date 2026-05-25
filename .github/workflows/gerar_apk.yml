@@ -18,11 +18,11 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🛠️ Fabricar o Motor (Gradle Wrapper)
-        run: gradle wrapper --gradle-version 8.2
+      - name: 🐘 Configurar Gradle
+        uses: gradle/actions/setup-gradle@v3
 
       - name: 🚀 Compilar o APK
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug
 
       - name: 📦 Disponibilizar o APK
         uses: actions/upload-artifact@v4
