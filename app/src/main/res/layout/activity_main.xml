@@ -197,7 +197,7 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Continuar Assistindo"
+                android:text="Filmes Adicionados Recentemente"
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold"
@@ -208,29 +208,32 @@
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
 
-                <View
+                <ImageView
                     android:id="@+id/card1"
                     android:layout_width="150dp"
                     android:layout_height="220dp"
                     android:background="#222230"
+                    android:scaleType="centerCrop"
                     android:layout_marginEnd="15dp"
                     android:focusable="true"
                     android:focusableInTouchMode="true"/>
                     
-                <View
+                <ImageView
                     android:id="@+id/card2"
                     android:layout_width="150dp"
                     android:layout_height="220dp"
                     android:background="#222230"
+                    android:scaleType="centerCrop"
                     android:layout_marginEnd="15dp"
                     android:focusable="true"
                     android:focusableInTouchMode="true"/>
 
-                <View
+                <ImageView
                     android:id="@+id/card3"
                     android:layout_width="150dp"
                     android:layout_height="220dp"
                     android:background="#222230"
+                    android:scaleType="centerCrop"
                     android:layout_marginEnd="15dp"
                     android:focusable="true"
                     android:focusableInTouchMode="true"/>
