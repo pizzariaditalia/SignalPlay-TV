@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#1A1A1A"> <View
+        android:layout_width="600dp"
+        android:layout_height="600dp"
+        android:layout_centerInParent="true"
+        android:alpha="0.1"
+        android:background="@android:drawable/presence_online" />
+
+    <LinearLayout
+        android:layout_width="450dp"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="#262626"
+        android:orientation="vertical"
+        android:padding="40dp"
+        android:elevation="10dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="SIGNAL PLAY TV"
+            android:textColor="#E50914" 
+            android:textSize="32sp"
+            android:textStyle="bold"
+            android:layout_gravity="center"
+            android:layout_marginBottom="30dp" />
+
+        <EditText
+            android:id="@+id/editUser"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:hint="Usuário"
+            android:textColorHint="#808080"
+            android:textColor="#FFFFFF"
+            android:background="#333333"
+            android:padding="15dp"
+            android:layout_marginBottom="15dp"
+            android:nextFocusDown="@+id/editPass"/>
+
+        <EditText
+            android:id="@+id/editPass"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:hint="Senha"
+            android:inputType="textPassword"
+            android:textColorHint="#808080"
+            android:textColor="#FFFFFF"
+            android:background="#333333"
+            android:padding="15dp"
+            android:layout_marginBottom="30dp"/>
+
+        <Button
+            android:id="@+id/btnLogin"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:text="ENTRAR"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:backgroundTint="#E50914" 
+            android:elevation="5dp"
+            android:focusable="true"
+            android:focusableInTouchMode="true"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Conecte-se à sua lista Xtream"
+            android:textColor="#666666"
+            android:layout_gravity="center"
+            android:layout_marginTop="20dp"
+            android:textSize="12sp" />
+    </LinearLayout>
+</RelativeLayout>
