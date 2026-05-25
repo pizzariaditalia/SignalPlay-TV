@@ -1,5 +1,6 @@
 package com.tv.signalplay
 
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
@@ -60,8 +61,45 @@ class LoginActivity : FragmentActivity() {
                             val status = cliente.getString("status")
 
                             if (status == "ativo" || status == "teste") {
-                                Toast.makeText(this, "Acesso Autorizado, $user!", Toast.LENGTH_LONG).show()
-                                // O PROXIMO PASSO ACONTECE AQUI: Buscar os canais do servidor_id
+                                // NOVO: Pegar o ID do servidor atrelado a este cliente
+                                val servidorId = cliente.getString("servidor_id") ?: ""
+                                
+                                if (servidorId.isNotEmpty()) {
+                                    btnLogin.text = "CONECTANDO..."
+                                    // 3. Buscar a URL do servidor na tabela 'servidores'
+                                    db.collection("servidores").document(servidorId).get()
+                                        .addOnSuccessListener { servidorDoc ->
+                                            if (servidorDoc.exists()) {
+                                                // Assumindo que o campo no seu Firebase se chama "url"
+                                                val urlServidor = servidorDoc.getString("url") ?: ""
+                                                
+                                                Toast.makeText(this, "Acesso Autorizado!", Toast.LENGTH_SHORT).show()
+                                                
+                                                // 4. Ir para a tela principal carregando os dados na "mochila" (Intent)
+                                                val intent = Intent(this, MainActivity::class.java)
+                                                intent.putExtra("USER", user)
+                                                intent.putExtra("PASS", pass)
+                                                intent.putExtra("URL", urlServidor)
+                                                startActivity(intent)
+                                                
+                                                // Fecha a tela de login para o cliente não voltar ao apertar "Voltar" no controle
+                                                finish() 
+                                            } else {
+                                                Toast.makeText(this, "Servidor não encontrado no banco.", Toast.LENGTH_LONG).show()
+                                                btnLogin.text = "ENTRAR"
+                                                btnLogin.isEnabled = true
+                                            }
+                                        }
+                                        .addOnFailureListener {
+                                            Toast.makeText(this, "Erro ao buscar servidor.", Toast.LENGTH_LONG).show()
+                                            btnLogin.text = "ENTRAR"
+                                            btnLogin.isEnabled = true
+                                        }
+                                } else {
+                                    Toast.makeText(this, "Cliente sem servidor vinculado.", Toast.LENGTH_LONG).show()
+                                    btnLogin.text = "ENTRAR"
+                                    btnLogin.isEnabled = true
+                                }
                             } else {
                                 Toast.makeText(this, "Conta suspensa ou inativa.", Toast.LENGTH_LONG).show()
                                 btnLogin.text = "ENTRAR"
