@@ -18,24 +18,32 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🧹 Operação Faxina (Deleta arquivos fantasmas)
+      - name: 📝 Escrever Manifesto Limpo
         run: |
           find . -name "AndroidManifest.xml" -type f -delete
           mkdir -p app/src/main
-          echo '<?xml version="1.0" encoding="utf-8"?>' > app/src/main/AndroidManifest.xml
-          echo '<manifest xmlns:android="http://schemas.android.com/apk/res/xml/android">' >> app/src/main/AndroidManifest.xml
-          echo '    <uses-permission android:name="android.permission.INTERNET" />' >> app/src/main/AndroidManifest.xml
-          echo '    <uses-feature android:name="android.software.leanback" android:required="true" />' >> app/src/main/AndroidManifest.xml
-          echo '    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />' >> app/src/main/AndroidManifest.xml
-          echo '    <application android:allowBackup="true" android:label="Signal Play TV" android:theme="@android:style/Theme.NoTitleBar.Fullscreen">' >> app/src/main/AndroidManifest.xml
-          echo '        <activity android:name=".MainActivity" android:exported="true" android:screenOrientation="landscape">' >> app/src/main/AndroidManifest.xml
-          echo '            <intent-filter>' >> app/src/main/AndroidManifest.xml
-          echo '                <action android:name="android.intent.action.MAIN" />' >> app/src/main/AndroidManifest.xml
-          echo '                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />' >> app/src/main/AndroidManifest.xml
-          echo '            </intent-filter>' >> app/src/main/AndroidManifest.xml
-          echo '        </activity>' >> app/src/main/AndroidManifest.xml
-          echo '    </application>' >> app/src/main/AndroidManifest.xml
-          echo '</manifest>' >> app/src/main/AndroidManifest.xml
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-feature android:name="android.software.leanback" android:required="true" />
+              <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+              <application
+                  android:allowBackup="true"
+                  android:label="Signal Play TV"
+                  android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true"
+                      android:screenOrientation="landscape">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN" />
+                          <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
 
       - name: 🐘 Configurar Gradle
         uses: gradle/actions/setup-gradle@v3
@@ -43,15 +51,7 @@ jobs:
           gradle-version: '8.2'
 
       - name: 🚀 Compilar o APK
-        run: gradle assembleDebug --stacktrace
-        
-      - name: 🚨 Relatório de Erro Automático (Somente se falhar)
-        if: failure()
-        run: |
-          echo "### ❌ O ERRO ACONTECEU AQUI:" >> $GITHUB_STEP_SUMMARY
-          echo '```text' >> $GITHUB_STEP_SUMMARY
-          cat app/build/outputs/logs/manifest-merger-debug-report.txt >> $GITHUB_STEP_SUMMARY || echo "Erro de compilação geral, abra a tela preta." >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+        run: gradle assembleDebug
 
       - name: 📦 Disponibilizar o APK
         uses: actions/upload-artifact@v4
