@@ -1,7 +1,7 @@
 name: Fabricar APK Android
 
 on:
-  workflow_dispatch: # Cria o botão "Run workflow" para você apertar manualmente
+  workflow_dispatch:
 
 jobs:
   build:
@@ -9,20 +9,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 📥 Clonar os arquivos do projeto
-        uses: actions/checkout@v3
+      - name: 📥 Clonar os arquivos
+        uses: actions/checkout@v4
 
       - name: ☕ Configurar Java 17
-        uses: actions/setup-java@v3
+        uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🚀 Construir o aplicativo (APK)
-        run: gradle assembleDebug
+      - name: 🛠️ Fabricar o Motor (Gradle Wrapper)
+        run: gradle wrapper --gradle-version 8.2
 
-      - name: 📦 Disponibilizar o APK para Download
-        uses: actions/upload-artifact@v3
+      - name: 🚀 Compilar o APK
+        run: ./gradlew assembleDebug
+
+      - name: 📦 Disponibilizar o APK
+        uses: actions/upload-artifact@v4
         with:
-          name: SignalPlayTV-App
+          name: SignalPlay-TV-APK
           path: app/build/outputs/apk/debug/*.apk
