@@ -33,7 +33,7 @@ jobs:
                   android:label="Signal Play TV"
                   android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                   <activity
-                      android:name=".MainActivity"
+                      android:name=".LoginActivity"
                       android:exported="true"
                       android:screenOrientation="landscape">
                       <intent-filter>
