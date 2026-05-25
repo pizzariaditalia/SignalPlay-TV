@@ -18,11 +18,8 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 🛠️ Dar permissão ao motor do Android
-        run: chmod +x ./gradlew
-
       - name: 🚀 Construir o aplicativo (APK)
-        run: ./gradlew assembleDebug
+        run: gradle assembleDebug
 
       - name: 📦 Disponibilizar o APK para Download
         uses: actions/upload-artifact@v3
