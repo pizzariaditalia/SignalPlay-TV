@@ -106,7 +106,7 @@ class BuscaActivity : FragmentActivity() {
         inner class Holder(view: View) : RecyclerView.ViewHolder(view) {
             val imgCapa: ImageView = view.findViewById(R.id.imgCapaPremium)
             val txtNome: TextView = view.findViewById(R.id.txtNomePremium)
-            val txtBadge: TextView = view.findViewById(R.id.txtBadgeTipo) // Adicionaremos uma badge via código
+            val txtBadge: TextView = view.findViewById(R.id.txtBadgeTipo)
 
             init {
                 view.setOnFocusChangeListener { v, focus -> if(focus) { v.animate().scaleX(1.1f).scaleY(1.1f).start(); v.elevation = 10f } else { v.animate().scaleX(1.0f).scaleY(1.0f).start(); v.elevation = 0f } }
@@ -126,27 +126,21 @@ class BuscaActivity : FragmentActivity() {
                 }
             }
         }
+        
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-            // Reutiliza o card normal, mas injeta uma tag para o cliente saber se é Filme, Série ou Canal
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.card_vod_premium, parent, false)
-            val badge = TextView(parent.context).apply {
-                id = R.id.txtBadgeTipo
-                setTextColor(Color.WHITE)
-                textSize = 10f
-                setPadding(8, 2, 8, 2)
-                setBackgroundColor(Color.parseColor("#E50914"))
-                layoutParams = RelativeLayout.LayoutParams(RelativeLayout.LayoutParams.WRAP_CONTENT, RelativeLayout.LayoutParams.WRAP_CONTENT).apply {
-                    addRule(RelativeLayout.ALIGN_PARENT_TOP)
-                    addRule(RelativeLayout.ALIGN_PARENT_END)
-                }
-            }
-            (view as ViewGroup).addView(badge)
-            return Holder(view)
+            // Usa o novo ficheiro XML limpo
+            return Holder(LayoutInflater.from(parent.context).inflate(R.layout.card_busca, parent, false))
         }
+        
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val item = lista[position]
             holder.txtNome.text = item.titulo
-            if (!item.capa.isNullOrEmpty()) Glide.with(holder.itemView.context).load(item.capa).into(holder.imgCapa) else holder.imgCapa.setImageDrawable(null)
+            
+            if (!item.capa.isNullOrEmpty()) {
+                Glide.with(holder.itemView.context).load(item.capa).into(holder.imgCapa) 
+            } else { 
+                holder.imgCapa.setImageDrawable(null) 
+            }
             
             holder.txtBadge.text = when(item.tipo) {
                 "live" -> "CANAL"
@@ -154,11 +148,12 @@ class BuscaActivity : FragmentActivity() {
                 else -> "FILME"
             }
             holder.txtBadge.setBackgroundColor(when(item.tipo) {
-                "live" -> Color.parseColor("#1e90ff") // Azul para Canais
-                "series" -> Color.parseColor("#2ed573") // Verde para Séries
-                else -> Color.parseColor("#E50914") // Vermelho para Filmes
+                "live" -> Color.parseColor("#1e90ff") // Azul 
+                "series" -> Color.parseColor("#2ed573") // Verde 
+                else -> Color.parseColor("#E50914") // Vermelho
             })
         }
+        
         override fun getItemCount() = lista.size
     }
 }
