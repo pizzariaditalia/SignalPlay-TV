@@ -31,7 +31,9 @@ class CanaisActivity : FragmentActivity() {
     private var xtUser = ""
     private var xtPass = ""
     private var urlServ = ""
+    private var isParentalOn = false
 
+    // A ordem oficial do seu JS
     private val ordemFixaMobile = listOf("Jogos de Hoje", "Casa do Patrão", "Canais | Abertos", "Canais | Notícias", "Canais | Globo", "Canais | SBT", "Canais | RecordTV", "Canais | Band", "Canais | Esportes", "Canais | Premiere", "Canais | ESPN", "Canais | SporTV", "Canais | Prime Video", "Canais | Brasileirão", "Canais | MAX", "Canais | DAZN", "Canais | UFC Fight Pass", "Canais | Paramount+", "Canais | Disney+", "Canais | Estaduais", "Canais | Futsal", "Canais | NBA League Pass", "Canais | Legendados", "Canais | Documentários", "Canais | Filmes e Séries", "Canais | Telecine", "Canais | HBO", "Canais | TNT", "Canais | Variedades", "Canais | Religiosos", "Canais | Infantil", "Canais | Diversos", "Canais | Pluto TV", "Canais | Dual Áudio", "Canais | 24h Infantil", "Canais | 24h Variados", "Canais | Cine Bit", "Canais | Adultos", "Canais | HachuTV Adultos", "Canais | Adultos [4K]", "Canais | Dormir e Relaxar", "Vídeos Educativos", "Treinos, Aulas e Receitas", "Câmeras", "Rádios", "Shows", "Outros", "Canais | COMÉDIA")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -40,15 +42,26 @@ class CanaisActivity : FragmentActivity() {
 
         recyclerCanais = findViewById(R.id.gridCanais)
         sidebarCategorias = findViewById(R.id.sidebarCategorias)
-        recyclerCanais.layoutManager = GridLayoutManager(this, 4) 
+        
+        // 5 colunas para aproveitar bem o ecrã grande da TV
+        recyclerCanais.layoutManager = GridLayoutManager(this, 5) 
 
         xtUser = intent.getStringExtra("XTREAM_USER") ?: ""
         xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""
         urlServ = intent.getStringExtra("URL") ?: ""
+        
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        isParentalOn = prefs.getBoolean("parental_control", false)
 
         if (urlServ.isNotEmpty() && xtUser.isNotEmpty()) {
             baixarCanaisEOrganizar(urlServ, xtUser, xtPass)
         }
+    }
+
+    private fun isAdult(cat: String?): Boolean {
+        if (!isParentalOn) return false
+        val c = cat?.lowercase() ?: ""
+        return listOf("adulto", "adult", "18+", "xxx", "porn", "sensual", "hachutv").any { c.contains(it) }
     }
 
     private fun baixarCanaisEOrganizar(url: String, user: String, pass: String) {
@@ -71,11 +84,14 @@ class CanaisActivity : FragmentActivity() {
                         val tipoLista = object : TypeToken<List<XtreamLive>>() {}.type
                         val canaisBrutos: List<XtreamLive> = Gson().fromJson(respCanais, tipoLista)
                         
+                        // Associa o nome da pasta a cada canal
                         canaisBrutos.forEach { canal ->
                             canal.category_name = mapCategorias[canal.category_id ?: ""] ?: "Outros"
                         }
 
-                        todosCanais = canaisBrutos
+                        // Filtra o conteúdo +18 se o Controlo Parental estiver LIGADO
+                        todosCanais = canaisBrutos.filter { !isAdult(it.category_name) }
+                        
                         if (todosCanais.isNotEmpty()) montarMenuLateral()
                     }
                 }
@@ -95,18 +111,19 @@ class CanaisActivity : FragmentActivity() {
 
         for (categoria in chavesOrdenadas) {
             val btnCat = TextView(this)
-            btnCat.text = categoria
+            btnCat.text = categoria.uppercase()
             btnCat.textSize = 14f
-            btnCat.setTextColor(Color.parseColor("#8e8e93"))
-            btnCat.setPadding(20, 20, 20, 20)
+            btnCat.setTextColor(Color.parseColor("#f5f5f7"))
+            btnCat.setPadding(20, 25, 20, 25)
             btnCat.isFocusable = true
             btnCat.isFocusableInTouchMode = true
-            btnCat.setBackgroundResource(R.drawable.bg_card_premium_normal) 
+            btnCat.setBackgroundResource(R.drawable.bg_cat_btn) // O novo Drawable que criámos!
 
             val layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
-            layoutParams.setMargins(0, 0, 0, 10)
+            layoutParams.setMargins(0, 0, 0, 15)
             btnCat.layoutParams = layoutParams
 
+            // Efeito TV: Foca e carrega a grelha de canais automaticamente
             btnCat.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
@@ -114,13 +131,14 @@ class CanaisActivity : FragmentActivity() {
                     carregarGradeDeCanais(canaisAgrupados[categoria] ?: emptyList())
                 } else {
                     v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-                    (v as TextView).setTextColor(Color.parseColor("#8e8e93"))
+                    (v as TextView).setTextColor(Color.parseColor("#f5f5f7"))
                 }
             }
             if (primeiroBotao == null) primeiroBotao = btnCat
             sidebarCategorias.addView(btnCat)
         }
-        primeiroBotao?.requestFocus()
+        
+        primeiroBotao?.requestFocus() // Dá o foco na primeira categoria ao abrir a tela
     }
 
     private fun carregarGradeDeCanais(lista: List<XtreamLive>) {
@@ -129,15 +147,21 @@ class CanaisActivity : FragmentActivity() {
 
     inner class CanaisAdapter(private val listaCanais: List<XtreamLive>) : RecyclerView.Adapter<CanaisAdapter.CanalViewHolder>() {
         inner class CanalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-            val imgLogo: ImageView = itemView.findViewById(R.id.imgLogoCanal)
-            val txtNome: TextView = itemView.findViewById(R.id.txtNomeCanal)
+            val imgLogo: ImageView = itemView.findViewById(R.id.imgCapaPremium)
+            val txtNome: TextView = itemView.findViewById(R.id.txtNomePremium)
 
             init {
                 itemView.setOnFocusChangeListener { v, hasFocus ->
-                    if (hasFocus) v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
-                    else v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
+                    if (hasFocus) {
+                        v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
+                        v.elevation = 10f
+                    } else {
+                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
+                        v.elevation = 0f
+                    }
                 }
                 
+                // Clique simples para abrir o Reprodutor
                 itemView.setOnClickListener {
                     val canal = listaCanais[bindingAdapterPosition]
                     val intentPlayer = Intent(itemView.context, PlayerActivity::class.java)
@@ -150,13 +174,13 @@ class CanaisActivity : FragmentActivity() {
                     itemView.context.startActivity(intentPlayer)
                 }
 
+                // Segurar botão OK para Favoritos (SEM EMOJIS, Textos Profissionais)
                 itemView.setOnLongClickListener {
                     val canal = listaCanais[bindingAdapterPosition]
                     val prefs = itemView.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                     val favsJson = prefs.getString("favoritos_tv", "[]")
                     val type = object : TypeToken<MutableList<String>>(){}.type
                     
-                    // BLINDAGEM: Lê os favoritos de forma segura
                     val favs: MutableList<String> = try {
                         Gson().fromJson(favsJson, type) ?: mutableListOf()
                     } catch (e: Exception) {
@@ -167,10 +191,10 @@ class CanaisActivity : FragmentActivity() {
                     val stringId = canal.stream_id.toString()
                     if(favs.contains(stringId)) {
                         favs.remove(stringId)
-                        Toast.makeText(itemView.context, "❌ Removido dos Favoritos", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(itemView.context, "Canal removido dos favoritos", Toast.LENGTH_SHORT).show()
                     } else {
                         favs.add(stringId)
-                        Toast.makeText(itemView.context, "⭐ Salvo nos Favoritos!", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(itemView.context, "Canal guardado nos favoritos", Toast.LENGTH_SHORT).show()
                     }
                     prefs.edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
                     true
@@ -178,8 +202,9 @@ class CanaisActivity : FragmentActivity() {
             }
         }
 
+        // Reutiliza o molde de Canal que já construímos com Fundo Branco na Etapa Anterior
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalViewHolder {
-            val view = LayoutInflater.from(parent.context).inflate(R.layout.item_canal, parent, false)
+            val view = LayoutInflater.from(parent.context).inflate(R.layout.card_canal_premium, parent, false)
             return CanalViewHolder(view)
         }
 
@@ -187,6 +212,7 @@ class CanaisActivity : FragmentActivity() {
             val canal = listaCanais[position]
             holder.txtNome.text = canal.name
             holder.txtNome.setTextColor(Color.WHITE) 
+            
             if (!canal.stream_icon.isNullOrEmpty()) {
                 Glide.with(holder.itemView.context).load(canal.stream_icon).into(holder.imgLogo)
             } else {
