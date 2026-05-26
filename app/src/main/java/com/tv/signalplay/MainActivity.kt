@@ -8,6 +8,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import com.bumptech.glide.Glide
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,6 +33,8 @@ class MainActivity : FragmentActivity() {
         // Chama a função que bate no servidor Xtream para puxar as imagens
         if (urlDoServidor.isNotEmpty() && usuarioLogado.isNotEmpty() && senhaLogada.isNotEmpty()) {
             carregarFilmes(urlDoServidor, usuarioLogado, senhaLogada)
+        } else {
+            Toast.makeText(this, "Faltam dados de conexão.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -43,25 +47,35 @@ class MainActivity : FragmentActivity() {
             try {
                 // Instancia o mensageiro e bate no servidor
                 val api = XtreamClient.create(url)
-                val filmes = api.getVodStreams(user, pass)
+                val response = api.getVodStreams(user, pass)
 
                 withContext(Dispatchers.Main) {
-                    if (filmes.isNotEmpty()) {
-                        // Se houver filmes, pega as 3 primeiras capas usando Glide
-                        if (filmes.size > 0 && filmes[0].stream_icon != null) {
-                            Glide.with(this@MainActivity).load(filmes[0].stream_icon).into(card1)
+                    if (response.isJsonArray) {
+                        // É a lista de filmes como esperado
+                        val tipoLista = object : TypeToken<List<XtreamVod>>() {}.type
+                        val filmes: List<XtreamVod> = Gson().fromJson(response, tipoLista)
+
+                        if (filmes.isNotEmpty()) {
+                            if (filmes.size > 0 && !filmes[0].stream_icon.isNullOrEmpty()) {
+                                Glide.with(this@MainActivity).load(filmes[0].stream_icon).into(card1)
+                            }
+                            if (filmes.size > 1 && !filmes[1].stream_icon.isNullOrEmpty()) {
+                                Glide.with(this@MainActivity).load(filmes[1].stream_icon).into(card2)
+                            }
+                            if (filmes.size > 2 && !filmes[2].stream_icon.isNullOrEmpty()) {
+                                Glide.with(this@MainActivity).load(filmes[2].stream_icon).into(card3)
+                            }
+                        } else {
+                            Toast.makeText(this@MainActivity, "Nenhum filme encontrado no servidor.", Toast.LENGTH_SHORT).show()
                         }
-                        if (filmes.size > 1 && filmes[1].stream_icon != null) {
-                            Glide.with(this@MainActivity).load(filmes[1].stream_icon).into(card2)
-                        }
-                        if (filmes.size > 2 && filmes[2].stream_icon != null) {
-                            Glide.with(this@MainActivity).load(filmes[2].stream_icon).into(card3)
-                        }
+                    } else if (response.isJsonObject) {
+                        // O servidor devolveu um objeto de erro (ex: Auth Failed)
+                        Toast.makeText(this@MainActivity, "Erro Xtream: Usuário não autorizado no painel destino.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Erro ao carregar catálogo: ${e.message}", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@MainActivity, "Erro de conexão: ${e.message}", Toast.LENGTH_LONG).show()
                 }
             }
         }
