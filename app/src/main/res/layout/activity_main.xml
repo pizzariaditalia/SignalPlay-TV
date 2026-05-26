@@ -33,13 +33,15 @@
         android:paddingEnd="40dp"
         android:gravity="center_vertical">
 
-        <TextView android:id="@+id/navSearch" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🔍" android:textColor="#FFFFFF" android:textSize="22sp" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
+        <ImageView android:id="@+id/navSearch" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_search" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="true" android:padding="4dp"/>
+        
         <TextView android:id="@+id/navInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
         <TextView android:id="@+id/navCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
         <TextView android:id="@+id/navFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
         <TextView android:id="@+id/navSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_weight="1"/>
-        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📅" android:textColor="#FFFFFF" android:textSize="22sp" android:layout_marginEnd="10dp"/>
-        <TextView android:id="@+id/navConfig" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚙️" android:textColor="#FFFFFF" android:textSize="22sp" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="20dp"/>
+        
+        <ImageView android:id="@+id/navConfig" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_preferences" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="true" android:padding="4dp"/>
+        
         <TextView android:id="@+id/navPerfil" android:layout_width="45dp" android:layout_height="45dp" android:text="BR" android:textColor="#000000" android:textSize="16sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:focusableInTouchMode="true"/>
     </LinearLayout>
 
