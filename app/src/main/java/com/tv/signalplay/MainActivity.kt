@@ -6,6 +6,7 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -26,7 +27,10 @@ class MainActivity : FragmentActivity() {
     private var masterFilmes: List<XtreamVod> = listOf()
     private var masterSeries: List<XtreamSerie> = listOf()
     private var masterCanais: List<XtreamLive> = listOf()
-    private var xtUser = ""; private var xtPass = ""; private var urlServ = ""; private var firebaseUser = ""
+    private var xtUser = ""
+    private var xtPass = ""
+    private var urlServ = ""
+    private var firebaseUser = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,14 +61,17 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    override fun onResume() { super.onResume(); if (masterFilmes.isNotEmpty()) renderizarAbaHome() }
+    override fun onResume() { 
+        super.onResume()
+        if (masterFilmes.isNotEmpty()) renderizarAbaHome() 
+    }
 
     // Puxa os favoritos salvos no Firebase na hora que abre o app!
     private fun sincronizarFavoritosDoBanco() {
         if(firebaseUser.isEmpty()) return
         val db = FirebaseFirestore.getInstance()
         db.collection("usuarios").whereEqualTo("usuario", firebaseUser).get().addOnSuccessListener { snaps ->
-            if(!snap.isEmpty) {
+            if(!snaps.isEmpty) { // <-- CORRIGIDO AQUI: "snaps" em vez de "snap"
                 val favs = snaps.documents[0].get("favoritos") as? List<String> ?: emptyList()
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 prefs.edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
@@ -97,10 +104,10 @@ class MainActivity : FragmentActivity() {
 
         if (masterFilmes.isNotEmpty()) setHeroBanner(masterFilmes.random().name, masterFilmes.random().stream_icon, masterFilmes.random().stream_id, false)
 
-        // 1. Continuar Assistindo (Se houvesse, mas vamos focar nos próximos)
-
-        // 2. Canais Favoritos (Puxados do Banco)
+        // 1. Continuar Assistindo (Para VOD - Filmes e Séries)
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        
+        // 2. Canais Favoritos (Puxados do Banco)
         val favsListJson = prefs.getString("favoritos_tv", "[]")
         val idsFavoritos: List<String> = Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList()
         val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }
@@ -173,7 +180,11 @@ class MainActivity : FragmentActivity() {
 
     private fun abrirSinopse(id: Int, isSeries: Boolean) {
         val intent = Intent(this, DetalhesActivity::class.java)
-        intent.putExtra("MEDIA_ID", id); intent.putExtra("IS_SERIES", isSeries); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("URL", urlServ)
+        intent.putExtra("MEDIA_ID", id)
+        intent.putExtra("IS_SERIES", isSeries)
+        intent.putExtra("XTREAM_USER", xtUser)
+        intent.putExtra("XTREAM_PASS", xtPass)
+        intent.putExtra("URL", urlServ)
         startActivity(intent)
     }
 
@@ -210,6 +221,7 @@ class MainActivity : FragmentActivity() {
     private fun renderizarTrilhoCanais(container: LinearLayout, titulo: String, lista: List<XtreamLive>) {
         val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false)
         view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo
+        view.findViewById<TextView>(R.id.txtTituloTrilho).setTextColor(Color.parseColor("#ffcc00")) // Destaca amarelo
         val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho)
         for (canal in lista) {
             val card = LayoutInflater.from(this).inflate(R.layout.card_canal_premium, linear, false)
@@ -218,8 +230,12 @@ class MainActivity : FragmentActivity() {
             configurarZoomCard(card)
             card.setOnClickListener { 
                 val intent = Intent(this, PlayerActivity::class.java)
-                intent.putExtra("URL", urlServ); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass)
-                intent.putExtra("STREAM_ID", canal.stream_id); intent.putExtra("TYPE", "live"); intent.putExtra("TITLE", canal.name)
+                intent.putExtra("URL", urlServ)
+                intent.putExtra("XTREAM_USER", xtUser)
+                intent.putExtra("XTREAM_PASS", xtPass)
+                intent.putExtra("STREAM_ID", canal.stream_id)
+                intent.putExtra("TYPE", "live")
+                intent.putExtra("TITLE", canal.name)
                 startActivity(intent)
             }
             linear.addView(card)
