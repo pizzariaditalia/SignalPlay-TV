@@ -27,7 +27,6 @@ jobs:
           <manifest xmlns:android="http://schemas.android.com/apk/res/android">
               <uses-permission android:name="android.permission.INTERNET" />
               <uses-feature android:name="android.software.leanback" android:required="true" />
-              <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
               
               <application
                   android:allowBackup="true"
@@ -36,10 +35,7 @@ jobs:
                   android:usesCleartextTraffic="true" 
                   android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                   
-                  <activity
-                      android:name=".LoginActivity"
-                      android:exported="true"
-                      android:screenOrientation="landscape">
+                  <activity android:name=".LoginActivity" android:exported="true" android:screenOrientation="landscape">
                       <intent-filter>
                           <action android:name="android.intent.action.MAIN" />
                           <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
@@ -48,6 +44,7 @@ jobs:
 
                   <activity android:name=".MainActivity" android:exported="false" android:screenOrientation="landscape" />
                   <activity android:name=".CanaisActivity" android:exported="false" android:screenOrientation="landscape" />
+                  <activity android:name=".DetalhesActivity" android:exported="false" android:screenOrientation="landscape" />
 
               </application>
           </manifest>
@@ -55,8 +52,6 @@ jobs:
 
       - name: 🐘 Configurar Gradle
         uses: gradle/actions/setup-gradle@v3
-        with:
-          gradle-version: '8.2'
 
       - name: 🚀 Compilar o APK
         run: gradle assembleDebug
