@@ -31,19 +31,15 @@ class MainActivity : FragmentActivity() {
     private var masterSeries: List<XtreamSerie> = listOf()
     private var masterCanais: List<XtreamLive> = listOf()
     private var xtUser = ""; private var xtPass = ""; private var urlServ = ""; private var firebaseUser = ""
+    private var isParentalOn = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // BLINDAGEM 1: Garante que o Firebase acorda, mesmo se entrar via Auto-Login!
         try {
             if (FirebaseApp.getApps(this).isEmpty()) {
-                val options = FirebaseOptions.Builder()
-                    .setProjectId("signalplay-tv")
-                    .setApplicationId("1:51000338902:web:61d77a44dd62c0353a1c77")
-                    .setApiKey("AIzaSyBSYJYEFLlDwBYsQC0I76n9NfAph2oWuLI")
-                    .build()
+                val options = FirebaseOptions.Builder().setProjectId("signalplay-tv").setApplicationId("1:51000338902:web:61d77a44dd62c0353a1c77").setApiKey("AIzaSyBSYJYEFLlDwBYsQC0I76n9NfAph2oWuLI").build()
                 FirebaseApp.initializeApp(this, options)
             }
         } catch (e: Exception) {}
@@ -52,6 +48,9 @@ class MainActivity : FragmentActivity() {
         xtUser = intent.getStringExtra("XTREAM_USER") ?: ""
         xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""
         urlServ = intent.getStringExtra("URL") ?: ""
+
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        isParentalOn = prefs.getBoolean("parental_control", false)
 
         val navPerfil = findViewById<TextView>(R.id.navPerfil)
         navPerfil.text = extrairIniciais(firebaseUser)
@@ -81,7 +80,6 @@ class MainActivity : FragmentActivity() {
         avatarPrincipal.text = extrairIniciais(firebaseUser)
         
         val coresAvatares = listOf(R.id.avatarColor1 to R.drawable.bg_perfil_amarelo, R.id.avatarColor2 to Color.parseColor("#ff4757"), R.id.avatarColor3 to Color.parseColor("#2ed573"), R.id.avatarColor4 to Color.parseColor("#1e90ff"))
-        
         coresAvatares.forEach { par ->
             val view = findViewById<TextView>(par.first)
             view.setOnFocusChangeListener { v, focus -> if(focus) v.animate().scaleX(1.2f).scaleY(1.2f).start() else v.animate().scaleX(1.0f).scaleY(1.0f).start() }
@@ -92,38 +90,28 @@ class MainActivity : FragmentActivity() {
         }
 
         val listenerFocoConfig = View.OnFocusChangeListener { v, focus -> if(focus) { v.setBackgroundResource(R.drawable.bg_config_item); v.animate().scaleX(1.03f).start() } else { v.setBackgroundColor(Color.TRANSPARENT); v.animate().scaleX(1.0f).start() } }
-        val btnHist = findViewById<LinearLayout>(R.id.btnModalLimparHist)
-        val btnFav = findViewById<LinearLayout>(R.id.btnModalLimparFavs)
-        btnHist.setOnFocusChangeListener(listenerFocoConfig)
-        btnFav.setOnFocusChangeListener(listenerFocoConfig)
+        
+        val btnParental = findViewById<LinearLayout>(R.id.btnModalParental)
+        val txtStatusParental = findViewById<TextView>(R.id.txtStatusParental)
+        
+        txtStatusParental.text = if (isParentalOn) "LIGADO" else "DESLIGADO"
+        txtStatusParental.setTextColor(if (isParentalOn) Color.parseColor("#2ed573") else Color.parseColor("#ff4757"))
 
-        findViewById<TextView>(R.id.navPerfil).setOnClickListener { 
-            overlay.visibility = View.VISIBLE
-            findViewById<Button>(R.id.btnModalFechar).requestFocus() 
+        btnParental.setOnFocusChangeListener(listenerFocoConfig)
+        btnParental.setOnClickListener {
+            isParentalOn = !isParentalOn
+            getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putBoolean("parental_control", isParentalOn).apply()
+            txtStatusParental.text = if (isParentalOn) "LIGADO" else "DESLIGADO"
+            txtStatusParental.setTextColor(if (isParentalOn) Color.parseColor("#2ed573") else Color.parseColor("#ff4757"))
+            Toast.makeText(this, "Controle Parental Atualizado", Toast.LENGTH_SHORT).show()
+            baixarCatalogoCompleto() // Recarrega filtrando
         }
 
-        findViewById<Button>(R.id.btnModalFechar).setOnClickListener { 
-            overlay.visibility = View.GONE
-            findViewById<TextView>(R.id.navPerfil).requestFocus() 
-        }
-
-        btnHist.setOnClickListener {
-            getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("iptv_continuar_vod", "[]").apply()
-            Toast.makeText(this, "Histórico Removido!", Toast.LENGTH_SHORT).show()
-            overlay.visibility = View.GONE; renderizarAbaHome()
-        }
-
-        btnFav.setOnClickListener {
-            getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", "[]").apply()
-            Toast.makeText(this, "Favoritos Zerados!", Toast.LENGTH_SHORT).show()
-            overlay.visibility = View.GONE; renderizarAbaHome()
-        }
-
-        findViewById<Button>(R.id.btnModalLogout).setOnClickListener {
-            getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().clear().apply()
-            startActivity(Intent(this, LoginActivity::class.java))
-            finish()
-        }
+        findViewById<LinearLayout>(R.id.btnModalLimparHist).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("iptv_continuar_vod", "[]").apply(); Toast.makeText(this@MainActivity, "Histórico Removido", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
+        findViewById<LinearLayout>(R.id.btnModalLimparFavs).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", "[]").apply(); Toast.makeText(this@MainActivity, "Favoritos Removidos", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
+        findViewById<Button>(R.id.btnModalLogout).setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().clear().apply(); startActivity(Intent(this, LoginActivity::class.java)); finish() }
+        findViewById<TextView>(R.id.navPerfil).setOnClickListener { overlay.visibility = View.VISIBLE; findViewById<Button>(R.id.btnModalFechar).requestFocus() }
+        findViewById<Button>(R.id.btnModalFechar).setOnClickListener { overlay.visibility = View.GONE; findViewById<TextView>(R.id.navPerfil).requestFocus() }
     }
 
     private fun sincronizarFavoritosDoBanco() {
@@ -138,15 +126,45 @@ class MainActivity : FragmentActivity() {
         } catch (e: Exception) {}
     }
 
+    private fun isAdult(cat: String?): Boolean {
+        if (!isParentalOn) return false
+        val c = cat?.lowercase() ?: ""
+        return listOf("adulto", "adult", "18+", "xxx", "porn", "sensual", "hachutv").any { c.contains(it) }
+    }
+
     private fun baixarCatalogoCompleto() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
-                val respVod = api.getVodStreams(xtUser, xtPass); val respSeries = api.getSeriesStreams(xtUser, xtPass); val respCanais = api.getLiveStreams(xtUser, xtPass)
+                
+                // Mapeia Categorias
+                val respVodCat = api.getVodCategories(xtUser, xtPass)
+                val respSeriesCat = api.getSeriesCategories(xtUser, xtPass)
+                val typeCat = object : TypeToken<List<XtreamCategory>>() {}.type
+                val mapVod = mutableMapOf<String, String>()
+                val mapSeries = mutableMapOf<String, String>()
+                if (respVodCat.isJsonArray) Gson().fromJson<List<XtreamCategory>>(respVodCat, typeCat).forEach { mapVod[it.category_id] = it.category_name }
+                if (respSeriesCat.isJsonArray) Gson().fromJson<List<XtreamCategory>>(respSeriesCat, typeCat).forEach { mapSeries[it.category_id] = it.category_name }
+
+                val respVod = api.getVodStreams(xtUser, xtPass)
+                val respSeries = api.getSeriesStreams(xtUser, xtPass)
+                val respCanais = api.getLiveStreams(xtUser, xtPass)
+
                 withContext(Dispatchers.Main) {
-                    if (respVod.isJsonArray) masterFilmes = Gson().fromJson(respVod, object : TypeToken<List<XtreamVod>>() {}.type)
-                    if (respSeries.isJsonArray) masterSeries = Gson().fromJson(respSeries, object : TypeToken<List<XtreamSerie>>() {}.type)
-                    if (respCanais.isJsonArray) masterCanais = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type)
+                    if (respVod.isJsonArray) {
+                        val brutos = Gson().fromJson<List<XtreamVod>>(respVod, object : TypeToken<List<XtreamVod>>() {}.type)
+                        brutos.forEach { it.category_name = mapVod[it.category_id ?: ""] ?: "Outros" }
+                        masterFilmes = brutos.filter { !isAdult(it.category_name) }
+                    }
+                    if (respSeries.isJsonArray) {
+                        val brutos = Gson().fromJson<List<XtreamSerie>>(respSeries, object : TypeToken<List<XtreamSerie>>() {}.type)
+                        brutos.forEach { it.category_name = mapSeries[it.category_id ?: ""] ?: "Outros" }
+                        masterSeries = brutos.filter { !isAdult(it.category_name) }
+                    }
+                    if (respCanais.isJsonArray) {
+                        val brutos = Gson().fromJson<List<XtreamLive>>(respCanais, object : TypeToken<List<XtreamLive>>() {}.type)
+                        masterCanais = brutos // Canais mapeiam na própria classe
+                    }
                     renderizarAbaHome()
                 }
             } catch (e: Exception) { }
@@ -160,36 +178,21 @@ class MainActivity : FragmentActivity() {
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
 
-        // BLINDAGEM 2: Se a memória do progresso estiver num formato antigo, evita fechar e zera a lista.
         val contJson = prefs.getString("iptv_continuar_vod", "[]")
-        val contList: List<Map<String, Any>> = try {
-            Gson().fromJson(contJson, object : TypeToken<List<Map<String, Any>>>(){}.type) ?: emptyList()
-        } catch (e: Exception) {
-            prefs.edit().putString("iptv_continuar_vod", "[]").apply()
-            emptyList()
-        }
-
+        val contList: List<Map<String, Any>> = try { Gson().fromJson(contJson, object : TypeToken<List<Map<String, Any>>>(){}.type) ?: emptyList() } catch (e: Exception) { prefs.edit().putString("iptv_continuar_vod", "[]").apply(); emptyList() }
         val continuarItens = mutableListOf<Map<String, Any>>()
         for (item in contList) {
             val id = (item["id"] as? Number)?.toInt() ?: 0
             val tipo = item["tipo"] as? String ?: ""
             val tempo = (item["tempo"] as? Number)?.toLong() ?: 0L
             val duracao = (item["duracao"] as? Number)?.toLong() ?: 0L
-            
             if (tipo == "vod") { val f = masterFilmes.find { it.stream_id == id }; if (f != null) continuarItens.add(mapOf("midia" to f, "tipo" to "vod", "tempo" to tempo, "duracao" to duracao)) } 
             else if (tipo == "series") { val s = masterSeries.find { it.series_id == id }; if (s != null) continuarItens.add(mapOf("midia" to s, "tipo" to "series", "tempo" to tempo, "duracao" to duracao)) }
         }
         if (continuarItens.isNotEmpty()) renderizarTrilhoContinuar(container, "Continuar Assistindo", continuarItens)
 
-        // BLINDAGEM 3: Se os favoritos estiverem no formato antigo, limpa para não travar o app.
         val favsListJson = prefs.getString("favoritos_tv", "[]")
-        val idsFavoritos: List<String> = try {
-            Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList()
-        } catch (e: Exception) {
-            prefs.edit().putString("favoritos_tv", "[]").apply()
-            emptyList()
-        }
-
+        val idsFavoritos: List<String> = try { Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { prefs.edit().putString("favoritos_tv", "[]").apply(); emptyList() }
         val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }
         if(canaisFavoritos.isNotEmpty()) renderizarTrilhoCanais(container, "Canais Favoritos", canaisFavoritos)
 
@@ -207,25 +210,18 @@ class MainActivity : FragmentActivity() {
         val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false)
         view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo
         val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho)
-        
         for (mapItem in lista) {
             val card = LayoutInflater.from(this).inflate(R.layout.card_continuar_premium, linear, false)
             val isSeries = mapItem["tipo"] == "series"
-            
             val itemId = if(isSeries) (mapItem["midia"] as XtreamSerie).series_id else (mapItem["midia"] as XtreamVod).stream_id
             val nomeMidia = if(isSeries) (mapItem["midia"] as XtreamSerie).name else (mapItem["midia"] as XtreamVod).name
             val capaUrl = if(isSeries) (mapItem["midia"] as XtreamSerie).cover else (mapItem["midia"] as XtreamVod).stream_icon
             val tempo = mapItem["tempo"] as Long; val duracao = mapItem["duracao"] as Long
-
             card.findViewById<TextView>(R.id.txtNomePremium).text = nomeMidia
             if (capaUrl != null) Glide.with(this).load(capaUrl).into(card.findViewById(R.id.imgCapaPremium))
-            
             val pb = card.findViewById<ProgressBar>(R.id.progressoFilme)
             if (duracao > 0) { pb.max = 100; pb.progress = ((tempo * 100) / duracao).toInt() }
-            
-            configurarZoomCard(card)
-            card.setOnClickListener { abrirSinopse(itemId, isSeries) }
-            linear.addView(card)
+            configurarZoomCard(card); card.setOnClickListener { abrirSinopse(itemId, isSeries) }; linear.addView(card)
         }
         container.addView(view)
     }
@@ -254,31 +250,10 @@ class MainActivity : FragmentActivity() {
         btnAss.setOnClickListener { abrirSinopse(id, isSeries) }
     }
 
-    private fun abrirSinopse(id: Int, isSeries: Boolean) {
-        val intent = Intent(this, DetalhesActivity::class.java)
-        intent.putExtra("MEDIA_ID", id); intent.putExtra("IS_SERIES", isSeries); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("URL", urlServ)
-        startActivity(intent)
-    }
-
-    private fun renderizarTrilho(container: LinearLayout, titulo: String, lista: List<XtreamVod>) {
-        val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false)
-        view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo; val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho)
-        for (filme in lista) { val card = LayoutInflater.from(this).inflate(R.layout.card_vod_premium, linear, false); card.findViewById<TextView>(R.id.txtNomePremium).text = filme.name; if (filme.stream_icon != null) Glide.with(this).load(filme.stream_icon).into(card.findViewById(R.id.imgCapaPremium)); configurarZoomCard(card); card.setOnClickListener { abrirSinopse(filme.stream_id, false) }; linear.addView(card) }
-        container.addView(view)
-    }
-    private fun renderizarTrilhoSeries(container: LinearLayout, titulo: String, lista: List<XtreamSerie>) {
-        val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false)
-        view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo; val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho)
-        for (serie in lista) { val card = LayoutInflater.from(this).inflate(R.layout.card_vod_premium, linear, false); card.findViewById<TextView>(R.id.txtNomePremium).text = serie.name; if (serie.cover != null) Glide.with(this).load(serie.cover).into(card.findViewById(R.id.imgCapaPremium)); configurarZoomCard(card); card.setOnClickListener { abrirSinopse(serie.series_id, true) }; linear.addView(card) }
-        container.addView(view)
-    }
-    private fun renderizarTrilhoCanais(container: LinearLayout, titulo: String, lista: List<XtreamLive>) {
-        val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false)
-        view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo; view.findViewById<TextView>(R.id.txtTituloTrilho).setTextColor(Color.parseColor("#ffcc00"))
-        val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho)
-        for (canal in lista) { val card = LayoutInflater.from(this).inflate(R.layout.card_canal_premium, linear, false); card.findViewById<TextView>(R.id.txtNomePremium).text = canal.name; if (canal.stream_icon != null) Glide.with(this).load(canal.stream_icon).into(card.findViewById(R.id.imgCapaPremium)); configurarZoomCard(card); card.setOnClickListener { val intent = Intent(this, PlayerActivity::class.java); intent.putExtra("URL", urlServ); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("STREAM_ID", canal.stream_id); intent.putExtra("TYPE", "live"); intent.putExtra("TITLE", canal.name); startActivity(intent) }; linear.addView(card) }
-        container.addView(view)
-    }
+    private fun abrirSinopse(id: Int, isSeries: Boolean) { val intent = Intent(this, DetalhesActivity::class.java); intent.putExtra("MEDIA_ID", id); intent.putExtra("IS_SERIES", isSeries); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("URL", urlServ); startActivity(intent) }
+    private fun renderizarTrilho(container: LinearLayout, titulo: String, lista: List<XtreamVod>) { val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false); view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo; val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho); for (filme in lista) { val card = LayoutInflater.from(this).inflate(R.layout.card_vod_premium, linear, false); card.findViewById<TextView>(R.id.txtNomePremium).text = filme.name; if (filme.stream_icon != null) Glide.with(this).load(filme.stream_icon).into(card.findViewById(R.id.imgCapaPremium)); configurarZoomCard(card); card.setOnClickListener { abrirSinopse(filme.stream_id, false) }; linear.addView(card) }; container.addView(view) }
+    private fun renderizarTrilhoSeries(container: LinearLayout, titulo: String, lista: List<XtreamSerie>) { val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false); view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo; val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho); for (serie in lista) { val card = LayoutInflater.from(this).inflate(R.layout.card_vod_premium, linear, false); card.findViewById<TextView>(R.id.txtNomePremium).text = serie.name; if (serie.cover != null) Glide.with(this).load(serie.cover).into(card.findViewById(R.id.imgCapaPremium)); configurarZoomCard(card); card.setOnClickListener { abrirSinopse(serie.series_id, true) }; linear.addView(card) }; container.addView(view) }
+    private fun renderizarTrilhoCanais(container: LinearLayout, titulo: String, lista: List<XtreamLive>) { val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false); view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo; view.findViewById<TextView>(R.id.txtTituloTrilho).setTextColor(Color.parseColor("#ffcc00")); val linear = view.findViewById<LinearLayout>(R.id.linearInternoTrilho); for (canal in lista) { val card = LayoutInflater.from(this).inflate(R.layout.card_canal_premium, linear, false); card.findViewById<TextView>(R.id.txtNomePremium).text = canal.name; if (canal.stream_icon != null) Glide.with(this).load(canal.stream_icon).into(card.findViewById(R.id.imgCapaPremium)); configurarZoomCard(card); card.setOnClickListener { val intent = Intent(this, PlayerActivity::class.java); intent.putExtra("URL", urlServ); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("STREAM_ID", canal.stream_id); intent.putExtra("TYPE", "live"); intent.putExtra("TITLE", canal.name); startActivity(intent) }; linear.addView(card) }; container.addView(view) }
 
     private fun configurarZoomCard(view: View) { view.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.1f).scaleY(1.1f).start() else v.animate().scaleX(1.0f).scaleY(1.0f).start() } }
     private fun configurarFocoMenusTV() { val menus = listOf(R.id.navSearch, R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navPerfil); for (id in menus) { val view = findViewById<View>(id); view?.setOnFocusChangeListener { v, focus -> if (focus) { v.animate().scaleX(1.1f).start(); if(v is TextView && v.id != R.id.navPerfil) v.setTextColor(Color.WHITE) } else { v.animate().scaleX(1.0f).start(); if(v is TextView && v.id != R.id.navPerfil) v.setTextColor(Color.parseColor("#888888")) } } } }
