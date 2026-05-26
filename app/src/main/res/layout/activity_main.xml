@@ -113,18 +113,18 @@
 
             <LinearLayout android:id="@+id/btnModalLimparHist" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:padding="12dp" android:background="@drawable/bg_config_item">
                 <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
-                    <TextView android:text="Limpar Histórico" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
-                    <TextView android:text="Zerar 'Continuar Assistindo'" android:textColor="#8e8e93" android:textSize="11sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Limpar Histórico" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zerar 'Continuar Assistindo'" android:textColor="#8e8e93" android:textSize="11sp"/>
                 </LinearLayout>
-                <TextView android:text="🗑️" android:textSize="16sp" android:layout_gravity="center_vertical"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🗑️" android:textSize="16sp" android:layout_gravity="center_vertical"/>
             </LinearLayout>
 
             <LinearLayout android:id="@+id/btnModalLimparFavs" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:padding="12dp" android:background="@drawable/bg_config_item" android:layout_marginTop="5dp">
                 <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
-                    <TextView android:text="Zerar Favoritos" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
-                    <TextView android:text="Remover canais salvos" android:textColor="#8e8e93" android:textSize="11sp"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zerar Favoritos" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Remover canais salvos" android:textColor="#8e8e93" android:textSize="11sp"/>
                 </LinearLayout>
-                <TextView android:text="⭐" android:textSize="16sp" android:layout_gravity="center_vertical"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⭐" android:textSize="16sp" android:layout_gravity="center_vertical"/>
             </LinearLayout>
 
             <Button
