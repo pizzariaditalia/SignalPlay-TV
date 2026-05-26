@@ -1,5 +1,6 @@
 package com.tv.signalplay
 
+import android.content.Context
 import android.graphics.Color
 import android.net.Uri
 import android.os.Bundle
@@ -16,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -43,7 +45,7 @@ class PlayerActivity : FragmentActivity() {
     private lateinit var btnPrev: Button; private lateinit var btnNext: Button
     
     private val handler = Handler(Looper.getMainLooper()); private var isOverlayVisible = true
-    private var isFit = true // Memória do Aspect Ratio
+    private var isFit = true 
 
     private var urlServ = ""; private var xtUser = ""; private var xtPass = ""; private var currentType = "live"
     private var currentStreamId = 0; private var currentTitle = ""; private var currentExt = "mp4"
@@ -123,7 +125,6 @@ class PlayerActivity : FragmentActivity() {
         }, 2000)
     }
 
-    // A MÁGICA: HOVER APENAS NA COR DO TEXTO (Padrão CSS)
     private fun configurarBotoesPremiumSemFundo() {
         val listenerCorDeTexto = View.OnFocusChangeListener { v, focus -> 
             if(v is Button) {
