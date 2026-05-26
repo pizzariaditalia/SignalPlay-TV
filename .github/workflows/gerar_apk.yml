@@ -49,6 +49,11 @@ jobs:
                       android:name=".MainActivity"
                       android:exported="false"
                       android:screenOrientation="landscape" />
+                      
+                  <activity
+                      android:name=".CanaisActivity"
+                      android:exported="false"
+                      android:screenOrientation="landscape" />
 
               </application>
           </manifest>
