@@ -12,58 +12,115 @@
         app:resize_mode="fit"
         app:use_controller="false" />
 
-    <ProgressBar
-        android:id="@+id/loadingSpinner"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_centerInParent="true"
-        android:indeterminateTint="#ffcc00" />
+    <ProgressBar android:id="@+id/loadingSpinner" android:layout_width="60dp" android:layout_height="60dp" android:layout_centerInParent="true" android:indeterminateTint="#ffcc00" />
 
     <RelativeLayout
         android:id="@+id/controlsOverlay"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:background="#99000000">
+        android:layout_height="match_parent">
 
-        <LinearLayout
+        <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
-            android:orientation="horizontal"
-            android:padding="30dp"
-            android:gravity="center_vertical"
-            android:background="@drawable/gradient_menu_topo">
+            android:background="@drawable/gradient_menu_topo"
+            android:padding="25dp">
 
-            <ImageView android:id="@+id/imgOsdLogo" android:layout_width="70dp" android:layout_height="70dp" android:background="#33FFFFFF" android:padding="5dp" android:scaleType="fitCenter" android:layout_marginEnd="20dp" />
+            <TextView
+                android:id="@+id/txtPlayerTitulo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignParentStart="true"
+                android:text="Carregando..."
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" />
 
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="vertical">
-                <TextView android:id="@+id/txtPlayerTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Carregando..." android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold" />
-                <TextView android:id="@+id/txtOsdEpgAtual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Buscando programação..." android:textColor="#ffcc00" android:textSize="16sp" android:textStyle="bold" android:layout_marginTop="2dp"/>
-                <TextView android:id="@+id/txtOsdEpgProx" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textColor="#8e8e93" android:textSize="14sp" />
-            </LinearLayout>
-        </LinearLayout>
+            <TextView
+                android:id="@+id/txtOsdEpgAtual"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/txtPlayerTitulo"
+                android:text=""
+                android:textColor="#ffcc00"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <Button
+                android:id="@+id/btnFecharPlayer"
+                android:layout_width="wrap_content"
+                android:layout_height="40dp"
+                android:layout_alignParentEnd="true"
+                android:background="@android:color/transparent"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:text="✕ FECHAR"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </RelativeLayout>
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
+            android:background="@drawable/gradient_hero_bottom"
             android:orientation="vertical"
-            android:padding="30dp"
-            android:background="@drawable/gradient_hero_bottom">
+            android:padding="25dp">
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
-                <ImageView android:id="@+id/btnPlayPauseIcon" android:layout_width="24dp" android:layout_height="24dp" android:src="@android:drawable/ic_media_pause" android:tint="#ffcc00" android:layout_marginEnd="15dp"/>
-                <TextView android:id="@+id/txtTempoAtual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00" android:textColor="#FFFFFF" android:textSize="14sp" />
-                <ProgressBar android:id="@+id/progressBarTempo" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="6dp" android:layout_weight="1" android:layout_marginStart="20dp" android:layout_marginEnd="20dp" android:progressTint="#ffcc00" android:progressBackgroundTint="#444455" />
-                <TextView android:id="@+id/txtTempoTotal" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00" android:textColor="#8e8e93" android:textSize="14sp" />
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="15dp"
+                android:gravity="center_vertical"
+                android:orientation="horizontal">
+
+                <ProgressBar
+                    android:id="@+id/progressBarTempo"
+                    style="?android:attr/progressBarStyleHorizontal"
+                    android:layout_width="0dp"
+                    android:layout_height="6dp"
+                    android:layout_marginEnd="15dp"
+                    android:layout_weight="1"
+                    android:progressBackgroundTint="#444455"
+                    android:progressTint="#ffcc00" />
+
+                <TextView
+                    android:id="@+id/txtTempoCompleto"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="00:00 / 00:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:textStyle="bold" />
             </LinearLayout>
 
-            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="end" android:layout_marginTop="20dp">
-                <Button android:id="@+id/btnModalEpg" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📅 EPG" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="true"/>
-                <Button android:id="@+id/btnModalPlaylist" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="📑 PLAYLIST" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="true" android:layout_marginStart="15dp"/>
-                <Button android:id="@+id/btnAjustar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="AJUSTAR" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="true" android:layout_marginStart="15dp"/>
-                <Button android:id="@+id/btnEsticar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="ESTICAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="true" android:layout_marginStart="15dp"/>
-            </LinearLayout>
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_alignParentStart="true"
+                    android:orientation="horizontal">
+                    <Button android:id="@+id/btnPrev" android:layout_width="40dp" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="⏮" android:textColor="#FFFFFF" android:textSize="20sp" />
+                    <Button android:id="@+id/btnPlayPauseIcon" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="⏸" android:textColor="#FFFFFF" android:textSize="20sp" />
+                    <Button android:id="@+id/btnNext" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="⏭" android:textColor="#FFFFFF" android:textSize="20sp" />
+                </LinearLayout>
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_centerInParent="true"
+                    android:orientation="horizontal">
+                    <Button android:id="@+id/btnModalEpg" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="📅 EPG" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnModalPlaylist" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="📑 PLAYLIST" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_vertical" android:layout_marginStart="15dp" android:layout_marginEnd="15dp" android:text="|" android:textColor="#444455" />
+                    <Button android:id="@+id/btnAjustar" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="AJUSTAR" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnEsticar" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="ESTICAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                </LinearLayout>
+            </RelativeLayout>
         </LinearLayout>
     </RelativeLayout>
 
