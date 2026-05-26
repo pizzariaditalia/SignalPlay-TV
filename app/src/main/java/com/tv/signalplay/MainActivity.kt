@@ -1,11 +1,14 @@
 package com.tv.signalplay
 
-import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
+import android.widget.HorizontalScrollView
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
@@ -23,43 +26,32 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Pegando os dados corretos da mochila
-        val clienteNome = intent.getStringExtra("FIREBASE_USER") ?: "Cliente"
+        // 1. Pega as Chaves Mestras ocultas vindas do Login
+        val usuarioFirebase = intent.getStringExtra("FIREBASE_USER") ?: "Cliente"
         val xtreamUser = intent.getStringExtra("XTREAM_USER") ?: ""
         val xtreamPass = intent.getStringExtra("XTREAM_PASS") ?: ""
-        val urlDoServidor = intent.getStringExtra("URL") ?: ""
+        val urlXtream = intent.getStringExtra("URL") ?: ""
 
+        // Coloca o nome do cliente na bola amarela do perfil
         val navPerfil = findViewById<TextView>(R.id.navPerfil)
-        navPerfil.text = extrairIniciais(clienteNome)
+        navPerfil.text = extrairIniciais(usuarioFirebase)
 
         configurarFocoTV()
 
-        val navCanais = findViewById<TextView>(R.id.navCanais)
-        navCanais.setOnClickListener {
-            if (urlDoServidor.isNotEmpty()) {
-                val intentCanais = Intent(this, CanaisActivity::class.java)
-                intentCanais.putExtra("XTREAM_USER", xtreamUser)
-                intentCanais.putExtra("XTREAM_PASS", xtreamPass)
-                intentCanais.putExtra("URL", urlDoServidor)
-                startActivity(intentCanais)
-            } else {
-                Toast.makeText(this, "Erro de servidor.", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        // Bate na API do Xtream com as chaves mestras
-        if (urlDoServidor.isNotEmpty() && xtreamUser.isNotEmpty() && xtreamPass.isNotEmpty()) {
-            carregarFilmes(urlDoServidor, xtreamUser, xtreamPass)
+        // 2. Chama o motor premium de renderização
+        if (urlXtream.isNotEmpty() && xtreamUser.isNotEmpty() && xtreamPass.isNotEmpty()) {
+            Toast.makeText(this, "Carregando visual premium...", Toast.LENGTH_SHORT).show()
+            carregarFilmesPremium(urlXtream, xtreamUser, xtreamPass)
         }
     }
 
-    private fun carregarFilmes(url: String, user: String, pass: String) {
-        val card1 = findViewById<ImageView>(R.id.card1)
-        val card2 = findViewById<ImageView>(R.id.card2)
-        val card3 = findViewById<ImageView>(R.id.card3)
+    private fun carregarFilmesPremium(url: String, user: String, pass: String) {
+        val containerTrilhos = findViewById<LinearLayout>(R.id.containerTrilhos)
+        containerTrilhos.removeAllViews() // Limpa antes de carregar
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // Instancia o mensageiro da API
                 val api = XtreamClient.create(url)
                 val response = api.getVodStreams(user, pass)
 
@@ -69,20 +61,94 @@ class MainActivity : FragmentActivity() {
                         val filmes: List<XtreamVod> = Gson().fromJson(response, tipoLista)
 
                         if (filmes.isNotEmpty()) {
-                            if (filmes.size > 0 && !filmes[0].stream_icon.isNullOrEmpty()) {
-                                Glide.with(this@MainActivity).load(filmes[0].stream_icon).into(card1)
+                            // 🚀 MOTOR DE RENDERIZAÇÃO PREMIUM 
+                            // Replicando o design do mobile para TV
+
+                            // 1. Atualiza o Hero Banner Principal com o primeiro filme
+                            if (filmes[0].stream_icon != null) {
+                                findViewById<TextView>(R.id.txtTituloDestaque).text = filmes[0].name
+                                val heroImg = findViewById<ImageView>(R.id.imgBackgroundDestaque)
+                               Glide.with(this@MainActivity).load(filmes[0].stream_icon).into(heroImg)
                             }
-                            if (filmes.size > 1 && !filmes[1].stream_icon.isNullOrEmpty()) {
-                                Glide.with(this@MainActivity).load(filmes[1].stream_icon).into(card2)
+
+                            // 2. Trilho 1: "Filmes Adicionados Recentemente" (Sempre em primeiro)
+                            renderizarTrilho(containerTrilhos, "Últimos Filmes Adicionados", filmes.take(30), false)
+
+                            // 3. Trilho 2: "Central da Copa 2026" (Replicando o mobile)
+                            // Aqui o Kotlin busca se existe essa categoria no seu servidor
+                            val copaFilms = filmes.filter { it.category_name?.contains("Copa") == true }
+                            if (copaFilms.isNotEmpty()) {
+                                renderizarTrilho(containerTrilhos, "🏆 Central da Copa 2026", copaFilms, false)
                             }
-                            if (filmes.size > 2 && !filmes[2].stream_icon.isNullOrEmpty()) {
-                                Glide.with(this@MainActivity).load(filmes[2].stream_icon).into(card3)
+
+                            // 4. Trilho 3: "Dramas" (Replicando o mobile)
+                            val dramasFilms = filmes.filter { it.category_name?.contains("Dramas") == true }
+                            if (dramasFilms.isNotEmpty()) {
+                                renderizarTrilho(containerTrilhos, " Doramas | Dramas Coreanos", dramasFilms, false)
                             }
+
+                        } else {
+                            Toast.makeText(this@MainActivity, "Nenhum filme no catálogo Xtream.", Toast.LENGTH_SHORT).show()
                         }
                     }
                 }
             } catch (e: Exception) {
-                // Erros silenciosos para não atrapalhar a Home
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@MainActivity, "Falha ao renderizar catálogo premium: ${e.message}", Toast.LENGTH_LONG).show()
+                }
+            }
+        }
+    }
+
+    // A função mágica que constrói um trilho premium completo na TV
+    private fun renderizarTrilho(container: LinearLayout, titulo: String, listaFilmes: List<XtreamVod>, isCanalSquare: Boolean) {
+        val inflater = LayoutInflater.from(this)
+        
+        // Carrega o esqueleto do Trilho (Título + ScrollView)
+        val trilhoView = inflater.inflate(R.layout.trilho_vod_premium, container, false)
+        
+        // Aplica o título (com o Vermelho Netflix que você pediu)
+        val txtTitulo = trilhoView.findViewById<TextView>(R.id.txtTituloTrilho)
+        txtTitulo.text = titulo
+        
+        // Pega o LinearLayout interno onde os cards vão morar
+        val linearInterno = trilhoView.findViewById<LinearLayout>(R.id.linearInternoTrilho)
+        
+        // Pega o ID do molde do card (Pôster ou Quadrado do Canal)
+        val cardLayoutId = if (isCanalSquare) R.layout.card_canal_premium else R.layout.card_vod_premium
+
+        // Loop que constrói os cards um por um
+        for (filme in listaFilmes) {
+            val cardView = inflater.inflate(cardLayoutId, linearInterno, false)
+            val imgCapa = cardView.findViewById<ImageView>(R.id.imgCapaPremium)
+            val txtNome = cardView.findViewById<TextView>(R.id.txtNomePremium)
+            
+            txtNome.text = filme.name
+            if (filme.stream_icon != null) {
+                Glide.with(this).load(filme.stream_icon).into(imgCapa)
+            }
+            
+            // Configura o efeito de Foco da TV para este card
+            configurarEfeitoFocoCard(cardView)
+            
+            linearInterno.addView(cardView)
+        }
+        
+        container.addView(trilhoView)
+    }
+
+    // A função de ouro da TV: Animação e Foco Premium (Glassmorphism)
+    private fun configurarEfeitoFocoCard(view: View) {
+        view.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                // Efeito de crescer (zoom)
+                v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
+                // Coloca a borda grossa Amarela Vibrante que o mobile usa
+                v.findViewById<LinearLayout>(R.id.boxCardInterno).setBackgroundResource(R.drawable.bg_card_premium_focado)
+            } else {
+                v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
+                // Volta ao visual original (sem graça, mas focado no Amarelo)
+                v.findViewById<LinearLayout>(R.id.boxCardInterno).setBackgroundResource(R.drawable.bg_card_premium_normal)
             }
         }
     }
@@ -96,11 +162,11 @@ class MainActivity : FragmentActivity() {
         return if (nome.length >= 2) nome.substring(0, 2).uppercase() else nome.uppercase()
     }
 
+    // Efeito de Foco para o Menu do Topo (não muda a cor, só brilha)
     private fun configurarFocoTV() {
         val elementosParaAnimar = listOf(
             R.id.navSearch, R.id.navInicio, R.id.navCanais, R.id.navFilmes, 
-            R.id.navSeries, R.id.navGuia, R.id.navConfig, R.id.navPerfil,
-            R.id.btnAssistirDestaque, R.id.card1, R.id.card2, R.id.card3
+            R.id.navSeries, R.id.navConfig, R.id.navPerfil, R.id.btnAssistirDestaque
         )
 
         for (id in elementosParaAnimar) {
@@ -108,12 +174,12 @@ class MainActivity : FragmentActivity() {
             view?.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
-                    if (v is TextView && v.id != R.id.navPerfil && v.id != R.id.btnAssistirDestaque) {
+                    if (v is TextView && v.id != R.id.navPerfil) {
                         v.setTextColor(Color.WHITE)
                     }
                 } else {
                     v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-                    if (v is TextView && v.id != R.id.navInicio && v.id != R.id.navPerfil && v.id != R.id.btnAssistirDestaque) {
+                    if (v is TextView && v.id != R.id.navInicio && v.id != R.id.navPerfil) {
                         v.setTextColor(Color.parseColor("#888888"))
                     }
                 }
