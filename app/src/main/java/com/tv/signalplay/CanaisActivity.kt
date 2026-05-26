@@ -26,16 +26,16 @@ class CanaisActivity : FragmentActivity() {
         setContentView(R.layout.activity_canais)
 
         val recyclerCanais = findViewById<RecyclerView>(R.id.gridCanais)
-        // Configura uma grade com 5 colunas para a TV
         recyclerCanais.layoutManager = GridLayoutManager(this, 5)
 
-        val usuarioLogado = intent.getStringExtra("USER") ?: ""
-        val senhaLogada = intent.getStringExtra("PASS") ?: ""
+        // Pegando as chaves mestras enviadas pela MainActivity
+        val xtreamUser = intent.getStringExtra("XTREAM_USER") ?: ""
+        val xtreamPass = intent.getStringExtra("XTREAM_PASS") ?: ""
         val urlDoServidor = intent.getStringExtra("URL") ?: ""
 
-        if (urlDoServidor.isNotEmpty() && usuarioLogado.isNotEmpty() && senhaLogada.isNotEmpty()) {
-            Toast.makeText(this, "A carregar canais...", Toast.LENGTH_SHORT).show()
-            carregarCanaisAoVivo(urlDoServidor, usuarioLogado, senhaLogada, recyclerCanais)
+        if (urlDoServidor.isNotEmpty() && xtreamUser.isNotEmpty() && xtreamPass.isNotEmpty()) {
+            Toast.makeText(this, "Carregando canais...", Toast.LENGTH_SHORT).show()
+            carregarCanaisAoVivo(urlDoServidor, xtreamUser, xtreamPass, recyclerCanais)
         } else {
             Toast.makeText(this, "Erro de dados. Tente fazer login novamente.", Toast.LENGTH_LONG).show()
         }
@@ -53,13 +53,12 @@ class CanaisActivity : FragmentActivity() {
                         val canais: List<XtreamLive> = Gson().fromJson(response, tipoLista)
 
                         if (canais.isNotEmpty()) {
-                            // Liga a lista de canais à tela usando o nosso Adapter
                             recycler.adapter = CanaisAdapter(canais)
                         } else {
                             Toast.makeText(this@CanaisActivity, "Nenhum canal encontrado.", Toast.LENGTH_SHORT).show()
                         }
                     } else {
-                        Toast.makeText(this@CanaisActivity, "Erro no Servidor. Verifique as credenciais.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@CanaisActivity, "Erro no Servidor. Verifique as credenciais mestras no painel.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
@@ -70,7 +69,6 @@ class CanaisActivity : FragmentActivity() {
         }
     }
 
-    // O "Motor" que constrói os quadradinhos um por um
     inner class CanaisAdapter(private val listaCanais: List<XtreamLive>) : RecyclerView.Adapter<CanaisAdapter.CanalViewHolder>() {
 
         inner class CanalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
@@ -78,21 +76,19 @@ class CanaisActivity : FragmentActivity() {
             val txtNome: TextView = itemView.findViewById(R.id.txtNomeCanal)
 
             init {
-                // Efeito de Foco da TV: Cresce e fica com fundo vermelho ao ser selecionado!
                 itemView.setOnFocusChangeListener { v, hasFocus ->
                     if (hasFocus) {
                         v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start()
-                        v.setBackgroundColor(Color.parseColor("#E50914")) // Vermelho Netflix
+                        v.setBackgroundColor(Color.parseColor("#E50914"))
                     } else {
                         v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-                        v.setBackgroundColor(Color.parseColor("#1A1A24")) // Cor original
+                        v.setBackgroundColor(Color.parseColor("#1A1A24"))
                     }
                 }
                 
-                // Futuro: Clique para abrir o Player de Vídeo
                 itemView.setOnClickListener {
                     val canalClicado = listaCanais[bindingAdapterPosition]
-                    Toast.makeText(itemView.context, "Abrir canal: ${canalClicado.name}", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(itemView.context, "Abrir: ${canalClicado.name}", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -106,7 +102,6 @@ class CanaisActivity : FragmentActivity() {
             val canal = listaCanais[position]
             holder.txtNome.text = canal.name
             
-            // Carrega a logo. Se falhar, deixa em branco.
             if (!canal.stream_icon.isNullOrEmpty()) {
                 Glide.with(holder.itemView.context).load(canal.stream_icon).into(holder.imgLogo)
             } else {
