@@ -6,7 +6,6 @@ import android.graphics.Color
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -16,6 +15,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import com.bumptech.glide.Glide
+import com.google.firebase.FirebaseApp
+import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -34,6 +35,18 @@ class MainActivity : FragmentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        // BLINDAGEM 1: Garante que o Firebase acorda, mesmo se entrar via Auto-Login!
+        try {
+            if (FirebaseApp.getApps(this).isEmpty()) {
+                val options = FirebaseOptions.Builder()
+                    .setProjectId("signalplay-tv")
+                    .setApplicationId("1:51000338902:web:61d77a44dd62c0353a1c77")
+                    .setApiKey("AIzaSyBSYJYEFLlDwBYsQC0I76n9NfAph2oWuLI")
+                    .build()
+                FirebaseApp.initializeApp(this, options)
+            }
+        } catch (e: Exception) {}
 
         firebaseUser = intent.getStringExtra("FIREBASE_USER") ?: "Cliente"
         xtUser = intent.getStringExtra("XTREAM_USER") ?: ""
@@ -115,12 +128,14 @@ class MainActivity : FragmentActivity() {
 
     private fun sincronizarFavoritosDoBanco() {
         if(firebaseUser.isEmpty()) return
-        FirebaseFirestore.getInstance().collection("usuarios").whereEqualTo("usuario", firebaseUser).get().addOnSuccessListener { snaps ->
-            if(!snaps.isEmpty) { 
-                val favs = snaps.documents[0].get("favoritos") as? List<String> ?: emptyList()
-                getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
+        try {
+            FirebaseFirestore.getInstance().collection("usuarios").whereEqualTo("usuario", firebaseUser).get().addOnSuccessListener { snaps ->
+                if(!snaps.isEmpty) { 
+                    val favs = snaps.documents[0].get("favoritos") as? List<String> ?: emptyList()
+                    getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
+                }
             }
-        }
+        } catch (e: Exception) {}
     }
 
     private fun baixarCatalogoCompleto() {
@@ -145,10 +160,16 @@ class MainActivity : FragmentActivity() {
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
 
+        // BLINDAGEM 2: Se a memória do progresso estiver num formato antigo, evita fechar e zera a lista.
         val contJson = prefs.getString("iptv_continuar_vod", "[]")
-        val contList: List<Map<String, Any>> = Gson().fromJson(contJson, object : TypeToken<List<Map<String, Any>>>(){}.type) ?: emptyList()
+        val contList: List<Map<String, Any>> = try {
+            Gson().fromJson(contJson, object : TypeToken<List<Map<String, Any>>>(){}.type) ?: emptyList()
+        } catch (e: Exception) {
+            prefs.edit().putString("iptv_continuar_vod", "[]").apply()
+            emptyList()
+        }
+
         val continuarItens = mutableListOf<Map<String, Any>>()
-        
         for (item in contList) {
             val id = (item["id"] as? Number)?.toInt() ?: 0
             val tipo = item["tipo"] as? String ?: ""
@@ -160,8 +181,15 @@ class MainActivity : FragmentActivity() {
         }
         if (continuarItens.isNotEmpty()) renderizarTrilhoContinuar(container, "Continuar Assistindo", continuarItens)
 
+        // BLINDAGEM 3: Se os favoritos estiverem no formato antigo, limpa para não travar o app.
         val favsListJson = prefs.getString("favoritos_tv", "[]")
-        val idsFavoritos: List<String> = Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList()
+        val idsFavoritos: List<String> = try {
+            Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList()
+        } catch (e: Exception) {
+            prefs.edit().putString("favoritos_tv", "[]").apply()
+            emptyList()
+        }
+
         val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }
         if(canaisFavoritos.isNotEmpty()) renderizarTrilhoCanais(container, "Canais Favoritos", canaisFavoritos)
 
