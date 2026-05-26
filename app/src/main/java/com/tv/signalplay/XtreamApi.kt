@@ -10,14 +10,16 @@ import retrofit2.http.Query
 data class XtreamVod(
     val stream_id: Int,
     val name: String,
-    val stream_icon: String?
+    val stream_icon: String?,
+    val category_name: String? = null // <- O detalhe que faltava para criar os trilhos premium!
 )
 
-// NOVO: Modelo de Canal Ao Vivo
+// Modelo de Canal Ao Vivo
 data class XtreamLive(
     val stream_id: Int,
     val name: String,
-    val stream_icon: String?
+    val stream_icon: String?,
+    val category_name: String? = null
 )
 
 interface XtreamApiService {
@@ -28,7 +30,7 @@ interface XtreamApiService {
         @Query("action") action: String = "get_vod_streams"
     ): JsonElement 
 
-    // NOVO: Chamada para pedir Canais Ao Vivo
+    // Chamada para pedir Canais Ao Vivo
     @GET("player_api.php")
     suspend fun getLiveStreams(
         @Query("username") user: String,
