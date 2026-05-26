@@ -3,6 +3,8 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:orientation="vertical"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:layout_marginBottom="30dp">
 
     <TextView
@@ -14,12 +16,15 @@
         android:textSize="20sp"
         android:textStyle="bold"
         android:paddingStart="40dp"
-        android:layout_marginBottom="15dp"/>
+        android:layout_marginBottom="10dp"/>
 
     <HorizontalScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:clipChildren="false"
         android:clipToPadding="false"
+        android:paddingTop="15dp"
+        android:paddingBottom="15dp"
         android:paddingStart="40dp"
         android:paddingEnd="40dp"
         android:scrollbars="none">
@@ -28,6 +33,8 @@
             android:id="@+id/linearInternoTrilho"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:clipChildren="false"
+            android:clipToPadding="false"
             android:orientation="horizontal"
             android:gravity="center_vertical"/>
     </HorizontalScrollView>
