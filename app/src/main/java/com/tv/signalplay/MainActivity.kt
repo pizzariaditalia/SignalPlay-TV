@@ -1,8 +1,10 @@
 package com.tv.signalplay
 
+import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -21,20 +23,35 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
+        // 1. Abrir a mochila e recolher as credenciais vindas do Login
         val usuarioLogado = intent.getStringExtra("USER") ?: "Cliente"
         val senhaLogada = intent.getStringExtra("PASS") ?: ""
         val urlDoServidor = intent.getStringExtra("URL") ?: ""
 
+        // 2. Configurar as iniciais dinâmicas na bola amarela do perfil
         val navPerfil = findViewById<TextView>(R.id.navPerfil)
         navPerfil.text = extrairIniciais(usuarioLogado)
 
+        // 3. Ligar os botões e os efeitos de animação para o controlo remoto
         configurarFocoTV()
 
-        // Chama a função que bate no servidor Xtream para puxar as imagens
+        // 4. Configurar a ação de clique no botão "Canais" para abrir a nova grelha
+        val navCanais = findViewById<TextView>(R.id.navCanais)
+        navCanais.setOnClickListener {
+            if (urlDoServidor.isNotEmpty()) {
+                val intentCanais = Intent(this, CanaisActivity::class.java)
+                intentCanais.putExtra("USER", usuarioLogado)
+                intentCanais.putExtra("PASS", senhaLogada)
+                intentCanais.putExtra("URL", urlDoServidor)
+                startActivity(intentCanais)
+            } else {
+                Toast.makeText(this, "Erro: Servidor não configurado.", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // 5. Iniciar o carregamento automático das capas de filmes na Home
         if (urlDoServidor.isNotEmpty() && usuarioLogado.isNotEmpty() && senhaLogada.isNotEmpty()) {
             carregarFilmes(urlDoServidor, usuarioLogado, senhaLogada)
-        } else {
-            Toast.makeText(this, "Faltam dados de conexão.", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -45,13 +62,11 @@ class MainActivity : FragmentActivity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Instancia o mensageiro e bate no servidor
                 val api = XtreamClient.create(url)
                 val response = api.getVodStreams(user, pass)
 
                 withContext(Dispatchers.Main) {
                     if (response.isJsonArray) {
-                        // É a lista de filmes como esperado
                         val tipoLista = object : TypeToken<List<XtreamVod>>() {}.type
                         val filmes: List<XtreamVod> = Gson().fromJson(response, tipoLista)
 
@@ -65,18 +80,11 @@ class MainActivity : FragmentActivity() {
                             if (filmes.size > 2 && !filmes[2].stream_icon.isNullOrEmpty()) {
                                 Glide.with(this@MainActivity).load(filmes[2].stream_icon).into(card3)
                             }
-                        } else {
-                            Toast.makeText(this@MainActivity, "Nenhum filme encontrado no servidor.", Toast.LENGTH_SHORT).show()
                         }
-                    } else if (response.isJsonObject) {
-                        // O servidor devolveu um objeto de erro (ex: Auth Failed)
-                        Toast.makeText(this@MainActivity, "Erro Xtream: Usuário não autorizado no painel destino.", Toast.LENGTH_LONG).show()
                     }
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Erro de conexão: ${e.message}", Toast.LENGTH_LONG).show()
-                }
+                // Erros silenciosos para não atrapalhar a experiência visual da Home
             }
         }
     }
