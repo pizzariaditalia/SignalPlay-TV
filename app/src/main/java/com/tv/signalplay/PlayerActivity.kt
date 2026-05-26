@@ -110,7 +110,7 @@ class PlayerActivity : FragmentActivity() {
                         if ((currentType == "vod" || currentType == "series") && position > 5000) {
                             val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                             val histJson = prefs.getString("iptv_continuar_vod", "[]")
-                            val history: MutableList<MutableMap<String, Any>> = Gson().fromJson(histJson, object : TypeToken<MutableList<MutableMap<String, Any>>>(){}.type) ?: mutableListOf()
+                            val history: MutableList<MutableMap<String, Any>> = try { Gson().fromJson(histJson, object : TypeToken<MutableList<MutableMap<String, Any>>>(){}.type) ?: mutableListOf() } catch (e: Exception) { mutableListOf() }
                             val iterator = history.iterator()
                             while(iterator.hasNext()) { val item = iterator.next(); val itemId = (item["id"] as? Number)?.toInt() ?: 0; if(itemId == currentStreamId) iterator.remove() }
                             history.add(0, mutableMapOf("id" to currentStreamId, "tipo" to currentType, "tempo" to position, "duracao" to duration))
@@ -161,8 +161,13 @@ class PlayerActivity : FragmentActivity() {
     private fun carregarDadosEmPlanoDeFundo() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val api = XtreamClient.create(urlServ); val respEpg = api.getShortEpg(xtUser, xtPass, id = currentStreamId)
+                val api = XtreamClient.create(urlServ)
+                
+                // 1. OSD EPG
+                val respEpg = api.getShortEpg(xtUser, xtPass, id = currentStreamId)
                 withContext(Dispatchers.Main) { processarEpg(respEpg) }
+                
+                // 2. Playlist
                 if (todosCanaisDoServidor.isEmpty()) {
                     val respCanais = api.getLiveStreams(xtUser, xtPass)
                     if (respCanais.isJsonArray) todosCanaisDoServidor = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type)
@@ -175,17 +180,34 @@ class PlayerActivity : FragmentActivity() {
         }
     }
 
+    // A BLINDAGEM ABSOLUTA DO EPG (Resolve crashes do Xtream Codes)
     private fun processarEpg(respEpg: com.google.gson.JsonElement) {
         try {
-            if (respEpg.isJsonObject && respEpg.asJsonObject.has("epg_listings")) {
-                val arrayEpg = respEpg.asJsonObject.getAsJsonArray("epg_listings")
-                val listaEpg: List<XtreamEpgListing> = Gson().fromJson(arrayEpg, object : TypeToken<List<XtreamEpgListing>>() {}.type)
-                if (listaEpg.isNotEmpty()) {
-                    findViewById<TextView>(R.id.txtOsdEpgAtual).text = decodificarBase64(listaEpg[0].title)
-                    rvEpg.adapter = EpgAdapter(listaEpg)
-                } else { findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Programação Indisponível"; rvEpg.adapter = EpgAdapter(emptyList()) }
+            if (respEpg.isJsonObject) {
+                val obj = respEpg.asJsonObject
+                // Verifica se tem epg_listings e se não é nulo
+                if (obj.has("epg_listings") && !obj.get("epg_listings").isJsonNull) {
+                    val element = obj.get("epg_listings")
+                    
+                    // Xtream envia array apenas se houver EPG. Se estiver vazio, envia Object ou Null.
+                    if (element.isJsonArray) {
+                        val listaEpg: List<XtreamEpgListing> = Gson().fromJson(element, object : TypeToken<List<XtreamEpgListing>>() {}.type)
+                        if (listaEpg.isNotEmpty()) {
+                            findViewById<TextView>(R.id.txtOsdEpgAtual).text = decodificarBase64(listaEpg[0].title)
+                            rvEpg.adapter = EpgAdapter(listaEpg)
+                            return // Sucesso
+                        }
+                    }
+                }
             }
-        } catch (e: Exception) {}
+            // Se chegou aqui, não há EPG válido.
+            findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Programação Indisponível"
+            rvEpg.adapter = EpgAdapter(emptyList())
+            
+        } catch (e: Exception) {
+            findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Guia não disponível no servidor"
+            rvEpg.adapter = EpgAdapter(emptyList())
+        }
     }
 
     private fun decodificarBase64(s: String?): String = try { String(Base64.decode(s?.trim() ?: "", Base64.DEFAULT)) } catch (e: Exception) { s ?: "Programa" }
