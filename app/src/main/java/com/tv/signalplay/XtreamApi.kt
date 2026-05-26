@@ -6,9 +6,13 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-data class XtreamVod(val stream_id: Int, val name: String, val stream_icon: String?, val category_name: String? = null, val rating: Double? = 0.0)
-data class XtreamSerie(val series_id: Int, val name: String, val cover: String?, val category_name: String? = null, val rating: Double? = 0.0)
-data class XtreamLive(val stream_id: Int, val name: String, val stream_icon: String?, val category_name: String? = null)
+// NOVO: Modelo para ler o ID e o Nome da Pasta
+data class XtreamCategory(val category_id: String, val category_name: String)
+
+// Atualizado com category_id e category_name (agora alterável com 'var')
+data class XtreamVod(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
+data class XtreamSerie(val series_id: Int, val name: String, val cover: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
+data class XtreamLive(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null)
 
 interface XtreamApiService {
     @GET("player_api.php")
@@ -20,7 +24,10 @@ interface XtreamApiService {
     @GET("player_api.php")
     suspend fun getLiveStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_streams"): JsonElement
 
-    // NOVOS: Pedir informações detalhadas (Sinopse)
+    // NOVO: Chamada para pedir as Pastas dos Canais
+    @GET("player_api.php")
+    suspend fun getLiveCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_categories"): JsonElement
+
     @GET("player_api.php")
     suspend fun getVodInfo(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_info", @Query("vod_id") id: Int): JsonElement
 
