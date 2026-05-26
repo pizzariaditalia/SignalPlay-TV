@@ -23,35 +23,33 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // 1. Abrir a mochila e recolher as credenciais vindas do Login
-        val usuarioLogado = intent.getStringExtra("USER") ?: "Cliente"
-        val senhaLogada = intent.getStringExtra("PASS") ?: ""
+        // Pegando os dados corretos da mochila
+        val clienteNome = intent.getStringExtra("FIREBASE_USER") ?: "Cliente"
+        val xtreamUser = intent.getStringExtra("XTREAM_USER") ?: ""
+        val xtreamPass = intent.getStringExtra("XTREAM_PASS") ?: ""
         val urlDoServidor = intent.getStringExtra("URL") ?: ""
 
-        // 2. Configurar as iniciais dinâmicas na bola amarela do perfil
         val navPerfil = findViewById<TextView>(R.id.navPerfil)
-        navPerfil.text = extrairIniciais(usuarioLogado)
+        navPerfil.text = extrairIniciais(clienteNome)
 
-        // 3. Ligar os botões e os efeitos de animação para o controlo remoto
         configurarFocoTV()
 
-        // 4. Configurar a ação de clique no botão "Canais" para abrir a nova grelha
         val navCanais = findViewById<TextView>(R.id.navCanais)
         navCanais.setOnClickListener {
             if (urlDoServidor.isNotEmpty()) {
                 val intentCanais = Intent(this, CanaisActivity::class.java)
-                intentCanais.putExtra("USER", usuarioLogado)
-                intentCanais.putExtra("PASS", senhaLogada)
+                intentCanais.putExtra("XTREAM_USER", xtreamUser)
+                intentCanais.putExtra("XTREAM_PASS", xtreamPass)
                 intentCanais.putExtra("URL", urlDoServidor)
                 startActivity(intentCanais)
             } else {
-                Toast.makeText(this, "Erro: Servidor não configurado.", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Erro de servidor.", Toast.LENGTH_SHORT).show()
             }
         }
 
-        // 5. Iniciar o carregamento automático das capas de filmes na Home
-        if (urlDoServidor.isNotEmpty() && usuarioLogado.isNotEmpty() && senhaLogada.isNotEmpty()) {
-            carregarFilmes(urlDoServidor, usuarioLogado, senhaLogada)
+        // Bate na API do Xtream com as chaves mestras
+        if (urlDoServidor.isNotEmpty() && xtreamUser.isNotEmpty() && xtreamPass.isNotEmpty()) {
+            carregarFilmes(urlDoServidor, xtreamUser, xtreamPass)
         }
     }
 
@@ -84,7 +82,7 @@ class MainActivity : FragmentActivity() {
                     }
                 }
             } catch (e: Exception) {
-                // Erros silenciosos para não atrapalhar a experiência visual da Home
+                // Erros silenciosos para não atrapalhar a Home
             }
         }
     }
