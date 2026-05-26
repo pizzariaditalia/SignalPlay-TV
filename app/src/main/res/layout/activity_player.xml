@@ -1,121 +1,32 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:background="#000000">
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#000000">
 
-    <com.google.android.exoplayer2.ui.PlayerView
-        android:id="@+id/playerView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:resize_mode="fit"
-        app:use_controller="false" />
-
+    <com.google.android.exoplayer2.ui.PlayerView android:id="@+id/playerView" android:layout_width="match_parent" android:layout_height="match_parent" app:resize_mode="fit" app:use_controller="false" />
     <ProgressBar android:id="@+id/loadingSpinner" android:layout_width="60dp" android:layout_height="60dp" android:layout_centerInParent="true" android:indeterminateTint="#ffcc00" />
 
-    <RelativeLayout
-        android:id="@+id/controlsOverlay"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent">
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentTop="true"
-            android:background="@drawable/gradient_menu_topo"
-            android:padding="25dp">
-
-            <TextView
-                android:id="@+id/txtPlayerTitulo"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentStart="true"
-                android:text="Carregando..."
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold" />
-
-            <TextView
-                android:id="@+id/txtOsdEpgAtual"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_below="@id/txtPlayerTitulo"
-                android:text=""
-                android:textColor="#ffcc00"
-                android:textSize="14sp"
-                android:textStyle="bold" />
-
-            <Button
-                android:id="@+id/btnFecharPlayer"
-                android:layout_width="wrap_content"
-                android:layout_height="40dp"
-                android:layout_alignParentEnd="true"
-                android:background="@android:color/transparent"
-                android:focusable="true"
-                android:focusableInTouchMode="true"
-                android:text="✕ FECHAR"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold" />
+    <RelativeLayout android:id="@+id/controlsOverlay" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#99000000">
+        <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentTop="true" android:background="@drawable/gradient_menu_topo" android:padding="25dp">
+            <TextView android:id="@+id/txtPlayerTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentStart="true" android:text="Carregando..." android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
+            <TextView android:id="@+id/txtOsdEpgAtual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_below="@id/txtPlayerTitulo" android:text="" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
+            <Button android:id="@+id/btnFecharPlayer" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_alignParentEnd="true" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="true" android:text="FECHAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
         </RelativeLayout>
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentBottom="true"
-            android:background="@drawable/gradient_hero_bottom"
-            android:orientation="vertical"
-            android:padding="25dp">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="15dp"
-                android:gravity="center_vertical"
-                android:orientation="horizontal">
-
-                <ProgressBar
-                    android:id="@+id/progressBarTempo"
-                    style="?android:attr/progressBarStyleHorizontal"
-                    android:layout_width="0dp"
-                    android:layout_height="6dp"
-                    android:layout_marginEnd="15dp"
-                    android:layout_weight="1"
-                    android:progressBackgroundTint="#444455"
-                    android:progressTint="#ffcc00" />
-
-                <TextView
-                    android:id="@+id/txtTempoCompleto"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="00:00 / 00:00"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
+        <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_alignParentBottom="true" android:background="@drawable/gradient_hero_bottom" android:orientation="vertical" android:padding="25dp">
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="15dp" android:gravity="center_vertical" android:orientation="horizontal">
+                <ProgressBar android:id="@+id/progressBarTempo" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="6dp" android:layout_marginEnd="15dp" android:layout_weight="1" android:progressBackgroundTint="#444455" android:progressTint="#ffcc00" />
+                <TextView android:id="@+id/txtTempoCompleto" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="00:00 / 00:00" android:textColor="#FFFFFF" android:textSize="12sp" android:textStyle="bold" />
             </LinearLayout>
 
-            <RelativeLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_alignParentStart="true"
-                    android:orientation="horizontal">
-                    <Button android:id="@+id/btnPrev" android:layout_width="40dp" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="⏮" android:textColor="#FFFFFF" android:textSize="20sp" />
-                    <Button android:id="@+id/btnPlayPauseIcon" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="⏸" android:textColor="#FFFFFF" android:textSize="20sp" />
-                    <Button android:id="@+id/btnNext" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="⏭" android:textColor="#FFFFFF" android:textSize="20sp" />
+            <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
+                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentStart="true" android:orientation="horizontal">
+                    <ImageView android:id="@+id/btnPrev" android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_media_previous" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:padding="5dp"/>
+                    <ImageView android:id="@+id/btnPlayPauseIcon" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:src="@android:drawable/ic_media_pause" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:padding="5dp"/>
+                    <ImageView android:id="@+id/btnNext" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:src="@android:drawable/ic_media_next" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:padding="5dp"/>
                 </LinearLayout>
 
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_centerInParent="true"
-                    android:orientation="horizontal">
-                    <Button android:id="@+id/btnModalEpg" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="📅 EPG" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
-                    <Button android:id="@+id/btnModalPlaylist" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="📑 PLAYLIST" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" android:orientation="horizontal">
+                    <Button android:id="@+id/btnModalEpg" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="EPG" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnModalPlaylist" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="PLAYLIST" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_vertical" android:layout_marginStart="15dp" android:layout_marginEnd="15dp" android:text="|" android:textColor="#444455" />
                     <Button android:id="@+id/btnAjustar" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="AJUSTAR" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
                     <Button android:id="@+id/btnEsticar" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="ESTICAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
@@ -124,7 +35,7 @@
         </LinearLayout>
     </RelativeLayout>
 
-    <LinearLayout android:id="@+id/panelPlaylist" android:layout_width="350dp" android:layout_height="match_parent" android:layout_alignParentEnd="true" android:background="#EE111114" android:orientation="vertical" android:padding="20dp" android:visibility="gone" android:elevation="10dp"><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="📑 Canais da Categoria" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="15dp"/><androidx.recyclerview.widget.RecyclerView android:id="@+id/rvPlaylist" android:layout_width="match_parent" android:layout_height="match_parent"/></LinearLayout>
-    <LinearLayout android:id="@+id/panelEpg" android:layout_width="400dp" android:layout_height="match_parent" android:layout_alignParentEnd="true" android:background="#EE111114" android:orientation="vertical" android:padding="20dp" android:visibility="gone" android:elevation="10dp"><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="📅 Guia de Programação" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="15dp"/><androidx.recyclerview.widget.RecyclerView android:id="@+id/rvEpg" android:layout_width="match_parent" android:layout_height="match_parent"/></LinearLayout>
-    <TextView android:id="@+id/txtFeedbackAvanco" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" android:text="+10s ⏩" android:textColor="#ffcc00" android:textSize="24sp" android:textStyle="bold" android:visibility="gone"/>
+    <LinearLayout android:id="@+id/panelPlaylist" android:layout_width="350dp" android:layout_height="match_parent" android:layout_alignParentEnd="true" android:background="#EE111114" android:orientation="vertical" android:padding="20dp" android:visibility="gone" android:elevation="10dp"><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Canais da Categoria" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="15dp"/><androidx.recyclerview.widget.RecyclerView android:id="@+id/rvPlaylist" android:layout_width="match_parent" android:layout_height="match_parent"/></LinearLayout>
+    <LinearLayout android:id="@+id/panelEpg" android:layout_width="400dp" android:layout_height="match_parent" android:layout_alignParentEnd="true" android:background="#EE111114" android:orientation="vertical" android:padding="20dp" android:visibility="gone" android:elevation="10dp"><TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Guia de Programação" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:layout_marginBottom="15dp"/><androidx.recyclerview.widget.RecyclerView android:id="@+id/rvEpg" android:layout_width="match_parent" android:layout_height="match_parent"/></LinearLayout>
+    <TextView android:id="@+id/txtFeedbackAvanco" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" android:text="+10s" android:textColor="#ffcc00" android:textSize="24sp" android:textStyle="bold" android:visibility="gone"/>
 </RelativeLayout>
