@@ -1,6 +1,6 @@
 package com.tv.signalplay
 
-import android.graphics.Color
+import android.content.Intent
 import android.os.Bundle
 import android.widget.Button
 import android.widget.ImageView
@@ -15,20 +15,22 @@ import kotlinx.coroutines.withContext
 
 class DetalhesActivity : FragmentActivity() {
 
+    private var videoExt = "mp4" // Padrão
+    private var videoTitulo = ""
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes)
 
-        val xtreamUser = intent.getStringExtra("XTREAM_USER") ?: ""
-        val xtreamPass = intent.getStringExtra("XTREAM_PASS") ?: ""
-        val urlDoServidor = intent.getStringExtra("URL") ?: ""
+        val xtUser = intent.getStringExtra("XTREAM_USER") ?: ""
+        val xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""
+        val urlServ = intent.getStringExtra("URL") ?: ""
         val mediaId = intent.getIntExtra("MEDIA_ID", 0)
         val isSeries = intent.getBooleanExtra("IS_SERIES", false)
 
         val btnVoltar = findViewById<Button>(R.id.btnVoltarDetalhes)
         val btnAssistir = findViewById<Button>(R.id.btnAssistirDetalhes)
 
-        // Efeito de Foco nos botões
         listOf(btnAssistir, btnVoltar).forEach { btn ->
             btn.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start()
@@ -37,10 +39,22 @@ class DetalhesActivity : FragmentActivity() {
         }
 
         btnVoltar.setOnClickListener { finish() }
-        btnAssistir.setOnClickListener { Toast.makeText(this, "Abrindo Player...", Toast.LENGTH_SHORT).show() }
+        
+        // O PULO DO GATO: Abre o nosso novo Player!
+        btnAssistir.setOnClickListener {
+            val intentPlayer = Intent(this, PlayerActivity::class.java)
+            intentPlayer.putExtra("URL", urlServ)
+            intentPlayer.putExtra("XTREAM_USER", xtUser)
+            intentPlayer.putExtra("XTREAM_PASS", xtPass)
+            intentPlayer.putExtra("STREAM_ID", mediaId)
+            intentPlayer.putExtra("TYPE", if (isSeries) "series" else "vod")
+            intentPlayer.putExtra("TITLE", videoTitulo)
+            intentPlayer.putExtra("EXTENSION", videoExt)
+            startActivity(intentPlayer)
+        }
 
-        if (mediaId != 0 && urlDoServidor.isNotEmpty()) {
-            carregarSinopse(urlDoServidor, xtreamUser, xtreamPass, mediaId, isSeries)
+        if (mediaId != 0 && urlServ.isNotEmpty()) {
+            carregarSinopse(urlServ, xtUser, xtPass, mediaId, isSeries)
         }
     }
 
@@ -56,13 +70,19 @@ class DetalhesActivity : FragmentActivity() {
                         if (obj.has("info")) {
                             val info = obj.getAsJsonObject("info")
                             
-                            val titulo = info.get("name")?.asString ?: "Desconhecido"
+                            videoTitulo = info.get("name")?.asString ?: "Desconhecido"
                             val sinopse = info.get("plot")?.asString ?: "Nenhuma sinopse disponível."
                             val nota = info.get("rating")?.asString ?: "0.0"
                             val ano = info.get("releasedate")?.asString ?: info.get("year")?.asString ?: ""
                             val capa = info.get("cover_big")?.asString ?: info.get("movie_image")?.asString ?: ""
+                            
+                            // Pega a extensão real do filme no Xtream Codes
+                            if (!isSeries && obj.has("movie_data")) {
+                                val movieData = obj.getAsJsonObject("movie_data")
+                                videoExt = movieData.get("container_extension")?.asString ?: "mp4"
+                            }
 
-                            findViewById<TextView>(R.id.txtTituloDetalhes).text = titulo
+                            findViewById<TextView>(R.id.txtTituloDetalhes).text = videoTitulo
                             findViewById<TextView>(R.id.txtSinopseDetalhes).text = sinopse
                             findViewById<TextView>(R.id.txtMetaDetalhes).text = "⭐ $nota   📅 $ano"
 
@@ -73,7 +93,7 @@ class DetalhesActivity : FragmentActivity() {
                     }
                 }
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { Toast.makeText(this@DetalhesActivity, "Erro ao carregar detalhes.", Toast.LENGTH_SHORT).show() }
+                withContext(Dispatchers.Main) { Toast.makeText(this@DetalhesActivity, "Erro", Toast.LENGTH_SHORT).show() }
             }
         }
     }
