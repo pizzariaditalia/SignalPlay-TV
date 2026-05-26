@@ -1,11 +1,12 @@
 package com.tv.signalplay
 
+import com.google.gson.JsonElement
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-// Modelo que representa um filme no servidor Xtream
+// Modelo que representa um filme
 data class XtreamVod(
     val stream_id: Int,
     val name: String,
@@ -19,7 +20,7 @@ interface XtreamApiService {
         @Query("username") user: String,
         @Query("password") pass: String,
         @Query("action") action: String = "get_vod_streams"
-    ): List<XtreamVod>
+    ): JsonElement // Aceita qualquer formato para não travar
 }
 
 object XtreamClient {
