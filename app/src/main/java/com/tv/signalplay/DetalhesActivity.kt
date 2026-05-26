@@ -15,7 +15,7 @@ import kotlinx.coroutines.withContext
 
 class DetalhesActivity : FragmentActivity() {
 
-    private var videoExt = "mp4" // Padrão
+    private var videoExt = "mp4"
     private var videoTitulo = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -39,17 +39,10 @@ class DetalhesActivity : FragmentActivity() {
         }
 
         btnVoltar.setOnClickListener { finish() }
-        
-        // O PULO DO GATO: Abre o nosso novo Player!
         btnAssistir.setOnClickListener {
             val intentPlayer = Intent(this, PlayerActivity::class.java)
-            intentPlayer.putExtra("URL", urlServ)
-            intentPlayer.putExtra("XTREAM_USER", xtUser)
-            intentPlayer.putExtra("XTREAM_PASS", xtPass)
-            intentPlayer.putExtra("STREAM_ID", mediaId)
-            intentPlayer.putExtra("TYPE", if (isSeries) "series" else "vod")
-            intentPlayer.putExtra("TITLE", videoTitulo)
-            intentPlayer.putExtra("EXTENSION", videoExt)
+            intentPlayer.putExtra("URL", urlServ); intentPlayer.putExtra("XTREAM_USER", xtUser); intentPlayer.putExtra("XTREAM_PASS", xtPass)
+            intentPlayer.putExtra("STREAM_ID", mediaId); intentPlayer.putExtra("TYPE", if (isSeries) "series" else "vod"); intentPlayer.putExtra("TITLE", videoTitulo); intentPlayer.putExtra("EXTENSION", videoExt)
             startActivity(intentPlayer)
         }
 
@@ -74,9 +67,9 @@ class DetalhesActivity : FragmentActivity() {
                             val sinopse = info.get("plot")?.asString ?: "Nenhuma sinopse disponível."
                             val nota = info.get("rating")?.asString ?: "0.0"
                             val ano = info.get("releasedate")?.asString ?: info.get("year")?.asString ?: ""
-                            val capa = info.get("cover_big")?.asString ?: info.get("movie_image")?.asString ?: ""
+                            val capaGigante = info.get("movie_image")?.asString ?: info.get("cover_big")?.asString ?: ""
+                            val capaFundo = info.get("backdrop_path")?.asJsonArray?.firstOrNull()?.asString ?: capaGigante
                             
-                            // Pega a extensão real do filme no Xtream Codes
                             if (!isSeries && obj.has("movie_data")) {
                                 val movieData = obj.getAsJsonObject("movie_data")
                                 videoExt = movieData.get("container_extension")?.asString ?: "mp4"
@@ -84,17 +77,15 @@ class DetalhesActivity : FragmentActivity() {
 
                             findViewById<TextView>(R.id.txtTituloDetalhes).text = videoTitulo
                             findViewById<TextView>(R.id.txtSinopseDetalhes).text = sinopse
-                            findViewById<TextView>(R.id.txtMetaDetalhes).text = "⭐ $nota   📅 $ano"
+                            val tipoTxt = if(isSeries) "SÉRIE" else "FILME"
+                            findViewById<TextView>(R.id.txtMetaDetalhes).text = "📅 $ano   ⭐ $nota   $tipoTxt"
 
-                            if (capa.isNotEmpty()) {
-                                Glide.with(this@DetalhesActivity).load(capa).into(findViewById<ImageView>(R.id.imgFundoDetalhes))
-                            }
+                            if (capaGigante.isNotEmpty()) Glide.with(this@DetalhesActivity).load(capaGigante).into(findViewById<ImageView>(R.id.imgPosterDetalhes))
+                            if (capaFundo.isNotEmpty()) Glide.with(this@DetalhesActivity).load(capaFundo).into(findViewById<ImageView>(R.id.imgFundoDetalhes))
                         }
                     }
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { Toast.makeText(this@DetalhesActivity, "Erro", Toast.LENGTH_SHORT).show() }
-            }
+            } catch (e: Exception) { }
         }
     }
 }
