@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="bg_base">#111114</color>
-    <color name="accent_yellow">#ffcc00</color> <color name="netflix_red">#E50914</color>   <color name="text_main">#f5f5f7</color>
+    <color name="bg_header">#1e1e24</color>
+    <color name="accent_yellow">#ffcc00</color>
+    <color name="netflix_red">#E50914</color>
+    <color name="text_main">#f5f5f7</color>
     <color name="text_muted">#8e8e93</color>
-    
-    <color name="glass_bg_card">#1AFFFFFF</color> <color name="glass_border">#1AFFFFFF</color>     <color name="menu_topo_gradient_end">#00111114</color> </resources>
+    <color name="glass_bg">#0AFFFFFF</color> <color name="glass_border">#14FFFFFF</color> </resources>
