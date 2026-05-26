@@ -32,6 +32,7 @@ jobs:
               <application
                   android:allowBackup="true"
                   android:label="Signal Play TV"
+                  android:banner="@drawable/tv_banner"
                   android:usesCleartextTraffic="true" 
                   android:theme="@android:style/Theme.NoTitleBar.Fullscreen">
                   
@@ -45,15 +46,8 @@ jobs:
                       </intent-filter>
                   </activity>
 
-                  <activity
-                      android:name=".MainActivity"
-                      android:exported="false"
-                      android:screenOrientation="landscape" />
-                      
-                  <activity
-                      android:name=".CanaisActivity"
-                      android:exported="false"
-                      android:screenOrientation="landscape" />
+                  <activity android:name=".MainActivity" android:exported="false" android:screenOrientation="landscape" />
+                  <activity android:name=".CanaisActivity" android:exported="false" android:screenOrientation="landscape" />
 
               </application>
           </manifest>
