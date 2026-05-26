@@ -55,12 +55,31 @@ class CanaisActivity : FragmentActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(url)
-                val response = api.getLiveStreams(user, pass)
+                // Faz as duas chamadas simultaneamente
+                val respCat = api.getLiveCategories(user, pass)
+                val respCanais = api.getLiveStreams(user, pass)
 
                 withContext(Dispatchers.Main) {
-                    if (response.isJsonArray) {
+                    val mapCategorias = mutableMapOf<String, String>()
+                    
+                    // 1. Processa as pastas e cria o dicionário (ID -> Nome)
+                    if (respCat.isJsonArray) {
+                        val typeCat = object : TypeToken<List<XtreamCategory>>() {}.type
+                        val categorias: List<XtreamCategory> = Gson().fromJson(respCat, typeCat)
+                        categorias.forEach { mapCategorias[it.category_id] = it.category_name }
+                    }
+
+                    // 2. Processa os canais e aplica o nome da pasta a cada um
+                    if (respCanais.isJsonArray) {
                         val tipoLista = object : TypeToken<List<XtreamLive>>() {}.type
-                        todosCanais = Gson().fromJson(response, tipoLista)
+                        val canaisBrutos: List<XtreamLive> = Gson().fromJson(respCanais, tipoLista)
+                        
+                        canaisBrutos.forEach { canal ->
+                            // Cruza o ID do canal com o dicionário de pastas
+                            canal.category_name = mapCategorias[canal.category_id ?: ""] ?: "Outros"
+                        }
+
+                        todosCanais = canaisBrutos
                         if (todosCanais.isNotEmpty()) montarMenuLateral()
                     }
                 }
@@ -123,7 +142,6 @@ class CanaisActivity : FragmentActivity() {
                     else v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
                 }
                 
-                // O PULO DO GATO: Abrir o Canal no Reprodutor!
                 itemView.setOnClickListener {
                     val canal = listaCanais[bindingAdapterPosition]
                     val intentPlayer = Intent(itemView.context, PlayerActivity::class.java)
@@ -140,15 +158,15 @@ class CanaisActivity : FragmentActivity() {
                     val canal = listaCanais[bindingAdapterPosition]
                     val prefs = itemView.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                     val favsJson = prefs.getString("favoritos_tv", "[]")
-                    val type = object : TypeToken<MutableList<XtreamLive>>(){}.type
-                    val favs: MutableList<XtreamLive> = Gson().fromJson(favsJson, type) ?: mutableListOf()
+                    val type = object : TypeToken<MutableList<String>>(){}.type
+                    val favs: MutableList<String> = Gson().fromJson(favsJson, type) ?: mutableListOf()
                     
-                    val exists = favs.find { it.stream_id == canal.stream_id }
-                    if(exists != null) {
-                        favs.remove(exists)
+                    val stringId = canal.stream_id.toString()
+                    if(favs.contains(stringId)) {
+                        favs.remove(stringId)
                         Toast.makeText(itemView.context, "❌ Removido dos Favoritos", Toast.LENGTH_SHORT).show()
                     } else {
-                        favs.add(canal)
+                        favs.add(stringId)
                         Toast.makeText(itemView.context, "⭐ Salvo nos Favoritos!", Toast.LENGTH_SHORT).show()
                     }
                     prefs.edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
