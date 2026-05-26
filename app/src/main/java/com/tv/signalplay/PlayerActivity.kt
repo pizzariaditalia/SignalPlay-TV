@@ -17,7 +17,6 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
-import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -41,8 +40,8 @@ class PlayerActivity : FragmentActivity() {
     private var exoPlayer: ExoPlayer? = null; private lateinit var playerView: PlayerView; private lateinit var controlsOverlay: RelativeLayout
     private lateinit var panelPlaylist: LinearLayout; private lateinit var panelEpg: LinearLayout; private lateinit var rvPlaylist: RecyclerView; private lateinit var rvEpg: RecyclerView
     private lateinit var btnAjustar: Button; private lateinit var btnEsticar: Button; private lateinit var btnModalPlaylist: Button; private lateinit var btnModalEpg: Button
-    private lateinit var btnFecharPlayer: Button; private lateinit var btnPlayPauseIcon: Button
-    private lateinit var btnPrev: Button; private lateinit var btnNext: Button
+    private lateinit var btnFecharPlayer: Button; private lateinit var btnPlayPauseIcon: ImageView
+    private lateinit var btnPrev: ImageView; private lateinit var btnNext: ImageView
     
     private val handler = Handler(Looper.getMainLooper()); private var isOverlayVisible = true
     private var isFit = true 
@@ -94,7 +93,7 @@ class PlayerActivity : FragmentActivity() {
 
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) { findViewById<ProgressBar>(R.id.loadingSpinner).visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE }
-            override fun onIsPlayingChanged(isPlaying: Boolean) { btnPlayPauseIcon.text = if (isPlaying) "⏸" else "▶"; if (isPlaying) esconderControlesAposDelay() else mostrarControles() }
+            override fun onIsPlayingChanged(isPlaying: Boolean) { btnPlayPauseIcon.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play); if (isPlaying) esconderControlesAposDelay() else mostrarControles() }
         })
         atualizarLinhaDoTempoESalvarProgresso()
     }
@@ -127,22 +126,25 @@ class PlayerActivity : FragmentActivity() {
 
     private fun configurarBotoesPremiumSemFundo() {
         val listenerCorDeTexto = View.OnFocusChangeListener { v, focus -> 
-            if(v is Button) {
-                if(focus) { v.setTextColor(Color.parseColor("#ffcc00")); v.animate().scaleX(1.15f).scaleY(1.15f).start() } 
-                else { 
+            if(focus) { v.animate().scaleX(1.15f).scaleY(1.15f).start()
+                if (v is Button) v.setTextColor(Color.parseColor("#ffcc00"))
+                else if (v is ImageView) v.setColorFilter(Color.parseColor("#ffcc00"))
+            } 
+            else { 
+                v.animate().scaleX(1.0f).scaleY(1.0f).start()
+                if (v is Button) {
                     if (v.id == R.id.btnAjustar && isFit) v.setTextColor(Color.parseColor("#ffcc00"))
                     else if (v.id == R.id.btnEsticar && !isFit) v.setTextColor(Color.parseColor("#ffcc00"))
                     else v.setTextColor(Color.WHITE)
-                    v.animate().scaleX(1.0f).scaleY(1.0f).start() 
-                }
+                } else if (v is ImageView) { v.setColorFilter(Color.WHITE) }
             }
         }
         listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnFecharPlayer, btnPlayPauseIcon, btnPrev, btnNext).forEach { it.setOnFocusChangeListener(listenerCorDeTexto) }
 
         btnFecharPlayer.setOnClickListener { finish() }
         btnPlayPauseIcon.setOnClickListener { exoPlayer?.let { it.playWhenReady = !it.playWhenReady } }
-        btnPrev.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("⏪ -10s") }
-        btnNext.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s ⏩") }
+        btnPrev.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("-10s") }
+        btnNext.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s") }
 
         btnAjustar.setOnClickListener {
             isFit = true; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
@@ -197,8 +199,8 @@ class PlayerActivity : FragmentActivity() {
         mostrarControles(); esconderControlesAposDelay()
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { exoPlayer?.let { it.playWhenReady = !it.playWhenReady }; return true }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("⏪ -10s"); return true }
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s ⏩"); return true }
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("-10s"); return true }
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s"); return true }
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> { if (isOverlayVisible) finish() else mostrarControles(); return true }
         }
         return super.onKeyDown(keyCode, event)
