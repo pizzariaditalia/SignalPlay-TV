@@ -64,6 +64,18 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <Button
+                android:id="@+id/btnModalUpdateEpg"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="🔄 Atualizar Guia de TV (XMLTV)"
+                android:textColor="@color/accent_yellow"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_config_item"
+                android:layout_marginTop="10dp"
+                android:focusable="true"/>
+
             <Button android:id="@+id/btnModalLogout" android:layout_width="match_parent" android:layout_height="50dp" android:text="Desconectar Conta" android:textColor="#ff4757" android:textSize="14sp" android:textStyle="bold" android:background="@drawable/bg_btn_logout" android:layout_marginTop="20dp" android:focusable="true"/>
         </LinearLayout>
     </RelativeLayout>
