@@ -11,42 +11,30 @@ data class XtreamVod(val stream_id: Int, val name: String, val stream_icon: Stri
 data class XtreamSerie(val series_id: Int, val name: String, val cover: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
 data class XtreamLive(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null)
 
-// NOVO: Modelo para receber a programação (EPG)
-data class XtreamEpgListing(
-    val title: String?,
-    val description: String?,
-    val start_timestamp: String?,
-    val stop_timestamp: String?
-)
+data class XtreamEpgListing(val title: String?, val description: String?, val start_timestamp: String?, val stop_timestamp: String?)
 
 interface XtreamApiService {
     @GET("player_api.php")
     suspend fun getVodStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_streams"): JsonElement 
-
     @GET("player_api.php")
     suspend fun getSeriesStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_series"): JsonElement 
-
     @GET("player_api.php")
     suspend fun getLiveStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_streams"): JsonElement
 
+    // BUSCANDO AS PASTAS (CATEGORIAS) DE TUDO!
     @GET("player_api.php")
     suspend fun getLiveCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_categories"): JsonElement
+    @GET("player_api.php")
+    suspend fun getVodCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_categories"): JsonElement
+    @GET("player_api.php")
+    suspend fun getSeriesCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_series_categories"): JsonElement
 
     @GET("player_api.php")
     suspend fun getVodInfo(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_info", @Query("vod_id") id: Int): JsonElement
-
     @GET("player_api.php")
     suspend fun getSeriesInfo(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_series_info", @Query("series_id") id: Int): JsonElement
-
-    // NOVO: Chamada do Guia de Programação (EPG)
     @GET("player_api.php")
-    suspend fun getShortEpg(
-        @Query("username") user: String, 
-        @Query("password") pass: String, 
-        @Query("action") action: String = "get_short_epg", 
-        @Query("stream_id") id: Int, 
-        @Query("limit") limit: Int = 10
-    ): JsonElement
+    suspend fun getShortEpg(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_short_epg", @Query("stream_id") id: Int, @Query("limit") limit: Int = 10): JsonElement
 }
 
 object XtreamClient {
