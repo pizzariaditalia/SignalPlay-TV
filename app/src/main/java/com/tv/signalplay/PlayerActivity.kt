@@ -22,10 +22,11 @@ class PlayerActivity : FragmentActivity() {
     private var exoPlayer: ExoPlayer? = null
     private lateinit var controlsOverlay: RelativeLayout
     private lateinit var loadingSpinner: ProgressBar
-    private lateinit var btnPlayPause: ImageView
+    private lateinit var btnPlayPauseIcon: ImageView
     private lateinit var progressBarTempo: ProgressBar
     private lateinit var txtTempoAtual: TextView
     private lateinit var txtTempoTotal: TextView
+    private lateinit var txtFeedbackAvanco: TextView
 
     private val handler = Handler(Looper.getMainLooper())
     private var isOverlayVisible = true
@@ -36,12 +37,13 @@ class PlayerActivity : FragmentActivity() {
 
         controlsOverlay = findViewById(R.id.controlsOverlay)
         loadingSpinner = findViewById(R.id.loadingSpinner)
-        btnPlayPause = findViewById(R.id.btnPlayPause)
+        btnPlayPauseIcon = findViewById(R.id.btnPlayPauseIcon)
         progressBarTempo = findViewById(R.id.progressBarTempo)
         txtTempoAtual = findViewById(R.id.txtTempoAtual)
         txtTempoTotal = findViewById(R.id.txtTempoTotal)
+        txtFeedbackAvanco = findViewById(R.id.txtFeedbackAvanco)
 
-        val titulo = intent.getStringExtra("TITLE") ?: "Reproduzindo..."
+        val titulo = intent.getStringExtra("TITLE") ?: ""
         findViewById<TextView>(R.id.txtPlayerTitulo).text = titulo
 
         val urlServ = intent.getStringExtra("URL")?.trimEnd('/') ?: ""
@@ -51,7 +53,6 @@ class PlayerActivity : FragmentActivity() {
         val id = intent.getIntExtra("STREAM_ID", 0)
         val ext = intent.getStringExtra("EXTENSION") ?: "mp4"
 
-        // Constrói o Link Exato do Xtream Codes
         val videoUrl = when (type) {
             "live" -> "$urlServ/$xtUser/$xtPass/$id"
             "vod" -> "$urlServ/movie/$xtUser/$xtPass/$id.$ext"
@@ -59,12 +60,7 @@ class PlayerActivity : FragmentActivity() {
             else -> ""
         }
 
-        if (videoUrl.isNotEmpty()) {
-            iniciarPlayer(videoUrl)
-        } else {
-            Toast.makeText(this, "Erro ao gerar link de vídeo.", Toast.LENGTH_LONG).show()
-            finish()
-        }
+        if (videoUrl.isNotEmpty()) iniciarPlayer(videoUrl) else finish()
     }
 
     private fun iniciarPlayer(url: String) {
@@ -79,28 +75,16 @@ class PlayerActivity : FragmentActivity() {
 
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_BUFFERING) {
-                    loadingSpinner.visibility = View.VISIBLE
-                } else {
-                    loadingSpinner.visibility = View.GONE
-                }
+                loadingSpinner.visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE
             }
-
             override fun onIsPlayingChanged(isPlaying: Boolean) {
-                if (isPlaying) {
-                    btnPlayPause.setImageResource(android.R.drawable.ic_media_pause)
-                    esconderControlesAposDelay()
-                } else {
-                    btnPlayPause.setImageResource(android.R.drawable.ic_media_play)
-                    mostrarControles()
-                }
+                btnPlayPauseIcon.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play)
+                if (isPlaying) esconderControlesAposDelay() else mostrarControles()
             }
         })
-
         atualizarBarraDeProgresso()
     }
 
-    // A mágica que atualiza a linha do tempo do vídeo
     private fun atualizarBarraDeProgresso() {
         handler.postDelayed(object : Runnable {
             override fun run() {
@@ -126,7 +110,7 @@ class PlayerActivity : FragmentActivity() {
         return String.format("%02d:%02d", minutos, segundos)
     }
 
-    // Mapeamento do Controle Remoto da TV
+    // MAPA DE CONTROLE LIMPO
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         mostrarControles()
         esconderControlesAposDelay()
@@ -137,46 +121,32 @@ class PlayerActivity : FragmentActivity() {
                 return true
             }
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> {
-                exoPlayer?.let { it.seekTo(it.currentPosition - 10000) } // Volta 10 segundos
+                exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }
+                mostrarAvisoTempo("⏪ -10s")
                 return true
             }
             KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> {
-                exoPlayer?.let { it.seekTo(it.currentPosition + 10000) } // Avança 10 segundos
+                exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }
+                mostrarAvisoTempo("+10s ⏩")
                 return true
             }
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> {
-                if (isOverlayVisible) {
-                    finish() // Sai do vídeo se apertar voltar
-                } else {
-                    mostrarControles()
-                }
+                if (isOverlayVisible) finish() else mostrarControles()
                 return true
             }
         }
         return super.onKeyDown(keyCode, event)
     }
 
-    private fun mostrarControles() {
-        controlsOverlay.visibility = View.VISIBLE
-        isOverlayVisible = true
+    private fun mostrarAvisoTempo(texto: String) {
+        txtFeedbackAvanco.text = texto
+        txtFeedbackAvanco.visibility = View.VISIBLE
+        handler.postDelayed({ txtFeedbackAvanco.visibility = View.GONE }, 1000)
     }
 
-    private val hideRunnable = Runnable {
-        if (exoPlayer?.isPlaying == true) {
-            controlsOverlay.visibility = View.GONE
-            isOverlayVisible = false
-        }
-    }
+    private fun mostrarControles() { controlsOverlay.visibility = View.VISIBLE; isOverlayVisible = true }
+    private val hideRunnable = Runnable { if (exoPlayer?.isPlaying == true) { controlsOverlay.visibility = View.GONE; isOverlayVisible = false } }
+    private fun esconderControlesAposDelay() { handler.removeCallbacks(hideRunnable); handler.postDelayed(hideRunnable, 3500) }
 
-    private fun esconderControlesAposDelay() {
-        handler.removeCallbacks(hideRunnable)
-        handler.postDelayed(hideRunnable, 4000) // Esconde após 4 segundos
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        handler.removeCallbacksAndMessages(null)
-        exoPlayer?.release()
-        exoPlayer = null
-    }
+    override fun onDestroy() { super.onDestroy(); handler.removeCallbacksAndMessages(null); exoPlayer?.release(); exoPlayer = null }
 }
