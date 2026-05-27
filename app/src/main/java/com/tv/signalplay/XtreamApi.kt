@@ -9,7 +9,7 @@ import retrofit2.http.Query
 data class XtreamCategory(val category_id: String, val category_name: String)
 data class XtreamVod(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
 data class XtreamSerie(val series_id: Int, val name: String, val cover: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
-data class XtreamLive(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null)
+data class XtreamLive(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null, val epg_channel_id: String? = null)
 
 data class XtreamEpgListing(val title: String?, val description: String?, val start_timestamp: String?, val stop_timestamp: String?)
 
@@ -21,7 +21,6 @@ interface XtreamApiService {
     @GET("player_api.php")
     suspend fun getLiveStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_streams"): JsonElement
 
-    // BUSCANDO AS PASTAS (CATEGORIAS) DE TUDO!
     @GET("player_api.php")
     suspend fun getLiveCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_categories"): JsonElement
     @GET("player_api.php")
