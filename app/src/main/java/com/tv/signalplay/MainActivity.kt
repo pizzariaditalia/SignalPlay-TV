@@ -112,6 +112,8 @@ class MainActivity : FragmentActivity() {
         val overlay = findViewById<RelativeLayout>(R.id.modalPerfilOverlay)
         val txtNome = findViewById<TextView>(R.id.txtModalNome)
         val avatarPrincipal = findViewById<TextView>(R.id.txtModalAvatar)
+        
+        // CORRIGIDO: Nome da variável que gerenciava o botão de Perfil
         val avatarMenu = findViewById<TextView>(R.id.navPerfil)
         
         txtNome.text = "Olá, $firebaseUser!"
@@ -147,8 +149,10 @@ class MainActivity : FragmentActivity() {
         findViewById<LinearLayout>(R.id.btnModalLimparHist).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("iptv_continuar_vod", "[]").apply(); Toast.makeText(this@MainActivity, "Histórico Removido!", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
         findViewById<LinearLayout>(R.id.btnModalLimparFavs).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", "[]").apply(); Toast.makeText(this@MainActivity, "Favoritos Removidos!", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
         findViewById<Button>(R.id.btnModalLogout).setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().clear().apply(); startActivity(Intent(this, LoginActivity::class.java)); finish() }
-        navPerfil.setOnClickListener { overlay.visibility = View.VISIBLE; findViewById<Button>(R.id.btnModalFechar).requestFocus() }
-        findViewById<Button>(R.id.btnModalFechar).setOnClickListener { overlay.visibility = View.GONE; navPerfil.requestFocus() }
+        
+        // CORRIGIDO: Uso da variável correta para prevenir Crash
+        avatarMenu.setOnClickListener { overlay.visibility = View.VISIBLE; findViewById<Button>(R.id.btnModalFechar).requestFocus() }
+        findViewById<Button>(R.id.btnModalFechar).setOnClickListener { overlay.visibility = View.GONE; avatarMenu.requestFocus() }
     }
 
     private fun sincronizarFavoritosDoBanco() {
