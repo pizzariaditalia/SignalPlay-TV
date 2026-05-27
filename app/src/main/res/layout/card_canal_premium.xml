@@ -4,16 +4,18 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:focusable="true"
-    android:focusableInTouchMode="true"
     android:layout_margin="8dp">
 
-    <LinearLayout android:id="@+id/boxCardInterno"
+    <LinearLayout 
+        android:id="@+id/boxCardInterno"
         android:layout_width="match_parent"
         android:layout_height="100dp"
-        android:background="@drawable/bg_card_glass"
+        android:background="@drawable/bg_tv_card_selector"
+        android:duplicateParentState="true"
         android:padding="5dp">
 
-        <ImageView android:id="@+id/imgCapaPremium"
+        <ImageView 
+            android:id="@+id/imgCapaPremium"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="fitCenter"
@@ -21,7 +23,8 @@
             android:padding="8dp" />
     </LinearLayout>
 
-    <TextView android:id="@+id/txtNomePremium"
+    <TextView 
+        android:id="@+id/txtNomePremium"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="Carregando..."
