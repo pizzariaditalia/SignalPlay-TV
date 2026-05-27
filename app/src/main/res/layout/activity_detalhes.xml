@@ -84,7 +84,7 @@
                     android:textStyle="bold"
                     android:background="@drawable/bg_botao_branco"
                     android:focusable="true"
-                    android:focusableInTouchMode="true"
+                    android:focusableInTouchMode="false"
                     android:layout_marginEnd="20dp"/>
 
                 <Button
@@ -97,7 +97,7 @@
                     android:textStyle="bold"
                     android:background="#333344"
                     android:focusable="true"
-                    android:focusableInTouchMode="true"/>
+                    android:focusableInTouchMode="false"/>
             </LinearLayout>
         </LinearLayout>
     </LinearLayout>
