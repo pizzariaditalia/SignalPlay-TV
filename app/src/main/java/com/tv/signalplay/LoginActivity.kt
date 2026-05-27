@@ -44,8 +44,20 @@ class LoginActivity : FragmentActivity() {
         val editUser = findViewById<EditText>(R.id.iptv_user_x)
         val editPass = findViewById<EditText>(R.id.iptv_pass_x)
 
-        // Efeito TV: O botão cresce quando focado pelo comando
-        btnLogin.setOnFocusChangeListener { v, focus -> if(focus) v.animate().scaleX(1.05f).scaleY(1.05f).start() else v.animate().scaleX(1.0f).scaleY(1.0f).start() }
+        // Padronização do efeito de Foco da TV para os Inputs e Botão
+        val focoListener = View.OnFocusChangeListener { v, focus -> 
+            if(focus) {
+                v.animate().scaleX(1.08f).scaleY(1.08f).start()
+                v.elevation = 10f
+            } else { 
+                v.animate().scaleX(1.0f).scaleY(1.0f).start()
+                v.elevation = 0f
+            } 
+        }
+
+        editUser.onFocusChangeListener = focoListener
+        editPass.onFocusChangeListener = focoListener
+        btnLogin.onFocusChangeListener = focoListener
 
         btnLogin.setOnClickListener {
             val user = editUser.text.toString().trim()
@@ -56,7 +68,7 @@ class LoginActivity : FragmentActivity() {
                 return@setOnClickListener
             }
 
-            btnLogin.text = "Validando Acesso..."
+            btnLogin.text = "Validando..."
             btnLogin.isEnabled = false
 
             db.collection("usuarios").whereEqualTo("usuario", user).whereEqualTo("senha", pass).get()
@@ -70,12 +82,12 @@ class LoginActivity : FragmentActivity() {
                     val servidorId = dadosFirebase.getString("servidor_id") ?: ""
                     if (servidorId.isEmpty()) { mostrarErro(btnLogin, "Nenhum servidor associado."); return@addOnSuccessListener }
 
-                    // Puxa Favoritos e Histórico do Banco na hora do Login (Igual ao seu JS)
+                    // Puxa Favoritos e Histórico do Banco na hora do Login
                     val favs = dadosFirebase.get("favoritos") as? List<String> ?: emptyList()
                     val hist = dadosFirebase.get("historico") as? List<Map<String, Any>> ?: emptyList()
                     prefs.edit().putString("favoritos_tv", Gson().toJson(favs)).putString("iptv_continuar_vod", Gson().toJson(hist)).apply()
 
-                    btnLogin.text = "Conectando ao Provedor..."
+                    btnLogin.text = "Conectando..."
                     db.collection("servidores").document(servidorId).get().addOnSuccessListener { sDoc ->
                         if (!sDoc.exists()) { mostrarErro(btnLogin, "Servidor excluído."); return@addOnSuccessListener }
                         
