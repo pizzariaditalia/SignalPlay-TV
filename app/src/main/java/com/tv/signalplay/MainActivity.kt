@@ -15,7 +15,6 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -25,16 +24,16 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-// Classe unificada para organizar os dados pro RecyclerView
 data class ItemCatalogo(
     val id: Int,
     val titulo: String,
     val capa: String?,
-    val tipo: String, // "vod", "series", "live"
+    val tipo: String, 
     val isTop10: Boolean = false,
     val rankIndex: Int = 0,
     val tempoAtual: Long = 0L,
@@ -164,8 +163,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun baixarCatalogoCompleto() {
-        // Agora usando lifecycleScope para evitar crash se a activity for fechada
-        lifecycleScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
                 val respVodCat = api.getVodCategories(xtUser, xtPass)
@@ -203,7 +201,6 @@ class MainActivity : FragmentActivity() {
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
 
-        // 1. CONTINUAR ASSISTINDO
         val contJson = prefs.getString("iptv_continuar_vod", "[]")
         val contList: List<Map<String, Any>> = try { Gson().fromJson(contJson, object : TypeToken<List<Map<String, Any>>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
         val continuarItens = mutableListOf<ItemCatalogo>()
@@ -214,25 +211,20 @@ class MainActivity : FragmentActivity() {
         }
         if (continuarItens.isNotEmpty()) injetarTrilho(container, "Continuar Assistindo", continuarItens)
 
-        // 2. FAVORITOS
         val favsListJson = prefs.getString("favoritos_tv", "[]")
         val idsFavoritos: List<String> = try { Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
         val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }.map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "live") }
         if(canaisFavoritos.isNotEmpty()) injetarTrilho(container, "Canais Favoritos", canaisFavoritos)
 
-        // 3. TOP 10 FILMES
         val top10Filmes = masterFilmes.sortedByDescending { it.rating ?: 0.0 }.take(10).mapIndexed { idx, it -> ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", isTop10 = true, rankIndex = idx + 1) }
         if(top10Filmes.isNotEmpty()) injetarTrilho(container, "Top 10 Filmes", top10Filmes)
         
-        // 4. ÚLTIMOS FILMES
         val ultimosFilmes = masterFilmes.sortedByDescending { it.stream_id }.take(30).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod") }
         if(ultimosFilmes.isNotEmpty()) injetarTrilho(container, "Últimos Filmes Adicionados", ultimosFilmes)
         
-        // 5. TOP 10 SÉRIES
         val top10Series = masterSeries.sortedByDescending { it.rating ?: 0.0 }.take(10).mapIndexed { idx, it -> ItemCatalogo(it.series_id, it.name, it.cover, "series", isTop10 = true, rankIndex = idx + 1) }
         if(top10Series.isNotEmpty()) injetarTrilho(container, "Top 10 Séries", top10Series)
         
-        // 6. SÉRIES EM ALTA
         val seriesAlta = masterSeries.sortedByDescending { it.series_id }.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series") }
         if(seriesAlta.isNotEmpty()) injetarTrilho(container, "Séries em Alta", seriesAlta)
     }
@@ -251,7 +243,6 @@ class MainActivity : FragmentActivity() {
         for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series") }) } 
     }
 
-    // MOTOR UNIFICADO DO TRILHO (RecyclerView)
     private fun injetarTrilho(container: LinearLayout, titulo: String, itens: List<ItemCatalogo>) {
         val view = LayoutInflater.from(this).inflate(R.layout.trilho_vod_premium, container, false)
         val txtTitulo = view.findViewById<TextView>(R.id.txtTituloTrilho)
@@ -304,18 +295,15 @@ class MainActivity : FragmentActivity() {
     private fun resetarCoresMenu() { listOf(R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries).forEach { findViewById<TextView>(it).setTextColor(Color.parseColor("#888888")) } }
     private fun extrairIniciais(nome: String): String { if (nome.isBlank()) return "BR"; val p = nome.trim().split(" "); if (p.size >= 2) return (p[0].substring(0, 1) + p[1].substring(0, 1)).uppercase(); return if (nome.length >= 2) nome.substring(0, 2).uppercase() else nome.uppercase() }
 
-    // =========================================================================
-    // O ADAPTER UNIVERSAL
-    // =========================================================================
     inner class CatalogoAdapter(private val lista: List<ItemCatalogo>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
 
         override fun getItemViewType(position: Int): Int {
             val item = lista[position]
             return when {
                 item.isTop10 -> 1
-                item.duracaoTotal > 0 -> 2 // Continuar Assistindo
-                item.tipo == "live" -> 3 // Canal
-                else -> 0 // VOD ou Serie Padrão
+                item.duracaoTotal > 0 -> 2 
+                item.tipo == "live" -> 3 
+                else -> 0 
             }
         }
 
@@ -327,7 +315,6 @@ class MainActivity : FragmentActivity() {
                 else -> R.layout.card_vod_premium
             }
             val view = LayoutInflater.from(parent.context).inflate(layoutId, parent, false)
-            // A mágica anti-duplo-clique acontece aqui:
             view.isFocusable = true
             view.isFocusableInTouchMode = false 
             return HolderGenerico(view)
@@ -337,23 +324,20 @@ class MainActivity : FragmentActivity() {
             val item = lista[position]
             val h = holder as HolderGenerico
             
-            // Textos
             h.view.findViewById<TextView>(R.id.txtNomePremium)?.text = item.titulo
             if (item.isTop10) h.view.findViewById<TextView>(R.id.txtRankTop10)?.text = item.rankIndex.toString()
 
-            // Imagens OTIMIZADAS com o Override
             val img = h.view.findViewById<ImageView>(R.id.imgCapaPremium)
             if (img != null && !item.capa.isNullOrEmpty()) {
                 Glide.with(h.view.context)
                     .load(item.capa)
-                    .override(250, 350) // Impede sobrecarga de memória!
+                    .override(250, 350) 
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .into(img)
             } else {
                 img?.setImageDrawable(null)
             }
 
-            // Progresso (Continuar Assistindo)
             if (item.duracaoTotal > 0) {
                 h.view.findViewById<ProgressBar>(R.id.progressoFilme)?.apply {
                     max = 100
