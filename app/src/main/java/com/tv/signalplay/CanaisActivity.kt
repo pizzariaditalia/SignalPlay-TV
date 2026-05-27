@@ -97,6 +97,13 @@ class CanaisActivity : FragmentActivity() {
             if (primeiroBotao == null) primeiroBotao = btnCat
             sidebarCategorias.addView(btnCat)
         }
+        
+        // SOLUÇÃO: Força o carregamento da primeira pasta assim que o menu é montado
+        if (chavesOrdenadas.isNotEmpty()) {
+            categoriaSelecionada = chavesOrdenadas[0]
+            carregarGradeDeCanais(canaisAgrupados[chavesOrdenadas[0]] ?: emptyList())
+        }
+        
         primeiroBotao?.requestFocus() 
     }
 
