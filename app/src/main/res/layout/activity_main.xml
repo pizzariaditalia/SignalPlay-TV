@@ -1,17 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="match_parent" android:background="@color/bg_base">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_base">
 
     <ImageView android:id="@+id/imgBackgroundDestaque" android:layout_width="match_parent" android:layout_height="650dp" android:scaleType="centerCrop" android:alpha="0.6"/>
     <View android:layout_width="match_parent" android:layout_height="300dp" android:layout_below="@id/imgBackgroundDestaque" android:layout_marginTop="-300dp" android:background="@drawable/gradient_hero_bottom" />
     <View android:layout_width="match_parent" android:layout_height="120dp" android:background="@drawable/gradient_menu_topo" />
 
-    <LinearLayout android:id="@+id/menuTopo" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingTop="30dp" android:paddingStart="40dp" android:paddingEnd="40dp" android:gravity="center_vertical">
+    <LinearLayout
+        android:id="@+id/menuTopo"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:paddingTop="30dp"
+        android:paddingStart="40dp"
+        android:paddingEnd="40dp"
+        android:gravity="center_vertical">
+
         <ImageView android:id="@+id/navSearch" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_search" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="true" android:padding="4dp"/>
         <TextView android:id="@+id/navInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
         <TextView android:id="@+id/navCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
         <TextView android:id="@+id/navFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
         <TextView android:id="@+id/navSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_weight="1"/>
+        
         <TextView android:id="@+id/navPerfil" android:layout_width="45dp" android:layout_height="45dp" android:text="BR" android:textColor="#000000" android:textSize="16sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:focusableInTouchMode="true"/>
     </LinearLayout>
 
@@ -27,11 +39,47 @@
         </LinearLayout>
     </ScrollView>
 
-    <RelativeLayout android:id="@+id/modalPerfilOverlay" android:layout_width="match_parent" android:layout_height="match_parent" android:background="#D9000000" android:visibility="gone" android:elevation="30dp" android:gravity="center">
-        <LinearLayout android:layout_width="450dp" android:layout_height="wrap_content" android:orientation="vertical" android:background="@drawable/bg_glass_panel" android:padding="35dp" android:gravity="center_horizontal">
-            <Button android:id="@+id/btnModalFechar" android:layout_width="35dp" android:layout_height="35dp" android:layout_gravity="end" android:text="X" android:textColor="#FFFFFF" android:textSize="16sp" android:background="@android:color/transparent" android:focusable="true"/>
-            <TextView android:id="@+id/txtModalAvatar" android:layout_width="80dp" android:layout_height="80dp" android:text="BR" android:textColor="#000000" android:textSize="28sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:layout_marginTop="-20dp" android:layout_marginBottom="10dp"/>
-            
+    <RelativeLayout
+        android:id="@+id/modalPerfilOverlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#D9000000"
+        android:visibility="gone"
+        android:elevation="30dp"
+        android:gravity="center">
+
+        <LinearLayout
+            android:layout_width="450dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="@drawable/bg_glass_panel"
+            android:padding="35dp"
+            android:gravity="center_horizontal">
+
+            <Button
+                android:id="@+id/btnModalFechar"
+                android:layout_width="35dp"
+                android:layout_height="35dp"
+                android:layout_gravity="end"
+                android:text="✕"
+                android:textColor="#FFFFFF"
+                android:textSize="16sp"
+                android:background="@android:color/transparent"
+                android:focusable="true"/>
+
+            <TextView
+                android:id="@+id/txtModalAvatar"
+                android:layout_width="80dp"
+                android:layout_height="80dp"
+                android:text="BR"
+                android:textColor="#000000"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:background="@drawable/bg_perfil_amarelo"
+                android:layout_marginTop="-20dp"
+                android:layout_marginBottom="10dp"/>
+
             <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="15dp">
                 <TextView android:id="@+id/avatarColor1" android:layout_width="25dp" android:layout_height="25dp" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:layout_marginEnd="10dp"/>
                 <TextView android:id="@+id/avatarColor2" android:layout_width="25dp" android:layout_height="25dp" android:background="#ff4757" android:focusable="true" android:layout_marginEnd="10dp"/>
@@ -39,8 +87,29 @@
                 <TextView android:id="@+id/avatarColor4" android:layout_width="25dp" android:layout_height="25dp" android:background="#1e90ff" android:focusable="true"/>
             </LinearLayout>
 
-            <TextView android:id="@+id/txtModalNome" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Olá, Cliente!" android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold"/>
-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CONTA ATIVA" android:textColor="#2ed573" android:textSize="10sp" android:textStyle="bold" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/bg_badge_ativo" android:layout_marginTop="5dp" android:layout_marginBottom="25dp"/>
+            <TextView
+                android:id="@+id/txtModalNome"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Olá, Cliente!"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp"
+                android:textStyle="bold"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="CONTA ATIVA"
+                android:textColor="#2ed573"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:paddingTop="4dp"
+                android:paddingBottom="4dp"
+                android:background="@drawable/bg_badge_ativo"
+                android:layout_marginTop="5dp"
+                android:layout_marginBottom="25dp"/>
 
             <LinearLayout android:id="@+id/btnModalParental" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:padding="12dp" android:background="@drawable/bg_config_item">
                 <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
@@ -76,7 +145,17 @@
                 android:layout_marginTop="10dp"
                 android:focusable="true"/>
 
-            <Button android:id="@+id/btnModalLogout" android:layout_width="match_parent" android:layout_height="50dp" android:text="Desconectar Conta" android:textColor="#ff4757" android:textSize="14sp" android:textStyle="bold" android:background="@drawable/bg_btn_logout" android:layout_marginTop="20dp" android:focusable="true"/>
+            <Button
+                android:id="@+id/btnModalLogout"
+                android:layout_width="match_parent"
+                android:layout_height="50dp"
+                android:text="Desconectar Conta"
+                android:textColor="#ff4757"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_btn_logout"
+                android:layout_marginTop="20dp"
+                android:focusable="true"/>
         </LinearLayout>
     </RelativeLayout>
 </RelativeLayout>
