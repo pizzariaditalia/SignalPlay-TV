@@ -112,45 +112,59 @@ class MainActivity : FragmentActivity() {
         val overlay = findViewById<RelativeLayout>(R.id.modalPerfilOverlay)
         val txtNome = findViewById<TextView>(R.id.txtModalNome)
         val avatarPrincipal = findViewById<TextView>(R.id.txtModalAvatar)
-        
-        // CORRIGIDO: Nome da variável que gerenciava o botão de Perfil
         val avatarMenu = findViewById<TextView>(R.id.navPerfil)
         
         txtNome.text = "Olá, $firebaseUser!"
         avatarPrincipal.text = extrairIniciais(firebaseUser)
         
-        val coresAvatares = listOf(R.id.avatarColor1 to R.drawable.bg_perfil_amarelo, R.id.avatarColor2 to Color.parseColor("#ff4757"), R.id.avatarColor3 to Color.parseColor("#2ed573"), R.id.avatarColor4 to Color.parseColor("#1e90ff"))
-        for (par in coresAvatares) {
-            val view = findViewById<TextView>(par.first)
-            view.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.2f).scaleY(1.2f).start() else v.animate().scaleX(1.0f).scaleY(1.0f).start() }
-            view.setOnClickListener {
-                if (par.first == R.id.avatarColor1) { avatarPrincipal.setBackgroundResource(par.second as Int); avatarMenu.setBackgroundResource(par.second as Int) } 
-                else { avatarPrincipal.setBackgroundColor(par.second as Int); avatarMenu.setBackgroundColor(par.second as Int) }
-            }
+        // Puxa as infos do plano (O LoginActivity deve salvar isso no futuro, mas já deixamos a UI lendo)
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        val vencimento = prefs.getString("EXP_DATE", "Ilimitado")
+        val maxCons = prefs.getString("MAX_CONS", "Ilimitado")
+        val activeCons = prefs.getString("ACTIVE_CONS", "1")
+        
+        findViewById<TextView>(R.id.txtModalVencimento).text = "Vencimento: $vencimento"
+        findViewById<TextView>(R.id.txtModalTelas).text = "Telas: $activeCons / $maxCons"
+
+        val listenerFocoConfig = View.OnFocusChangeListener { v, focus -> 
+            if (focus) { 
+                v.setBackgroundResource(R.drawable.bg_config_item)
+                v.animate().scaleX(1.03f).start() 
+            } else { 
+                v.setBackgroundColor(Color.TRANSPARENT)
+                v.animate().scaleX(1.0f).start() 
+            } 
         }
 
-        val listenerFocoConfig = View.OnFocusChangeListener { v, focus -> if (focus) { v.setBackgroundResource(R.drawable.bg_config_item); v.animate().scaleX(1.03f).start() } else { v.setBackgroundColor(Color.TRANSPARENT); v.animate().scaleX(1.0f).start() } }
         val btnParental = findViewById<LinearLayout>(R.id.btnModalParental)
-        val txtStatusParental = findViewById<TextView>(R.id.txtStatusParental)
+        val switchParental = findViewById<android.widget.Switch>(R.id.switchParental)
         
-        txtStatusParental.text = if (isParentalOn) "LIGADO" else "DESLIGADO"
-        txtStatusParental.setTextColor(if (isParentalOn) Color.parseColor("#2ed573") else Color.parseColor("#ff4757"))
+        switchParental.isChecked = isParentalOn
 
         btnParental.setOnFocusChangeListener(listenerFocoConfig)
         btnParental.setOnClickListener {
             isParentalOn = !isParentalOn
+            switchParental.isChecked = isParentalOn
             getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putBoolean("parental_control", isParentalOn).apply()
-            txtStatusParental.text = if (isParentalOn) "LIGADO" else "DESLIGADO"
-            txtStatusParental.setTextColor(if (isParentalOn) Color.parseColor("#2ed573") else Color.parseColor("#ff4757"))
-            Toast.makeText(this, "Controle Parental Atualizado", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, if (isParentalOn) "Controle Parental LIGADO" else "Controle Parental DESLIGADO", Toast.LENGTH_SHORT).show()
             baixarCatalogoCompleto() 
         }
 
         findViewById<LinearLayout>(R.id.btnModalLimparHist).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("iptv_continuar_vod", "[]").apply(); Toast.makeText(this@MainActivity, "Histórico Removido!", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
         findViewById<LinearLayout>(R.id.btnModalLimparFavs).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", "[]").apply(); Toast.makeText(this@MainActivity, "Favoritos Removidos!", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
-        findViewById<Button>(R.id.btnModalLogout).setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().clear().apply(); startActivity(Intent(this, LoginActivity::class.java)); finish() }
         
-        // CORRIGIDO: Uso da variável correta para prevenir Crash
+        val btnUpdateEpg = findViewById<Button>(R.id.btnModalUpdateEpg)
+        btnUpdateEpg.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.03f).start() else v.animate().scaleX(1.0f).start() }
+        btnUpdateEpg.setOnClickListener {
+            Toast.makeText(this, "Atualizando Guia de Programação...", Toast.LENGTH_SHORT).show()
+            // Aqui você poderá chamar a função de baixar EPG
+            overlay.visibility = View.GONE
+        }
+
+        val btnLogout = findViewById<Button>(R.id.btnModalLogout)
+        btnLogout.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.03f).start() else v.animate().scaleX(1.0f).start() }
+        btnLogout.setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().clear().apply(); startActivity(Intent(this, LoginActivity::class.java)); finish() }
+        
         avatarMenu.setOnClickListener { overlay.visibility = View.VISIBLE; findViewById<Button>(R.id.btnModalFechar).requestFocus() }
         findViewById<Button>(R.id.btnModalFechar).setOnClickListener { overlay.visibility = View.GONE; avatarMenu.requestFocus() }
     }
