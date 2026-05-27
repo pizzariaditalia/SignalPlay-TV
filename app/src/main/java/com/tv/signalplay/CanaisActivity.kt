@@ -12,13 +12,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -51,7 +51,7 @@ class CanaisActivity : FragmentActivity() {
     private fun isAdult(cat: String?): Boolean { if (!isParentalOn) return false; val c = cat?.lowercase() ?: ""; return listOf("adulto", "adult", "18+", "xxx", "porn", "sensual", "hachutv").any { c.contains(it) } }
 
     private fun baixarCanaisEOrganizar(url: String, user: String, pass: String) {
-        lifecycleScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(url); val respCat = api.getLiveCategories(user, pass); val respCanais = api.getLiveStreams(user, pass)
                 withContext(Dispatchers.Main) {
@@ -79,7 +79,6 @@ class CanaisActivity : FragmentActivity() {
             btnCat.text = categoria.uppercase()
             btnCat.textSize = 14f; btnCat.setTextColor(Color.parseColor("#f5f5f7")); btnCat.setPadding(20, 25, 20, 25)
             
-            // Foco configurado apenas para D-Pad
             btnCat.isFocusable = true; btnCat.isFocusableInTouchMode = false 
             btnCat.setBackgroundResource(R.drawable.bg_cat_btn) 
             
@@ -141,7 +140,7 @@ class CanaisActivity : FragmentActivity() {
             if (!canal.stream_icon.isNullOrEmpty()) {
                 Glide.with(holder.itemView.context)
                     .load(canal.stream_icon)
-                    .override(200, 200) // TV fica mais leve com ícones limitados
+                    .override(200, 200)
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .into(holder.imgLogo) 
             } else {
