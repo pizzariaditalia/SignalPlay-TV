@@ -43,12 +43,17 @@ class PlayerActivity : FragmentActivity() {
     private lateinit var btnFecharPlayer: Button; private lateinit var btnPlayPauseIcon: ImageView
     private lateinit var btnPrev: ImageView; private lateinit var btnNext: ImageView
     
-    private val handler = Handler(Looper.getMainLooper()); private var isOverlayVisible = true
-    private var isFit = true 
+    private lateinit var txtCatAtual: TextView; private lateinit var btnCatPrev: Button; private lateinit var btnCatNext: Button
+    
+    private val handler = Handler(Looper.getMainLooper()); private var isOverlayVisible = true; private var isFit = true 
 
     private var urlServ = ""; private var xtUser = ""; private var xtPass = ""; private var currentType = "live"
     private var currentStreamId = 0; private var currentTitle = ""; private var currentExt = "mp4"
+    
     private var todosCanaisDoServidor: List<XtreamLive> = listOf()
+    private var categoryContext = "Outros"
+    private var categoryList = mutableListOf<String>()
+    private var currentCatIndex = 0
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -62,6 +67,8 @@ class PlayerActivity : FragmentActivity() {
         btnModalPlaylist = findViewById(R.id.btnModalPlaylist); btnModalEpg = findViewById(R.id.btnModalEpg)
         btnFecharPlayer = findViewById(R.id.btnFecharPlayer); btnPlayPauseIcon = findViewById(R.id.btnPlayPauseIcon)
         btnPrev = findViewById(R.id.btnPrev); btnNext = findViewById(R.id.btnNext)
+        
+        txtCatAtual = findViewById(R.id.txtCatAtual); btnCatPrev = findViewById(R.id.btnCatPrev); btnCatNext = findViewById(R.id.btnCatNext)
 
         rvPlaylist.layoutManager = LinearLayoutManager(this); rvEpg.layoutManager = LinearLayoutManager(this)
 
@@ -69,6 +76,7 @@ class PlayerActivity : FragmentActivity() {
         xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""; currentType = intent.getStringExtra("TYPE") ?: "live"
         currentStreamId = intent.getIntExtra("STREAM_ID", 0); currentTitle = intent.getStringExtra("TITLE") ?: ""
         currentExt = intent.getStringExtra("EXTENSION") ?: "mp4"
+        categoryContext = intent.getStringExtra("CATEGORY_CONTEXT") ?: "Outros"
 
         findViewById<TextView>(R.id.txtPlayerTitulo).text = currentTitle
         
@@ -83,12 +91,8 @@ class PlayerActivity : FragmentActivity() {
         val videoUrl = when (currentType) { "live" -> "$urlServ/$xtUser/$xtPass/$currentStreamId"; "vod" -> "$urlServ/movie/$xtUser/$xtPass/$currentStreamId.$currentExt"; "series" -> "$urlServ/series/$xtUser/$xtPass/$currentStreamId.$currentExt"; else -> "" }
         if (exoPlayer != null) { exoPlayer?.release(); exoPlayer = null }
         exoPlayer = ExoPlayer.Builder(this).build(); playerView.player = exoPlayer
-        val mediaItem = MediaItem.fromUri(Uri.parse(videoUrl))
-        exoPlayer?.setMediaItem(mediaItem)
-        
-        val resumePos = intent.getLongExtra("RESUME_POSITION", 0L)
-        if (resumePos > 0) exoPlayer?.seekTo(resumePos)
-        
+        exoPlayer?.setMediaItem(MediaItem.fromUri(Uri.parse(videoUrl)))
+        val resumePos = intent.getLongExtra("RESUME_POSITION", 0L); if (resumePos > 0) exoPlayer?.seekTo(resumePos)
         exoPlayer?.prepare(); exoPlayer?.playWhenReady = true
 
         exoPlayer?.addListener(object : Player.Listener {
@@ -102,18 +106,16 @@ class PlayerActivity : FragmentActivity() {
         handler.postDelayed(object : Runnable {
             override fun run() {
                 exoPlayer?.let {
-                    val duration = it.duration; val position = it.currentPosition
-                    if (duration > 0) {
-                        findViewById<ProgressBar>(R.id.progressBarTempo).apply { max = 100; progress = ((position * 100) / duration).toInt() }
-                        findViewById<TextView>(R.id.txtTempoCompleto).text = "${formatarTempo(position)} / ${formatarTempo(duration)}"
-                        
-                        if ((currentType == "vod" || currentType == "series") && position > 5000) {
+                    val dur = it.duration; val pos = it.currentPosition
+                    if (dur > 0) {
+                        findViewById<ProgressBar>(R.id.progressBarTempo).apply { max = 100; progress = ((pos * 100) / dur).toInt() }
+                        findViewById<TextView>(R.id.txtTempoCompleto).text = "${formatarTempo(pos)} / ${formatarTempo(dur)}"
+                        if ((currentType == "vod" || currentType == "series") && pos > 5000) {
                             val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                             val histJson = prefs.getString("iptv_continuar_vod", "[]")
                             val history: MutableList<MutableMap<String, Any>> = try { Gson().fromJson(histJson, object : TypeToken<MutableList<MutableMap<String, Any>>>(){}.type) ?: mutableListOf() } catch (e: Exception) { mutableListOf() }
-                            val iterator = history.iterator()
-                            while(iterator.hasNext()) { val item = iterator.next(); val itemId = (item["id"] as? Number)?.toInt() ?: 0; if(itemId == currentStreamId) iterator.remove() }
-                            history.add(0, mutableMapOf("id" to currentStreamId, "tipo" to currentType, "tempo" to position, "duracao" to duration))
+                            val iterator = history.iterator(); while(iterator.hasNext()) { val item = iterator.next(); val itemId = (item["id"] as? Number)?.toInt() ?: 0; if(itemId == currentStreamId) iterator.remove() }
+                            history.add(0, mutableMapOf("id" to currentStreamId, "tipo" to currentType, "tempo" to pos, "duracao" to dur))
                             if(history.size > 20) history.removeAt(history.size - 1)
                             prefs.edit().putString("iptv_continuar_vod", Gson().toJson(history)).apply()
                         }
@@ -125,88 +127,115 @@ class PlayerActivity : FragmentActivity() {
     }
 
     private fun configurarBotoesPremiumSemFundo() {
-        val listenerCorDeTexto = View.OnFocusChangeListener { v, focus -> 
+        val listenerCor = View.OnFocusChangeListener { v, focus -> 
             if(focus) { v.animate().scaleX(1.15f).scaleY(1.15f).start()
-                if (v is Button) v.setTextColor(Color.parseColor("#ffcc00"))
-                else if (v is ImageView) v.setColorFilter(Color.parseColor("#ffcc00"))
-            } 
-            else { 
-                v.animate().scaleX(1.0f).scaleY(1.0f).start()
-                if (v is Button) {
-                    if (v.id == R.id.btnAjustar && isFit) v.setTextColor(Color.parseColor("#ffcc00"))
-                    else if (v.id == R.id.btnEsticar && !isFit) v.setTextColor(Color.parseColor("#ffcc00"))
-                    else v.setTextColor(Color.WHITE)
-                } else if (v is ImageView) { v.setColorFilter(Color.WHITE) }
+                if (v is Button) v.setTextColor(Color.parseColor("#ffcc00")) else if (v is ImageView) v.setColorFilter(Color.parseColor("#ffcc00"))
+            } else { v.animate().scaleX(1.0f).scaleY(1.0f).start()
+                if (v is Button) { if ((v.id == R.id.btnAjustar && isFit) || (v.id == R.id.btnEsticar && !isFit)) v.setTextColor(Color.parseColor("#ffcc00")) else v.setTextColor(Color.WHITE) } else if (v is ImageView) v.setColorFilter(Color.WHITE)
             }
         }
-        listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnFecharPlayer, btnPlayPauseIcon, btnPrev, btnNext).forEach { it.setOnFocusChangeListener(listenerCorDeTexto) }
+        listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnFecharPlayer, btnPlayPauseIcon, btnPrev, btnNext, btnCatPrev, btnCatNext).forEach { it.setOnFocusChangeListener(listenerCor) }
 
         btnFecharPlayer.setOnClickListener { finish() }
         btnPlayPauseIcon.setOnClickListener { exoPlayer?.let { it.playWhenReady = !it.playWhenReady } }
         btnPrev.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("-10s") }
         btnNext.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s") }
-
-        btnAjustar.setOnClickListener {
-            isFit = true; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
-            btnAjustar.setTextColor(Color.parseColor("#ffcc00")); btnEsticar.setTextColor(Color.WHITE)
-        }
-        btnEsticar.setOnClickListener {
-            isFit = false; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL
-            btnEsticar.setTextColor(Color.parseColor("#ffcc00")); btnAjustar.setTextColor(Color.WHITE)
-        }
+        btnAjustar.setOnClickListener { isFit = true; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT; btnAjustar.setTextColor(Color.parseColor("#ffcc00")); btnEsticar.setTextColor(Color.WHITE) }
+        btnEsticar.setOnClickListener { isFit = false; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL; btnEsticar.setTextColor(Color.parseColor("#ffcc00")); btnAjustar.setTextColor(Color.WHITE) }
+        
         btnModalPlaylist.setOnClickListener { controlsOverlay.visibility = View.GONE; panelEpg.visibility = View.GONE; panelPlaylist.visibility = View.VISIBLE; rvPlaylist.requestFocus() }
         btnModalEpg.setOnClickListener { controlsOverlay.visibility = View.GONE; panelPlaylist.visibility = View.GONE; panelEpg.visibility = View.VISIBLE; rvEpg.requestFocus() }
+
+        // MUDANÇA DE CATEGORIA NA PLAYLIST
+        btnCatPrev.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex--; if(currentCatIndex < 0) currentCatIndex = categoryList.size - 1; atualizarListaCategoria() } }
+        btnCatNext.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex++; if(currentCatIndex >= categoryList.size) currentCatIndex = 0; atualizarListaCategoria() } }
+    }
+
+    private fun atualizarListaCategoria() {
+        val cat = categoryList[currentCatIndex]
+        txtCatAtual.text = cat
+        val fatiado = if (cat == "Favoritos") {
+            val favs = try { Gson().fromJson<List<String>>(getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).getString("favoritos_tv", "[]"), object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
+            todosCanaisDoServidor.filter { favs.contains(it.stream_id.toString()) }
+        } else {
+            todosCanaisDoServidor.filter { it.category_name == cat }
+        }
+        rvPlaylist.adapter = PlaylistAdapter(fatiado)
     }
 
     private fun carregarDadosEmPlanoDeFundo() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
-                
-                // 1. OSD EPG
-                val respEpg = api.getShortEpg(xtUser, xtPass, id = currentStreamId)
-                withContext(Dispatchers.Main) { processarEpg(respEpg) }
-                
-                // 2. Playlist
                 if (todosCanaisDoServidor.isEmpty()) {
+                    val respCat = api.getLiveCategories(xtUser, xtPass)
                     val respCanais = api.getLiveStreams(xtUser, xtPass)
-                    if (respCanais.isJsonArray) todosCanaisDoServidor = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type)
-                }
-                withContext(Dispatchers.Main) {
-                    val canalAtual = todosCanaisDoServidor.find { it.stream_id == currentStreamId }
-                    if (canalAtual != null) { rvPlaylist.adapter = PlaylistAdapter(todosCanaisDoServidor.filter { it.category_id == canalAtual.category_id }) }
-                }
-            } catch (e: Exception) { }
-        }
-    }
-
-    // A BLINDAGEM ABSOLUTA DO EPG (Resolve crashes do Xtream Codes)
-    private fun processarEpg(respEpg: com.google.gson.JsonElement) {
-        try {
-            if (respEpg.isJsonObject) {
-                val obj = respEpg.asJsonObject
-                // Verifica se tem epg_listings e se não é nulo
-                if (obj.has("epg_listings") && !obj.get("epg_listings").isJsonNull) {
-                    val element = obj.get("epg_listings")
-                    
-                    // Xtream envia array apenas se houver EPG. Se estiver vazio, envia Object ou Null.
-                    if (element.isJsonArray) {
-                        val listaEpg: List<XtreamEpgListing> = Gson().fromJson(element, object : TypeToken<List<XtreamEpgListing>>() {}.type)
-                        if (listaEpg.isNotEmpty()) {
-                            findViewById<TextView>(R.id.txtOsdEpgAtual).text = decodificarBase64(listaEpg[0].title)
-                            rvEpg.adapter = EpgAdapter(listaEpg)
-                            return // Sucesso
+                    val mapCategorias = mutableMapOf<String, String>()
+                    if (respCat.isJsonArray) { Gson().fromJson<List<XtreamCategory>>(respCat, object : TypeToken<List<XtreamCategory>>() {}.type).forEach { mapCategorias[it.category_id] = it.category_name } }
+                    if (respCanais.isJsonArray) {
+                        val brutos: List<XtreamLive> = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type)
+                        brutos.forEach { it.category_name = mapCategorias[it.category_id ?: ""] ?: "Outros" }
+                        val isParentalOn = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).getBoolean("parental_control", false)
+                        todosCanaisDoServidor = brutos.filter { canal -> 
+                            if (!isParentalOn) true else !listOf("adulto", "adult", "18+", "xxx", "porn", "sensual", "hachutv").any { (canal.category_name?.lowercase() ?: "").contains(it) } 
                         }
                     }
                 }
-            }
-            // Se chegou aqui, não há EPG válido.
-            findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Programação Indisponível"
-            rvEpg.adapter = EpgAdapter(emptyList())
-            
-        } catch (e: Exception) {
-            findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Guia não disponível no servidor"
-            rvEpg.adapter = EpgAdapter(emptyList())
+
+                withContext(Dispatchers.Main) {
+                    val catUnicas = todosCanaisDoServidor.map { it.category_name ?: "Outros" }.distinct().sorted().toMutableList()
+                    catUnicas.add(0, "Favoritos")
+                    categoryList = catUnicas
+                    currentCatIndex = categoryList.indexOf(categoryContext)
+                    if(currentCatIndex == -1) currentCatIndex = 0
+                    atualizarListaCategoria()
+                }
+
+                // EPG INTELIGENTE: Tenta API, se falhar ou vazio, lê do ficheiro XMLTV offline
+                val respEpg = api.getShortEpg(xtUser, xtPass, id = currentStreamId)
+                var encontrouEpg = false
+                try {
+                    if (respEpg.isJsonObject && respEpg.asJsonObject.has("epg_listings") && !respEpg.asJsonObject.get("epg_listings").isJsonNull && respEpg.asJsonObject.get("epg_listings").isJsonArray) {
+                        val listaEpg: List<XtreamEpgListing> = Gson().fromJson(respEpg.asJsonObject.get("epg_listings"), object : TypeToken<List<XtreamEpgListing>>() {}.type)
+                        if (listaEpg.isNotEmpty()) {
+                            withContext(Dispatchers.Main) {
+                                findViewById<TextView>(R.id.txtOsdEpgAtual).text = decodificarBase64(listaEpg[0].title)
+                                rvEpg.adapter = EpgAdapter(listaEpg)
+                            }
+                            encontrouEpg = true
+                        }
+                    }
+                } catch (e: Exception) {}
+
+                // LEITURA OFFLINE DO XMLTV SE A API FALHOU
+                if (!encontrouEpg) {
+                    val file = java.io.File(filesDir, "epg_offline.json")
+                    if (file.exists()) {
+                        val epgMap: Map<String, List<XtreamEpgListing>> = Gson().fromJson(file.readText(), object : TypeToken<Map<String, List<XtreamEpgListing>>>(){}.type)
+                        val canalAtual = todosCanaisDoServidor.find { it.stream_id == currentStreamId }
+                        val epgId = canalAtual?.epg_channel_id ?: ""
+                        val pList = epgMap[epgId]
+                        if (pList != null && pList.isNotEmpty()) {
+                            val agora = System.currentTimeMillis() / 1000
+                            val futuros = pList.filter { (it.stop_timestamp?.toLong() ?: 0L) > agora }.sortedBy { it.start_timestamp?.toLong() ?: 0L }.take(10)
+                            if (futuros.isNotEmpty()) {
+                                withContext(Dispatchers.Main) {
+                                    findViewById<TextView>(R.id.txtOsdEpgAtual).text = decodificarBase64(futuros[0].title)
+                                    rvEpg.adapter = EpgAdapter(futuros)
+                                }
+                                encontrouEpg = true
+                            }
+                        }
+                    }
+                }
+                
+                if (!encontrouEpg) {
+                    withContext(Dispatchers.Main) {
+                        findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Sem Guia (Clique Atualizar Guia no Perfil)"
+                        rvEpg.adapter = EpgAdapter(emptyList())
+                    }
+                }
+            } catch (e: Exception) { }
         }
     }
 
@@ -253,7 +282,7 @@ class PlayerActivity : FragmentActivity() {
             init { view.setOnFocusChangeListener { v, focus -> if(focus) v.setBackgroundColor(Color.parseColor("#33FFFFFF")) else v.setBackgroundResource(R.drawable.bg_card_premium_normal) } }
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_player_epg, parent, false))
-        override fun onBindViewHolder(holder: Holder, position: Int) { val e = lista[position]; holder.txtTitulo.text = decodificarBase64(e.title); val fI = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()); val fO = SimpleDateFormat("HH:mm", Locale.getDefault()); try { val st = fI.parse(e.start_timestamp ?: ""); val en = fI.parse(e.stop_timestamp ?: ""); if(st != null && en != null) holder.txtHora.text = "${fO.format(st)} - ${fO.format(en)}" } catch(ex: Exception) {} }
+        override fun onBindViewHolder(holder: Holder, position: Int) { val e = lista[position]; holder.txtTitulo.text = decodificarBase64(e.title); val fI = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()); val fO = SimpleDateFormat("HH:mm", Locale.getDefault()); try { val st = fI.parse(e.start_timestamp ?: ""); val en = fI.parse(e.stop_timestamp ?: ""); if(st != null && en != null) holder.txtHora.text = "${fO.format(st)} - ${fO.format(en)}" } catch(ex: Exception) { try { val dF = java.util.Date((e.start_timestamp?.toLong() ?: 0L) * 1000); val dT = java.util.Date((e.stop_timestamp?.toLong() ?: 0L) * 1000); holder.txtHora.text = "${fO.format(dF)} - ${fO.format(dT)}" } catch(e2: Exception){} } }
         override fun getItemCount() = lista.size
     }
 }
