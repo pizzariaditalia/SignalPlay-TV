@@ -12,12 +12,13 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -29,7 +30,7 @@ class CanaisActivity : FragmentActivity() {
     private var todosCanais: List<XtreamLive> = listOf()
 
     private var xtUser = ""; private var xtPass = ""; private var urlServ = ""; private var isParentalOn = false
-    private var categoriaSelecionada = "Outros" // MEMÓRIA DA CATEGORIA
+    private var categoriaSelecionada = "Outros"
 
     private val ordemFixaMobile = listOf("Jogos de Hoje", "Casa do Patrão", "Canais | Abertos", "Canais | Notícias", "Canais | Globo", "Canais | SBT", "Canais | RecordTV", "Canais | Band", "Canais | Esportes", "Canais | Premiere", "Canais | ESPN", "Canais | SporTV", "Canais | Prime Video", "Canais | Brasileirão", "Canais | MAX", "Canais | DAZN", "Canais | UFC Fight Pass", "Canais | Paramount+", "Canais | Disney+", "Canais | Estaduais", "Canais | Futsal", "Canais | NBA League Pass", "Canais | Legendados", "Canais | Documentários", "Canais | Filmes e Séries", "Canais | Telecine", "Canais | HBO", "Canais | TNT", "Canais | Variedades", "Canais | Religiosos", "Canais | Infantil", "Canais | Diversos", "Canais | Pluto TV", "Canais | Dual Áudio", "Canais | 24h Infantil", "Canais | 24h Variados", "Canais | Cine Bit", "Canais | Adultos", "Canais | HachuTV Adultos", "Canais | Adultos [4K]", "Canais | Dormir e Relaxar", "Vídeos Educativos", "Treinos, Aulas e Receitas", "Câmeras", "Rádios", "Shows", "Outros", "Canais | COMÉDIA")
 
@@ -50,7 +51,7 @@ class CanaisActivity : FragmentActivity() {
     private fun isAdult(cat: String?): Boolean { if (!isParentalOn) return false; val c = cat?.lowercase() ?: ""; return listOf("adulto", "adult", "18+", "xxx", "porn", "sensual", "hachutv").any { c.contains(it) } }
 
     private fun baixarCanaisEOrganizar(url: String, user: String, pass: String) {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val api = XtreamClient.create(url); val respCat = api.getLiveCategories(user, pass); val respCanais = api.getLiveStreams(user, pass)
                 withContext(Dispatchers.Main) {
@@ -77,13 +78,17 @@ class CanaisActivity : FragmentActivity() {
             val btnCat = TextView(this)
             btnCat.text = categoria.uppercase()
             btnCat.textSize = 14f; btnCat.setTextColor(Color.parseColor("#f5f5f7")); btnCat.setPadding(20, 25, 20, 25)
-            btnCat.isFocusable = true; btnCat.isFocusableInTouchMode = true; btnCat.setBackgroundResource(R.drawable.bg_cat_btn) 
+            
+            // Foco configurado apenas para D-Pad
+            btnCat.isFocusable = true; btnCat.isFocusableInTouchMode = false 
+            btnCat.setBackgroundResource(R.drawable.bg_cat_btn) 
+            
             val layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT)
             layoutParams.setMargins(0, 0, 0, 15); btnCat.layoutParams = layoutParams
 
             btnCat.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
-                    categoriaSelecionada = categoria // GRAVA A CATEGORIA ATUAL
+                    categoriaSelecionada = categoria
                     v.animate().scaleX(1.05f).scaleY(1.05f).setDuration(150).start(); (v as TextView).setTextColor(Color.parseColor("#ffcc00")) 
                     carregarGradeDeCanais(canaisAgrupados[categoria] ?: emptyList())
                 } else {
@@ -103,13 +108,17 @@ class CanaisActivity : FragmentActivity() {
             val imgLogo: ImageView = itemView.findViewById(R.id.imgCapaPremium)
             val txtNome: TextView = itemView.findViewById(R.id.txtNomePremium)
             init {
-                itemView.setOnFocusChangeListener { v, hasFocus -> if (hasFocus) { v.animate().scaleX(1.1f).scaleY(1.1f).setDuration(150).start(); v.elevation = 10f } else { v.animate().scaleX(1.0f).scaleY(1.0f).start(); v.elevation = 0f } }
+                itemView.isFocusableInTouchMode = false
+                itemView.setOnFocusChangeListener { v, hasFocus -> 
+                    if (hasFocus) { v.animate().scaleX(1.08f).scaleY(1.08f).setDuration(150).start(); v.elevation = 15f } 
+                    else { v.animate().scaleX(1.0f).scaleY(1.0f).start(); v.elevation = 0f } 
+                }
                 itemView.setOnClickListener {
                     val canal = listaCanais[bindingAdapterPosition]
                     val intentPlayer = Intent(itemView.context, PlayerActivity::class.java)
                     intentPlayer.putExtra("URL", urlServ); intentPlayer.putExtra("XTREAM_USER", xtUser); intentPlayer.putExtra("XTREAM_PASS", xtPass)
                     intentPlayer.putExtra("STREAM_ID", canal.stream_id); intentPlayer.putExtra("TYPE", "live"); intentPlayer.putExtra("TITLE", canal.name)
-                    intentPlayer.putExtra("CATEGORY_CONTEXT", categoriaSelecionada) // ENVIA A CATEGORIA PARA O PLAYER!
+                    intentPlayer.putExtra("CATEGORY_CONTEXT", categoriaSelecionada)
                     itemView.context.startActivity(intentPlayer)
                 }
                 itemView.setOnLongClickListener {
@@ -123,7 +132,23 @@ class CanaisActivity : FragmentActivity() {
             }
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalViewHolder = CanalViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.card_canal_premium, parent, false))
-        override fun onBindViewHolder(holder: CanalViewHolder, position: Int) { val canal = listaCanais[position]; holder.txtNome.text = canal.name; holder.txtNome.setTextColor(Color.WHITE); if (!canal.stream_icon.isNullOrEmpty()) Glide.with(holder.itemView.context).load(canal.stream_icon).into(holder.imgLogo) else holder.imgLogo.setImageDrawable(null) }
+        
+        override fun onBindViewHolder(holder: CanalViewHolder, position: Int) { 
+            val canal = listaCanais[position]
+            holder.txtNome.text = canal.name
+            holder.txtNome.setTextColor(Color.WHITE)
+            
+            if (!canal.stream_icon.isNullOrEmpty()) {
+                Glide.with(holder.itemView.context)
+                    .load(canal.stream_icon)
+                    .override(200, 200) // TV fica mais leve com ícones limitados
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(holder.imgLogo) 
+            } else {
+                holder.imgLogo.setImageDrawable(null) 
+            }
+        }
+        
         override fun getItemCount(): Int = listaCanais.size
     }
 }
