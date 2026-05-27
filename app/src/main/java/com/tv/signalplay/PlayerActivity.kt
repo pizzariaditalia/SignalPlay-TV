@@ -18,6 +18,7 @@ import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -29,7 +30,6 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,7 +41,7 @@ class PlayerActivity : FragmentActivity() {
     private var exoPlayer: ExoPlayer? = null; private lateinit var playerView: PlayerView; private lateinit var controlsOverlay: RelativeLayout
     private lateinit var panelPlaylist: LinearLayout; private lateinit var panelEpg: LinearLayout; private lateinit var rvPlaylist: RecyclerView; private lateinit var rvEpg: RecyclerView
     private lateinit var btnAjustar: Button; private lateinit var btnEsticar: Button; private lateinit var btnModalPlaylist: Button; private lateinit var btnModalEpg: Button
-    private lateinit var btnFecharPlayer: Button; private lateinit var btnPlayPauseIcon: ImageView
+    private lateinit var btnPlayPauseIcon: ImageView
     private lateinit var btnPrev: ImageView; private lateinit var btnNext: ImageView
     
     private lateinit var txtCatAtual: TextView; private lateinit var btnCatPrev: Button; private lateinit var btnCatNext: Button
@@ -55,6 +55,7 @@ class PlayerActivity : FragmentActivity() {
     private var categoryContext = "Outros"
     private var categoryList = mutableListOf<String>()
     private var currentCatIndex = 0
+    private var canaisDaPastaAtual: List<XtreamLive> = listOf()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -66,7 +67,7 @@ class PlayerActivity : FragmentActivity() {
         
         btnAjustar = findViewById(R.id.btnAjustar); btnEsticar = findViewById(R.id.btnEsticar)
         btnModalPlaylist = findViewById(R.id.btnModalPlaylist); btnModalEpg = findViewById(R.id.btnModalEpg)
-        btnFecharPlayer = findViewById(R.id.btnFecharPlayer); btnPlayPauseIcon = findViewById(R.id.btnPlayPauseIcon)
+        btnPlayPauseIcon = findViewById(R.id.btnPlayPauseIcon)
         btnPrev = findViewById(R.id.btnPrev); btnNext = findViewById(R.id.btnNext)
         
         txtCatAtual = findViewById(R.id.txtCatAtual); btnCatPrev = findViewById(R.id.btnCatPrev); btnCatNext = findViewById(R.id.btnCatNext)
@@ -135,12 +136,11 @@ class PlayerActivity : FragmentActivity() {
                 if (v is Button) { if ((v.id == R.id.btnAjustar && isFit) || (v.id == R.id.btnEsticar && !isFit)) v.setTextColor(Color.parseColor("#ffcc00")) else v.setTextColor(Color.WHITE) } else if (v is ImageView) v.setColorFilter(Color.WHITE)
             }
         }
-        listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnFecharPlayer, btnPlayPauseIcon, btnPrev, btnNext, btnCatPrev, btnCatNext).forEach { it.setOnFocusChangeListener(listenerCor) }
+        listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnPlayPauseIcon, btnPrev, btnNext, btnCatPrev, btnCatNext).forEach { it.setOnFocusChangeListener(listenerCor) }
 
-        btnFecharPlayer.setOnClickListener { finish() }
         btnPlayPauseIcon.setOnClickListener { exoPlayer?.let { it.playWhenReady = !it.playWhenReady } }
-        btnPrev.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("-10s") }
-        btnNext.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s") }
+        btnPrev.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition - 20000) }; mostrarAvisoTempo("-20s") }
+        btnNext.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition + 20000) }; mostrarAvisoTempo("+20s") }
         btnAjustar.setOnClickListener { isFit = true; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT; btnAjustar.setTextColor(Color.parseColor("#ffcc00")); btnEsticar.setTextColor(Color.WHITE) }
         btnEsticar.setOnClickListener { isFit = false; playerView.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL; btnEsticar.setTextColor(Color.parseColor("#ffcc00")); btnAjustar.setTextColor(Color.WHITE) }
         
@@ -160,11 +160,30 @@ class PlayerActivity : FragmentActivity() {
         } else {
             todosCanaisDoServidor.filter { it.category_name == cat }
         }
+        canaisDaPastaAtual = fatiado
         rvPlaylist.adapter = PlaylistAdapter(fatiado)
     }
 
+    private fun mudarCanalLive(step: Int) {
+        if (canaisDaPastaAtual.isEmpty()) return
+        var idx = canaisDaPastaAtual.indexOfFirst { it.stream_id == currentStreamId }
+        if (idx == -1) idx = 0
+        idx += step
+        if (idx >= canaisDaPastaAtual.size) idx = 0
+        if (idx < 0) idx = canaisDaPastaAtual.size - 1
+
+        val proximoCanal = canaisDaPastaAtual[idx]
+        currentStreamId = proximoCanal.stream_id
+        currentTitle = proximoCanal.name
+        findViewById<TextView>(R.id.txtPlayerTitulo).text = currentTitle
+        findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Sintonizando..."
+        
+        iniciarVideoExoPlayer()
+        carregarDadosEmPlanoDeFundo()
+    }
+
     private fun carregarDadosEmPlanoDeFundo() {
-        CoroutineScope(Dispatchers.IO).launch {
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val api = XtreamClient.create(urlServ)
                 if (todosCanaisDoServidor.isEmpty()) {
@@ -241,17 +260,43 @@ class PlayerActivity : FragmentActivity() {
     private fun formatarTempo(ms: Long): String { val tSec = ms / 1000; return String.format("%02d:%02d", tSec / 60, tSec % 60) }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        // Se a Playlist ou EPG estiverem abertos, feche-os.
         if (panelPlaylist.visibility == View.VISIBLE || panelEpg.visibility == View.VISIBLE) {
-            if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) { panelPlaylist.visibility = View.GONE; panelEpg.visibility = View.GONE; mostrarControles(); return true }
+            if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) { 
+                panelPlaylist.visibility = View.GONE
+                panelEpg.visibility = View.GONE
+                mostrarControles()
+                return true 
+            }
             return super.onKeyDown(keyCode, event)
         }
-        mostrarControles(); esconderControlesAposDelay()
+
+        mostrarControles()
+        esconderControlesAposDelay()
+
+        // Controles Universais
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { exoPlayer?.let { it.playWhenReady = !it.playWhenReady }; return true }
-            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { exoPlayer?.let { it.seekTo(it.currentPosition - 10000) }; mostrarAvisoTempo("-10s"); return true }
-            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { exoPlayer?.let { it.seekTo(it.currentPosition + 10000) }; mostrarAvisoTempo("+10s"); return true }
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> { if (isOverlayVisible) finish() else mostrarControles(); return true }
         }
+
+        // Lógica Dedicada por Tipo de Mídia
+        if (currentType == "live") {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_RIGHT -> { mudarCanalLive(1); return true }
+                KeyEvent.KEYCODE_DPAD_LEFT -> { mudarCanalLive(-1); return true }
+                KeyEvent.KEYCODE_DPAD_UP -> { btnModalEpg.performClick(); return true }
+                KeyEvent.KEYCODE_DPAD_DOWN -> { btnModalPlaylist.performClick(); return true }
+            }
+        } else {
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { exoPlayer?.let { it.seekTo(it.currentPosition + 20000) }; mostrarAvisoTempo("+20s"); return true }
+                KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { exoPlayer?.let { it.seekTo(it.currentPosition - 20000) }; mostrarAvisoTempo("-20s"); return true }
+                KeyEvent.KEYCODE_DPAD_UP -> { btnModalPlaylist.performClick(); return true }
+                KeyEvent.KEYCODE_DPAD_DOWN -> { return true } // Não faz nada
+            }
+        }
+
         return super.onKeyDown(keyCode, event)
     }
 
@@ -276,11 +321,7 @@ class PlayerActivity : FragmentActivity() {
         override fun onBindViewHolder(holder: Holder, position: Int) { 
             val c = lista[position]; holder.txtNome.text = c.name; 
             if (!c.stream_icon.isNullOrEmpty()) {
-                Glide.with(holder.itemView.context)
-                    .load(c.stream_icon)
-                    .override(200, 200) 
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .into(holder.imgLogo) 
+                Glide.with(holder.itemView.context).load(c.stream_icon).override(200, 200).diskCacheStrategy(DiskCacheStrategy.ALL).into(holder.imgLogo) 
             } else {
                 holder.imgLogo.setImageDrawable(null) 
             }
