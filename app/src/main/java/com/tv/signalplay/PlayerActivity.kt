@@ -18,7 +18,6 @@ import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -30,6 +29,7 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -164,8 +164,7 @@ class PlayerActivity : FragmentActivity() {
     }
 
     private fun carregarDadosEmPlanoDeFundo() {
-        // Trocado para lifecycleScope
-        lifecycleScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
                 if (todosCanaisDoServidor.isEmpty()) {
@@ -279,7 +278,7 @@ class PlayerActivity : FragmentActivity() {
             if (!c.stream_icon.isNullOrEmpty()) {
                 Glide.with(holder.itemView.context)
                     .load(c.stream_icon)
-                    .override(200, 200) // TV mais leve
+                    .override(200, 200) 
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .into(holder.imgLogo) 
             } else {
