@@ -34,7 +34,7 @@ data class ItemCatalogo(
     val titulo: String,
     val capa: String?,
     val tipo: String, 
-    val categoria: String = "Outros", // Adicionado para corrigir a Playlist do Player!
+    val categoria: String = "Outros", 
     val isTop10: Boolean = false,
     val rankIndex: Int = 0,
     val tempoAtual: Long = 0L,
@@ -230,8 +230,6 @@ class MainActivity : FragmentActivity() {
 
         val favsListJson = prefs.getString("favoritos_tv", "[]")
         val idsFavoritos: List<String> = try { Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
-        
-        // SOLUÇÃO DO PLAYER: Passando "Favoritos" para a variável de Categoria!
         val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }.map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "live", "Favoritos") }
         if(canaisFavoritos.isNotEmpty()) injetarTrilho(container, "Canais Favoritos", canaisFavoritos)
 
@@ -250,14 +248,22 @@ class MainActivity : FragmentActivity() {
 
     private fun renderizarAbaFilmes() { 
         val container = findViewById<LinearLayout>(R.id.containerTrilhos); container.removeAllViews()
-        if (masterFilmes.isNotEmpty()) setHeroBanner(masterFilmes[0].name, masterFilmes[0].stream_icon, masterFilmes[0].stream_id, false)
+        // Banner Rotativo em Filmes
+        if (masterFilmes.isNotEmpty()) {
+            val filmeAleatorio = masterFilmes.random()
+            setHeroBanner(filmeAleatorio.name, filmeAleatorio.stream_icon, filmeAleatorio.stream_id, false)
+        }
         val categorias = masterFilmes.groupBy { it.category_name ?: "Outros" }
         for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", catNome) }) } 
     }
 
     private fun renderizarAbaSeries() { 
         val container = findViewById<LinearLayout>(R.id.containerTrilhos); container.removeAllViews()
-        if (masterSeries.isNotEmpty()) setHeroBanner(masterSeries[0].name, masterSeries[0].cover, masterSeries[0].series_id, true)
+        // Banner Rotativo em Séries
+        if (masterSeries.isNotEmpty()) {
+            val serieAleatoria = masterSeries.random()
+            setHeroBanner(serieAleatoria.name, serieAleatoria.cover, serieAleatoria.series_id, true)
+        }
         val categorias = masterSeries.groupBy { it.category_name ?: "Outros" }
         for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series", catNome) }) } 
     }
@@ -292,7 +298,6 @@ class MainActivity : FragmentActivity() {
             val intent = Intent(this, PlayerActivity::class.java)
             intent.putExtra("URL", urlServ); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass)
             intent.putExtra("STREAM_ID", id); intent.putExtra("TYPE", "live"); intent.putExtra("TITLE", tituloCanal)
-            // Agora avisamos pro PlayerActivity que viemos de Favoritos
             intent.putExtra("CATEGORY_CONTEXT", categoria)
             startActivity(intent)
         } else {
@@ -366,8 +371,40 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            // O Clique agora envia a categoria (Avisando que é de Favoritos, Filmes, etc)
+            // Controle Visual da Estrela (Apenas para Canais na Home)
+            val iconFav = h.view.findViewById<TextView>(R.id.iconFavStar)
+            if (iconFav != null) {
+                if (item.tipo == "live") {
+                    iconFav.visibility = View.VISIBLE
+                    val prefs = h.view.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                    val favs: List<String> = try { Gson().fromJson(prefs.getString("favoritos_tv", "[]"), object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
+                    iconFav.alpha = if (favs.contains(item.id.toString())) 1.0f else 0.2f
+                } else {
+                    iconFav.visibility = View.GONE
+                }
+            }
+
             h.view.setOnClickListener { abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria) }
+
+            // Long Click também funciona na Home
+            h.view.setOnLongClickListener {
+                if (item.tipo == "live") {
+                    val prefs = h.view.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                    val favs: MutableList<String> = try { Gson().fromJson(prefs.getString("favoritos_tv", "[]"), object : TypeToken<MutableList<String>>(){}.type) ?: mutableListOf() } catch (e: Exception) { mutableListOf() }
+                    val stringId = item.id.toString()
+                    if (favs.contains(stringId)) {
+                        favs.remove(stringId)
+                        iconFav?.alpha = 0.2f
+                        Toast.makeText(h.view.context, "Removido dos favoritos", Toast.LENGTH_SHORT).show()
+                    } else {
+                        favs.add(stringId)
+                        iconFav?.alpha = 1.0f
+                        Toast.makeText(h.view.context, "Salvo nos favoritos", Toast.LENGTH_SHORT).show()
+                    }
+                    prefs.edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
+                }
+                true
+            }
         }
 
         override fun getItemCount() = lista.size
