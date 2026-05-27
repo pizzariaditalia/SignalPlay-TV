@@ -18,13 +18,13 @@
         android:paddingEnd="40dp"
         android:gravity="center_vertical">
 
-        <ImageView android:id="@+id/navSearch" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_search" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="true" android:padding="4dp"/>
-        <TextView android:id="@+id/navInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
-        <TextView android:id="@+id/navCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
-        <TextView android:id="@+id/navFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_marginEnd="15dp"/>
-        <TextView android:id="@+id/navSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="true" android:padding="10dp" android:layout_weight="1"/>
+        <ImageView android:id="@+id/navSearch" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_search" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="false" android:padding="4dp"/>
+        <TextView android:id="@+id/navInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+        <TextView android:id="@+id/navCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+        <TextView android:id="@+id/navFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+        <TextView android:id="@+id/navSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_weight="1"/>
         
-        <TextView android:id="@+id/navPerfil" android:layout_width="45dp" android:layout_height="45dp" android:text="BR" android:textColor="#000000" android:textSize="16sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:focusableInTouchMode="true"/>
+        <TextView android:id="@+id/navPerfil" android:layout_width="45dp" android:layout_height="45dp" android:text="BR" android:textColor="#000000" android:textSize="16sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:focusableInTouchMode="false"/>
     </LinearLayout>
 
     <ScrollView android:layout_width="match_parent" android:layout_height="match_parent" android:layout_below="@id/menuTopo" android:clipChildren="false" android:clipToPadding="false" android:scrollbars="none">
@@ -33,7 +33,7 @@
                 <TextView android:id="@+id/badgeDestaque" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="EM DESTAQUE" android:textColor="#FFFFFF" android:textSize="10sp" android:textStyle="bold" android:background="#444455" android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:layout_marginBottom="10dp" android:visibility="invisible"/>
                 <TextView android:id="@+id/txtTituloDestaque" android:layout_width="600dp" android:layout_height="wrap_content" android:text="" android:textColor="#FFFFFF" android:textSize="48sp" android:textStyle="bold" android:lineSpacingExtra="-5dp" android:layout_marginBottom="10dp"/>
                 <TextView android:id="@+id/txtDescDestaque" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="" android:textColor="#CCCCCC" android:textSize="16sp" android:layout_marginBottom="35dp"/>
-                <Button android:id="@+id/btnAssistirDestaque" android:layout_width="200dp" android:layout_height="60dp" android:text="▶ Assistir" android:textColor="#000000" android:textSize="18sp" android:textStyle="bold" android:background="@drawable/bg_botao_branco" android:focusable="true" android:focusableInTouchMode="true" android:visibility="invisible"/>
+                <Button android:id="@+id/btnAssistirDestaque" android:layout_width="200dp" android:layout_height="60dp" android:text="▶ Assistir" android:textColor="#000000" android:textSize="18sp" android:textStyle="bold" android:background="@drawable/bg_botao_branco" android:focusable="true" android:focusableInTouchMode="false" android:visibility="invisible"/>
             </LinearLayout>
             <LinearLayout android:id="@+id/containerTrilhos" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:clipChildren="false" android:clipToPadding="false" android:layout_marginTop="-80dp" android:paddingBottom="50dp"/>
         </LinearLayout>
@@ -65,7 +65,8 @@
                 android:textColor="#FFFFFF"
                 android:textSize="16sp"
                 android:background="@android:color/transparent"
-                android:focusable="true"/>
+                android:focusable="true"
+                android:focusableInTouchMode="false"/>
 
             <TextView
                 android:id="@+id/txtModalAvatar"
@@ -80,13 +81,6 @@
                 android:layout_marginTop="-20dp"
                 android:layout_marginBottom="10dp"/>
 
-            <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginBottom="15dp">
-                <TextView android:id="@+id/avatarColor1" android:layout_width="25dp" android:layout_height="25dp" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:layout_marginEnd="10dp"/>
-                <TextView android:id="@+id/avatarColor2" android:layout_width="25dp" android:layout_height="25dp" android:background="#ff4757" android:focusable="true" android:layout_marginEnd="10dp"/>
-                <TextView android:id="@+id/avatarColor3" android:layout_width="25dp" android:layout_height="25dp" android:background="#2ed573" android:focusable="true" android:layout_marginEnd="10dp"/>
-                <TextView android:id="@+id/avatarColor4" android:layout_width="25dp" android:layout_height="25dp" android:background="#1e90ff" android:focusable="true"/>
-            </LinearLayout>
-
             <TextView
                 android:id="@+id/txtModalNome"
                 android:layout_width="wrap_content"
@@ -97,6 +91,7 @@
                 android:textStyle="bold"/>
 
             <TextView
+                android:id="@+id/txtStatusConta"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="CONTA ATIVA"
@@ -109,41 +104,84 @@
                 android:paddingBottom="4dp"
                 android:background="@drawable/bg_badge_ativo"
                 android:layout_marginTop="5dp"
-                android:layout_marginBottom="25dp"/>
+                android:layout_marginBottom="15dp"/>
 
-            <LinearLayout android:id="@+id/btnModalParental" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:padding="12dp" android:background="@drawable/bg_config_item">
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:background="#1A000000"
+                android:padding="10dp"
+                android:gravity="center"
+                android:layout_marginBottom="25dp">
+                
+                <TextView
+                    android:id="@+id/txtModalVencimento"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Vencimento: --/--/----"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="15dp"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="|"
+                    android:textColor="#4DFFFFFF"
+                    android:layout_marginEnd="15dp"/>
+                <TextView
+                    android:id="@+id/txtModalTelas"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Telas: 1 / Ilimitado"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"/>
+            </LinearLayout>
+
+            <LinearLayout android:id="@+id/btnModalParental" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:focusableInTouchMode="false" android:padding="12dp" android:background="@drawable/bg_config_item">
                 <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Controle Parental" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar conteúdo adulto (+18)" android:textColor="#8e8e93" android:textSize="11sp"/>
                 </LinearLayout>
-                <TextView android:id="@+id/txtStatusParental" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="DESLIGADO" android:textColor="#ff4757" android:textSize="12sp" android:textStyle="bold" android:layout_gravity="center_vertical"/>
+                
+                <Switch
+                    android:id="@+id/switchParental"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:clickable="false"
+                    android:focusable="false"
+                    android:thumbTint="@color/accent_yellow"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnModalLimparHist" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:padding="12dp" android:background="@drawable/bg_config_item" android:layout_marginTop="5dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <LinearLayout android:id="@+id/btnModalLimparHist" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:focusableInTouchMode="false" android:padding="12dp" android:background="@drawable/bg_config_item" android:layout_marginTop="5dp">
+                <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Limpar Histórico" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zerar 'Continuar Assistindo'" android:textColor="#8e8e93" android:textSize="11sp"/>
                 </LinearLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="🗑️" android:textColor="#8e8e93" android:textSize="14sp" android:layout_gravity="center_vertical"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnModalLimparFavs" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:padding="12dp" android:background="@drawable/bg_config_item" android:layout_marginTop="5dp">
-                <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical">
+            <LinearLayout android:id="@+id/btnModalLimparFavs" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:focusableInTouchMode="false" android:padding="12dp" android:background="@drawable/bg_config_item" android:layout_marginTop="5dp">
+                <LinearLayout android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zerar Favoritos" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Remover canais salvos" android:textColor="#8e8e93" android:textSize="11sp"/>
                 </LinearLayout>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⭐" android:textColor="#8e8e93" android:textSize="14sp" android:layout_gravity="center_vertical"/>
             </LinearLayout>
 
             <Button
                 android:id="@+id/btnModalUpdateEpg"
                 android:layout_width="match_parent"
                 android:layout_height="50dp"
-                android:text="🔄 Atualizar Guia de TV (XMLTV)"
-                android:textColor="@color/accent_yellow"
+                android:text="🔄 Atualizar Guia de TV (EPG)"
+                android:textColor="#000000"
                 android:textSize="14sp"
                 android:textStyle="bold"
-                android:background="@drawable/bg_config_item"
-                android:layout_marginTop="10dp"
-                android:focusable="true"/>
+                android:background="@drawable/bg_btn_yellow"
+                android:layout_marginTop="15dp"
+                android:focusable="true"
+                android:focusableInTouchMode="false"/>
 
             <Button
                 android:id="@+id/btnModalLogout"
@@ -154,8 +192,9 @@
                 android:textSize="14sp"
                 android:textStyle="bold"
                 android:background="@drawable/bg_btn_logout"
-                android:layout_marginTop="20dp"
-                android:focusable="true"/>
+                android:layout_marginTop="15dp"
+                android:focusable="true"
+                android:focusableInTouchMode="false"/>
         </LinearLayout>
     </RelativeLayout>
 </RelativeLayout>
