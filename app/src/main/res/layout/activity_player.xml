@@ -33,7 +33,6 @@
             android:padding="25dp">
             <TextView android:id="@+id/txtPlayerTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentStart="true" android:text="Carregando..." android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
             <TextView android:id="@+id/txtOsdEpgAtual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_below="@id/txtPlayerTitulo" android:text="" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
-            <Button android:id="@+id/btnFecharPlayer" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_alignParentEnd="true" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:text="FECHAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
         </RelativeLayout>
 
         <LinearLayout 
@@ -81,5 +80,5 @@
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvEpg" android:layout_width="match_parent" android:layout_height="match_parent"/>
     </LinearLayout>
     
-    <TextView android:id="@+id/txtFeedbackAvanco" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" android:text="+10s" android:textColor="#ffcc00" android:textSize="24sp" android:textStyle="bold" android:visibility="gone"/>
+    <TextView android:id="@+id/txtFeedbackAvanco" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" android:text="+20s" android:textColor="#ffcc00" android:textSize="24sp" android:textStyle="bold" android:visibility="gone"/>
 </RelativeLayout>
