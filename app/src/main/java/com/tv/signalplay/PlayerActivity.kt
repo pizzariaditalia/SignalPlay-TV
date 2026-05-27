@@ -18,9 +18,11 @@ import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
+import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
@@ -28,7 +30,6 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -146,7 +147,6 @@ class PlayerActivity : FragmentActivity() {
         btnModalPlaylist.setOnClickListener { controlsOverlay.visibility = View.GONE; panelEpg.visibility = View.GONE; panelPlaylist.visibility = View.VISIBLE; rvPlaylist.requestFocus() }
         btnModalEpg.setOnClickListener { controlsOverlay.visibility = View.GONE; panelPlaylist.visibility = View.GONE; panelEpg.visibility = View.VISIBLE; rvEpg.requestFocus() }
 
-        // MUDANÇA DE CATEGORIA NA PLAYLIST
         btnCatPrev.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex--; if(currentCatIndex < 0) currentCatIndex = categoryList.size - 1; atualizarListaCategoria() } }
         btnCatNext.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex++; if(currentCatIndex >= categoryList.size) currentCatIndex = 0; atualizarListaCategoria() } }
     }
@@ -164,7 +164,8 @@ class PlayerActivity : FragmentActivity() {
     }
 
     private fun carregarDadosEmPlanoDeFundo() {
-        CoroutineScope(Dispatchers.IO).launch {
+        // Trocado para lifecycleScope
+        lifecycleScope.launch(Dispatchers.IO) {
             try {
                 val api = XtreamClient.create(urlServ)
                 if (todosCanaisDoServidor.isEmpty()) {
@@ -191,7 +192,6 @@ class PlayerActivity : FragmentActivity() {
                     atualizarListaCategoria()
                 }
 
-                // EPG INTELIGENTE: Tenta API, se falhar ou vazio, lê do ficheiro XMLTV offline
                 val respEpg = api.getShortEpg(xtUser, xtPass, id = currentStreamId)
                 var encontrouEpg = false
                 try {
@@ -207,7 +207,6 @@ class PlayerActivity : FragmentActivity() {
                     }
                 } catch (e: Exception) {}
 
-                // LEITURA OFFLINE DO XMLTV SE A API FALHOU
                 if (!encontrouEpg) {
                     val file = java.io.File(filesDir, "epg_offline.json")
                     if (file.exists()) {
@@ -267,19 +266,38 @@ class PlayerActivity : FragmentActivity() {
         inner class Holder(view: View) : RecyclerView.ViewHolder(view) {
             val txtNome: TextView = view.findViewById(R.id.txtNomeCanalLista); val imgLogo: ImageView = view.findViewById(R.id.imgLogoCanalLista)
             init {
+                view.isFocusable = true
+                view.isFocusableInTouchMode = false
                 view.setOnFocusChangeListener { v, focus -> if(focus) { v.setBackgroundColor(Color.parseColor("#33FFFFFF")); v.animate().scaleX(1.03f).start() } else { v.setBackgroundResource(R.drawable.bg_card_premium_normal); v.animate().scaleX(1.0f).start() } }
                 view.setOnClickListener { val c = lista[bindingAdapterPosition]; currentStreamId = c.stream_id; currentTitle = c.name; findViewById<TextView>(R.id.txtPlayerTitulo).text = currentTitle; findViewById<TextView>(R.id.txtOsdEpgAtual).text = "Sintonizando..."; panelPlaylist.visibility = View.GONE; mostrarControles(); iniciarVideoExoPlayer(); carregarDadosEmPlanoDeFundo() }
             }
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_player_playlist, parent, false))
-        override fun onBindViewHolder(holder: Holder, position: Int) { val c = lista[position]; holder.txtNome.text = c.name; if (!c.stream_icon.isNullOrEmpty()) Glide.with(holder.itemView.context).load(c.stream_icon).into(holder.imgLogo) else holder.imgLogo.setImageDrawable(null) }
+        
+        override fun onBindViewHolder(holder: Holder, position: Int) { 
+            val c = lista[position]; holder.txtNome.text = c.name; 
+            if (!c.stream_icon.isNullOrEmpty()) {
+                Glide.with(holder.itemView.context)
+                    .load(c.stream_icon)
+                    .override(200, 200) // TV mais leve
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .into(holder.imgLogo) 
+            } else {
+                holder.imgLogo.setImageDrawable(null) 
+            }
+        }
+        
         override fun getItemCount() = lista.size
     }
 
     inner class EpgAdapter(private val lista: List<XtreamEpgListing>) : RecyclerView.Adapter<EpgAdapter.Holder>() {
         inner class Holder(view: View) : RecyclerView.ViewHolder(view) {
             val txtTitulo: TextView = view.findViewById(R.id.txtEpgTituloLista); val txtHora: TextView = view.findViewById(R.id.txtEpgHorarioLista)
-            init { view.setOnFocusChangeListener { v, focus -> if(focus) v.setBackgroundColor(Color.parseColor("#33FFFFFF")) else v.setBackgroundResource(R.drawable.bg_card_premium_normal) } }
+            init { 
+                view.isFocusable = true
+                view.isFocusableInTouchMode = false
+                view.setOnFocusChangeListener { v, focus -> if(focus) v.setBackgroundColor(Color.parseColor("#33FFFFFF")) else v.setBackgroundResource(R.drawable.bg_card_premium_normal) } 
+            }
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int) = Holder(LayoutInflater.from(parent.context).inflate(R.layout.item_player_epg, parent, false))
         override fun onBindViewHolder(holder: Holder, position: Int) { val e = lista[position]; holder.txtTitulo.text = decodificarBase64(e.title); val fI = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()); val fO = SimpleDateFormat("HH:mm", Locale.getDefault()); try { val st = fI.parse(e.start_timestamp ?: ""); val en = fI.parse(e.stop_timestamp ?: ""); if(st != null && en != null) holder.txtHora.text = "${fO.format(st)} - ${fO.format(en)}" } catch(ex: Exception) { try { val dF = java.util.Date((e.start_timestamp?.toLong() ?: 0L) * 1000); val dT = java.util.Date((e.stop_timestamp?.toLong() ?: 0L) * 1000); holder.txtHora.text = "${fO.format(dF)} - ${fO.format(dT)}" } catch(e2: Exception){} } }
