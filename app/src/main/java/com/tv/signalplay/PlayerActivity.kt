@@ -18,7 +18,6 @@ import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -30,6 +29,7 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -183,7 +183,7 @@ class PlayerActivity : FragmentActivity() {
     }
 
     private fun carregarDadosEmPlanoDeFundo() {
-        lifecycleScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
                 if (todosCanaisDoServidor.isEmpty()) {
@@ -293,7 +293,7 @@ class PlayerActivity : FragmentActivity() {
                 KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_MEDIA_FAST_FORWARD -> { exoPlayer?.let { it.seekTo(it.currentPosition + 20000) }; mostrarAvisoTempo("+20s"); return true }
                 KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_MEDIA_REWIND -> { exoPlayer?.let { it.seekTo(it.currentPosition - 20000) }; mostrarAvisoTempo("-20s"); return true }
                 KeyEvent.KEYCODE_DPAD_UP -> { btnModalPlaylist.performClick(); return true }
-                KeyEvent.KEYCODE_DPAD_DOWN -> { return true } // Não faz nada
+                KeyEvent.KEYCODE_DPAD_DOWN -> { return true } 
             }
         }
 
