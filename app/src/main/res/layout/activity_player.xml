@@ -33,7 +33,7 @@
             android:padding="25dp">
             <TextView android:id="@+id/txtPlayerTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentStart="true" android:text="Carregando..." android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" />
             <TextView android:id="@+id/txtOsdEpgAtual" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_below="@id/txtPlayerTitulo" android:text="" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
-            <Button android:id="@+id/btnFecharPlayer" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_alignParentEnd="true" android:background="@android:color/transparent" android:focusable="true" android:text="FECHAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+            <Button android:id="@+id/btnFecharPlayer" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_alignParentEnd="true" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:text="FECHAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
         </RelativeLayout>
 
         <LinearLayout 
@@ -51,17 +51,17 @@
 
             <RelativeLayout android:layout_width="match_parent" android:layout_height="wrap_content">
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_alignParentStart="true" android:orientation="horizontal">
-                    <ImageView android:id="@+id/btnPrev" android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_media_previous" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:padding="5dp"/>
-                    <ImageView android:id="@+id/btnPlayPauseIcon" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:src="@android:drawable/ic_media_pause" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:padding="5dp"/>
-                    <ImageView android:id="@+id/btnNext" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:src="@android:drawable/ic_media_next" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:padding="5dp"/>
+                    <ImageView android:id="@+id/btnPrev" android:layout_width="40dp" android:layout_height="40dp" android:src="@android:drawable/ic_media_previous" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:padding="5dp"/>
+                    <ImageView android:id="@+id/btnPlayPauseIcon" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:src="@android:drawable/ic_media_pause" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:padding="5dp"/>
+                    <ImageView android:id="@+id/btnNext" android:layout_width="40dp" android:layout_height="40dp" android:layout_marginStart="15dp" android:src="@android:drawable/ic_media_next" android:tint="#FFFFFF" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:padding="5dp"/>
                 </LinearLayout>
 
                 <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_centerInParent="true" android:orientation="horizontal">
-                    <Button android:id="@+id/btnModalEpg" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="EPG" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
-                    <Button android:id="@+id/btnModalPlaylist" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="PLAYLIST" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnModalEpg" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:text="EPG" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnModalPlaylist" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:text="PLAYLIST" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_vertical" android:layout_marginStart="15dp" android:layout_marginEnd="15dp" android:text="|" android:textColor="#444455" />
-                    <Button android:id="@+id/btnAjustar" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:text="AJUSTAR" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
-                    <Button android:id="@+id/btnEsticar" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:text="ESTICAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnAjustar" android:layout_width="wrap_content" android:layout_height="40dp" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:text="AJUSTAR" android:textColor="#ffcc00" android:textSize="14sp" android:textStyle="bold" />
+                    <Button android:id="@+id/btnEsticar" android:layout_width="wrap_content" android:layout_height="40dp" android:layout_marginStart="15dp" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false" android:text="ESTICAR" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" />
                 </LinearLayout>
             </RelativeLayout>
         </LinearLayout>
@@ -69,9 +69,9 @@
 
     <LinearLayout android:id="@+id/panelPlaylist" android:layout_width="350dp" android:layout_height="match_parent" android:layout_alignParentEnd="true" android:background="#EE111114" android:orientation="vertical" android:padding="20dp" android:visibility="gone" android:elevation="10dp">
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginBottom="15dp" android:background="#66000000" android:padding="5dp" android:elevation="2dp">
-            <Button android:id="@+id/btnCatPrev" android:layout_width="40dp" android:layout_height="40dp" android:text="&lt;" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true"/>
+            <Button android:id="@+id/btnCatPrev" android:layout_width="40dp" android:layout_height="40dp" android:text="&lt;" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false"/>
             <TextView android:id="@+id/txtCatAtual" android:layout_width="0dp" android:layout_weight="1" android:layout_height="wrap_content" android:text="Categoria" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:textAlignment="center" android:maxLines="1" android:ellipsize="end"/>
-            <Button android:id="@+id/btnCatNext" android:layout_width="40dp" android:layout_height="40dp" android:text="&gt;" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true"/>
+            <Button android:id="@+id/btnCatNext" android:layout_width="40dp" android:layout_height="40dp" android:text="&gt;" android:textColor="#ffcc00" android:textSize="18sp" android:textStyle="bold" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false"/>
         </LinearLayout>
         <androidx.recyclerview.widget.RecyclerView android:id="@+id/rvPlaylist" android:layout_width="match_parent" android:layout_height="match_parent"/>
     </LinearLayout>
