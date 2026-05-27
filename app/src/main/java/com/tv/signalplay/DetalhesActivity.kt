@@ -7,11 +7,11 @@ import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -45,7 +45,6 @@ class DetalhesActivity : FragmentActivity() {
             if (positionToResume > 5000L) btnAssistir.text = "▶ CONTINUAR ASSISTINDO"
         }
 
-        // Foco dos Botões
         listOf(btnAssistir, btnVoltar).forEach { btn ->
             btn.isFocusableInTouchMode = false
             btn.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.05f).start() else v.animate().scaleX(1.0f).start() }
@@ -64,7 +63,7 @@ class DetalhesActivity : FragmentActivity() {
     }
 
     private fun carregarSinopse(url: String, user: String, pass: String, id: Int, isSeries: Boolean) {
-        lifecycleScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(url)
                 val response = if (isSeries) api.getSeriesInfo(user, pass, id = id) else api.getVodInfo(user, pass, id = id)
