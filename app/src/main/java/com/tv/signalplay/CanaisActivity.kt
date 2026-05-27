@@ -40,7 +40,9 @@ class CanaisActivity : FragmentActivity() {
 
         recyclerCanais = findViewById(R.id.gridCanais)
         sidebarCategorias = findViewById(R.id.sidebarCategorias)
-        recyclerCanais.layoutManager = GridLayoutManager(this, 5) 
+        
+        // A SOLUÇÃO DO CORTE NO CARD: 4 Colunas dão muito mais espaço lateral e resolvem o esmagamento
+        recyclerCanais.layoutManager = GridLayoutManager(this, 4) 
 
         xtUser = intent.getStringExtra("XTREAM_USER") ?: ""; xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""; urlServ = intent.getStringExtra("URL") ?: ""
         isParentalOn = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).getBoolean("parental_control", false)
@@ -98,7 +100,6 @@ class CanaisActivity : FragmentActivity() {
             sidebarCategorias.addView(btnCat)
         }
         
-        // SOLUÇÃO: Força o carregamento da primeira pasta assim que o menu é montado
         if (chavesOrdenadas.isNotEmpty()) {
             categoriaSelecionada = chavesOrdenadas[0]
             carregarGradeDeCanais(canaisAgrupados[chavesOrdenadas[0]] ?: emptyList())
