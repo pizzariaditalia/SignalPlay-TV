@@ -13,13 +13,13 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.fragment.app.FragmentActivity
-import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -66,8 +66,7 @@ class BuscaActivity : FragmentActivity() {
 
     private fun baixarBasesParaBusca() {
         txtStatus.text = "A carregar bases de dados..."
-        // Trocado para lifecycleScope para evitar Crash se o usuário sair da tela rápido
-        lifecycleScope.launch(Dispatchers.IO) {
+        CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
                 val respVod = api.getVodStreams(xtUser, xtPass)
@@ -111,7 +110,7 @@ class BuscaActivity : FragmentActivity() {
             val txtBadge: TextView = view.findViewById(R.id.txtBadgeTipo)
 
             init {
-                view.isFocusableInTouchMode = false // Proteção contra duplo clique na TV
+                view.isFocusableInTouchMode = false 
                 view.setOnFocusChangeListener { v, focus -> 
                     if(focus) { v.animate().scaleX(1.08f).scaleY(1.08f).start(); v.elevation = 15f } 
                     else { v.animate().scaleX(1.0f).scaleY(1.0f).start(); v.elevation = 0f } 
@@ -144,7 +143,7 @@ class BuscaActivity : FragmentActivity() {
             if (!item.capa.isNullOrEmpty()) {
                 Glide.with(holder.itemView.context)
                     .load(item.capa)
-                    .override(250, 350) // Limite de tamanho para RAM
+                    .override(250, 350)
                     .diskCacheStrategy(DiskCacheStrategy.ALL)
                     .into(holder.imgCapa) 
             } else { 
