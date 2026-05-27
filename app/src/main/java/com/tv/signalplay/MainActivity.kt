@@ -34,6 +34,7 @@ data class ItemCatalogo(
     val titulo: String,
     val capa: String?,
     val tipo: String, 
+    val categoria: String = "Outros", // Adicionado para corrigir a Playlist do Player!
     val isTop10: Boolean = false,
     val rankIndex: Int = 0,
     val tempoAtual: Long = 0L,
@@ -117,7 +118,6 @@ class MainActivity : FragmentActivity() {
         txtNome.text = "Olá, $firebaseUser!"
         avatarPrincipal.text = extrairIniciais(firebaseUser)
         
-        // Puxa as infos do plano (O LoginActivity deve salvar isso no futuro, mas já deixamos a UI lendo)
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val vencimento = prefs.getString("EXP_DATE", "Ilimitado")
         val maxCons = prefs.getString("MAX_CONS", "Ilimitado")
@@ -157,7 +157,6 @@ class MainActivity : FragmentActivity() {
         btnUpdateEpg.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.03f).start() else v.animate().scaleX(1.0f).start() }
         btnUpdateEpg.setOnClickListener {
             Toast.makeText(this, "Atualizando Guia de Programação...", Toast.LENGTH_SHORT).show()
-            // Aqui você poderá chamar a função de baixar EPG
             overlay.visibility = View.GONE
         }
 
@@ -224,26 +223,28 @@ class MainActivity : FragmentActivity() {
         val continuarItens = mutableListOf<ItemCatalogo>()
         for (item in contList) {
             val id = (item["id"] as? Number)?.toInt() ?: 0; val tipo = item["tipo"] as? String ?: ""; val tempo = (item["tempo"] as? Number)?.toLong() ?: 0L; val duracao = (item["duracao"] as? Number)?.toLong() ?: 0L
-            if (tipo == "vod") { masterFilmes.find { it.stream_id == id }?.let { continuarItens.add(ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", tempoAtual = tempo, duracaoTotal = duracao)) } } 
-            else if (tipo == "series") { masterSeries.find { it.series_id == id }?.let { continuarItens.add(ItemCatalogo(it.series_id, it.name, it.cover, "series", tempoAtual = tempo, duracaoTotal = duracao)) } }
+            if (tipo == "vod") { masterFilmes.find { it.stream_id == id }?.let { continuarItens.add(ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", "ContinuarAssistindo", tempoAtual = tempo, duracaoTotal = duracao)) } } 
+            else if (tipo == "series") { masterSeries.find { it.series_id == id }?.let { continuarItens.add(ItemCatalogo(it.series_id, it.name, it.cover, "series", "ContinuarAssistindo", tempoAtual = tempo, duracaoTotal = duracao)) } }
         }
         if (continuarItens.isNotEmpty()) injetarTrilho(container, "Continuar Assistindo", continuarItens)
 
         val favsListJson = prefs.getString("favoritos_tv", "[]")
         val idsFavoritos: List<String> = try { Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
-        val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }.map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "live") }
+        
+        // SOLUÇÃO DO PLAYER: Passando "Favoritos" para a variável de Categoria!
+        val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }.map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "live", "Favoritos") }
         if(canaisFavoritos.isNotEmpty()) injetarTrilho(container, "Canais Favoritos", canaisFavoritos)
 
-        val top10Filmes = masterFilmes.sortedByDescending { it.rating ?: 0.0 }.take(10).mapIndexed { idx, it -> ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", isTop10 = true, rankIndex = idx + 1) }
+        val top10Filmes = masterFilmes.sortedByDescending { it.rating ?: 0.0 }.take(10).mapIndexed { idx, it -> ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", "Outros", isTop10 = true, rankIndex = idx + 1) }
         if(top10Filmes.isNotEmpty()) injetarTrilho(container, "Top 10 Filmes", top10Filmes)
         
-        val ultimosFilmes = masterFilmes.sortedByDescending { it.stream_id }.take(30).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod") }
+        val ultimosFilmes = masterFilmes.sortedByDescending { it.stream_id }.take(30).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", "Outros") }
         if(ultimosFilmes.isNotEmpty()) injetarTrilho(container, "Últimos Filmes Adicionados", ultimosFilmes)
         
-        val top10Series = masterSeries.sortedByDescending { it.rating ?: 0.0 }.take(10).mapIndexed { idx, it -> ItemCatalogo(it.series_id, it.name, it.cover, "series", isTop10 = true, rankIndex = idx + 1) }
+        val top10Series = masterSeries.sortedByDescending { it.rating ?: 0.0 }.take(10).mapIndexed { idx, it -> ItemCatalogo(it.series_id, it.name, it.cover, "series", "Outros", isTop10 = true, rankIndex = idx + 1) }
         if(top10Series.isNotEmpty()) injetarTrilho(container, "Top 10 Séries", top10Series)
         
-        val seriesAlta = masterSeries.sortedByDescending { it.series_id }.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series") }
+        val seriesAlta = masterSeries.sortedByDescending { it.series_id }.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series", "Outros") }
         if(seriesAlta.isNotEmpty()) injetarTrilho(container, "Séries em Alta", seriesAlta)
     }
 
@@ -251,14 +252,14 @@ class MainActivity : FragmentActivity() {
         val container = findViewById<LinearLayout>(R.id.containerTrilhos); container.removeAllViews()
         if (masterFilmes.isNotEmpty()) setHeroBanner(masterFilmes[0].name, masterFilmes[0].stream_icon, masterFilmes[0].stream_id, false)
         val categorias = masterFilmes.groupBy { it.category_name ?: "Outros" }
-        for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod") }) } 
+        for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", catNome) }) } 
     }
 
     private fun renderizarAbaSeries() { 
         val container = findViewById<LinearLayout>(R.id.containerTrilhos); container.removeAllViews()
         if (masterSeries.isNotEmpty()) setHeroBanner(masterSeries[0].name, masterSeries[0].cover, masterSeries[0].series_id, true)
         val categorias = masterSeries.groupBy { it.category_name ?: "Outros" }
-        for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series") }) } 
+        for ((catNome, lista) in categorias) { if(lista.isNotEmpty()) injetarTrilho(container, catNome, lista.take(30).map { ItemCatalogo(it.series_id, it.name, it.cover, "series", catNome) }) } 
     }
 
     private fun injetarTrilho(container: LinearLayout, titulo: String, itens: List<ItemCatalogo>) {
@@ -283,14 +284,16 @@ class MainActivity : FragmentActivity() {
         
         if(imagem != null) Glide.with(this).load(imagem).diskCacheStrategy(DiskCacheStrategy.ALL).into(findViewById<ImageView>(R.id.imgBackgroundDestaque))
         
-        btnAss.setOnClickListener { abrirSinopse(id, isSeries, "vod") }
+        btnAss.setOnClickListener { abrirSinopse(id, isSeries, "vod", titulo, "Outros") }
     }
 
-    private fun abrirSinopse(id: Int, isSeries: Boolean, tipo: String, tituloCanal: String = "") { 
+    private fun abrirSinopse(id: Int, isSeries: Boolean, tipo: String, tituloCanal: String = "", categoria: String = "Outros") { 
         if (tipo == "live") {
             val intent = Intent(this, PlayerActivity::class.java)
             intent.putExtra("URL", urlServ); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass)
             intent.putExtra("STREAM_ID", id); intent.putExtra("TYPE", "live"); intent.putExtra("TITLE", tituloCanal)
+            // Agora avisamos pro PlayerActivity que viemos de Favoritos
+            intent.putExtra("CATEGORY_CONTEXT", categoria)
             startActivity(intent)
         } else {
             val intent = Intent(this, DetalhesActivity::class.java)
@@ -363,7 +366,8 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            h.view.setOnClickListener { abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo) }
+            // O Clique agora envia a categoria (Avisando que é de Favoritos, Filmes, etc)
+            h.view.setOnClickListener { abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria) }
         }
 
         override fun getItemCount() = lista.size
