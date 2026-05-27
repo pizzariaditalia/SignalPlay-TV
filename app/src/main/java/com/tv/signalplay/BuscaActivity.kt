@@ -36,7 +36,9 @@ class BuscaActivity : FragmentActivity() {
     private var todasSeries: List<XtreamSerie> = listOf()
     private var todosCanais: List<XtreamLive> = listOf()
 
-    private var xtUser = ""; private var xtPass = ""; private var urlServ = ""
+    private var xtUser = ""
+    private var xtPass = ""
+    private var urlServ = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +55,9 @@ class BuscaActivity : FragmentActivity() {
         urlServ = intent.getStringExtra("URL") ?: ""
 
         findViewById<Button>(R.id.btnVoltarBusca).setOnClickListener { finish() }
-        findViewById<Button>(R.id.btnVoltarBusca).setOnFocusChangeListener { v, focus -> if(focus) v.animate().scaleX(1.1f).start() else v.animate().scaleX(1.0f).start() }
+        findViewById<Button>(R.id.btnVoltarBusca).setOnFocusChangeListener { v, focus -> 
+            if(focus) v.animate().scaleX(1.1f).start() else v.animate().scaleX(1.0f).start() 
+        }
 
         baixarBasesParaBusca()
 
@@ -104,16 +108,28 @@ class BuscaActivity : FragmentActivity() {
     }
 
     inner class BuscaAdapter(private val lista: List<ResultadoBusca>) : RecyclerView.Adapter<BuscaAdapter.Holder>() {
-        inner class Holder(view: View) : RecyclerView.ViewHolder(view) {
-            val imgCapa: ImageView = view.findViewById(R.id.imgCapaPremium)
-            val txtNome: TextView = view.findViewById(R.id.txtNomePremium)
-            val txtBadge: TextView = view.findViewById(R.id.txtBadgeTipo)
+        
+        inner class Holder(val view: View) : RecyclerView.ViewHolder(view) {
+            // Busca Dinâmica de IDs: Ignora erros de digitação do XML e força a compilação
+            val imgCapa: ImageView? = getDynamicId(view, "imgCapaPremium")
+            val txtNome: TextView? = getDynamicId(view, "txtNomePremium")
+            val txtBadge: TextView? = getDynamicId(view, "txtBadgeTipo")
+
+            private fun <T : View> getDynamicId(v: View, name: String): T? {
+                val resId = v.context.resources.getIdentifier(name, "id", v.context.packageName)
+                return if (resId != 0) v.findViewById(resId) else null
+            }
 
             init {
                 view.isFocusableInTouchMode = false 
                 view.setOnFocusChangeListener { v, focus -> 
-                    if(focus) { v.animate().scaleX(1.08f).scaleY(1.08f).start(); v.elevation = 15f } 
-                    else { v.animate().scaleX(1.0f).scaleY(1.0f).start(); v.elevation = 0f } 
+                    if(focus) { 
+                        v.animate().scaleX(1.08f).scaleY(1.08f).start()
+                        v.elevation = 15f 
+                    } else { 
+                        v.animate().scaleX(1.0f).scaleY(1.0f).start()
+                        v.elevation = 0f 
+                    } 
                 }
                 view.setOnClickListener {
                     val item = lista[bindingAdapterPosition]
@@ -138,24 +154,26 @@ class BuscaActivity : FragmentActivity() {
         
         override fun onBindViewHolder(holder: Holder, position: Int) {
             val item = lista[position]
-            holder.txtNome.text = item.titulo
+            holder.txtNome?.text = item.titulo
             
-            if (!item.capa.isNullOrEmpty()) {
-                Glide.with(holder.itemView.context)
-                    .load(item.capa)
-                    .override(250, 350)
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .into(holder.imgCapa) 
-            } else { 
-                holder.imgCapa.setImageDrawable(null) 
+            holder.imgCapa?.let { img ->
+                if (!item.capa.isNullOrEmpty()) {
+                    Glide.with(holder.itemView.context)
+                        .load(item.capa)
+                        .override(250, 350)
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .into(img) 
+                } else { 
+                    img.setImageDrawable(null) 
+                }
             }
             
-            holder.txtBadge.text = when(item.tipo) {
+            holder.txtBadge?.text = when(item.tipo) {
                 "live" -> "CANAL"
                 "series" -> "SÉRIE"
                 else -> "FILME"
             }
-            holder.txtBadge.setBackgroundColor(when(item.tipo) {
+            holder.txtBadge?.setBackgroundColor(when(item.tipo) {
                 "live" -> Color.parseColor("#1e90ff") 
                 "series" -> Color.parseColor("#2ed573") 
                 else -> Color.parseColor("#E50914") 
