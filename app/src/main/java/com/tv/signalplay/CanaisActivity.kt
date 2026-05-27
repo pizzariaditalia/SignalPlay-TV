@@ -32,7 +32,8 @@ class CanaisActivity : FragmentActivity() {
     private var xtUser = ""; private var xtPass = ""; private var urlServ = ""; private var isParentalOn = false
     private var categoriaSelecionada = "Outros"
 
-    private val ordemFixaMobile = listOf("Jogos de Hoje", "Casa do Patrão", "Canais | Abertos", "Canais | Notícias", "Canais | Globo", "Canais | SBT", "Canais | RecordTV", "Canais | Band", "Canais | Esportes", "Canais | Premiere", "Canais | ESPN", "Canais | SporTV", "Canais | Prime Video", "Canais | Brasileirão", "Canais | MAX", "Canais | DAZN", "Canais | UFC Fight Pass", "Canais | Paramount+", "Canais | Disney+", "Canais | Estaduais", "Canais | Futsal", "Canais | NBA League Pass", "Canais | Legendados", "Canais | Documentários", "Canais | Filmes e Séries", "Canais | Telecine", "Canais | HBO", "Canais | TNT", "Canais | Variedades", "Canais | Religiosos", "Canais | Infantil", "Canais | Diversos", "Canais | Pluto TV", "Canais | Dual Áudio", "Canais | 24h Infantil", "Canais | 24h Variados", "Canais | Cine Bit", "Canais | Adultos", "Canais | HachuTV Adultos", "Canais | Adultos [4K]", "Canais | Dormir e Relaxar", "Vídeos Educativos", "Treinos, Aulas e Receitas", "Câmeras", "Rádios", "Shows", "Outros", "Canais | COMÉDIA")
+    // Pastas antigas removidas da ordem
+    private val ordemFixaMobile = listOf("Canais | Abertos", "Canais | Notícias", "Canais | Globo", "Canais | SBT", "Canais | RecordTV", "Canais | Band", "Canais | Esportes", "Canais | Premiere", "Canais | ESPN", "Canais | SporTV", "Canais | Prime Video", "Canais | Brasileirão", "Canais | MAX", "Canais | DAZN", "Canais | UFC Fight Pass", "Canais | Paramount+", "Canais | Disney+", "Canais | Estaduais", "Canais | Futsal", "Canais | NBA League Pass", "Canais | Legendados", "Canais | Documentários", "Canais | Filmes e Séries", "Canais | Telecine", "Canais | HBO", "Canais | TNT", "Canais | Variedades", "Canais | Religiosos", "Canais | Infantil", "Canais | Diversos", "Canais | Pluto TV", "Canais | Dual Áudio", "Canais | 24h Infantil", "Canais | 24h Variados", "Canais | Cine Bit", "Canais | Adultos", "Canais | HachuTV Adultos", "Canais | Adultos [4K]", "Canais | Dormir e Relaxar", "Vídeos Educativos", "Treinos, Aulas e Receitas", "Câmeras", "Rádios", "Shows", "Outros", "Canais | COMÉDIA")
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +41,6 @@ class CanaisActivity : FragmentActivity() {
 
         recyclerCanais = findViewById(R.id.gridCanais)
         sidebarCategorias = findViewById(R.id.sidebarCategorias)
-        
-        // A SOLUÇÃO DO CORTE NO CARD: 4 Colunas dão muito mais espaço lateral e resolvem o esmagamento
         recyclerCanais.layoutManager = GridLayoutManager(this, 4) 
 
         xtUser = intent.getStringExtra("XTREAM_USER") ?: ""; xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""; urlServ = intent.getStringExtra("URL") ?: ""
@@ -114,6 +113,8 @@ class CanaisActivity : FragmentActivity() {
         inner class CanalViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
             val imgLogo: ImageView = itemView.findViewById(R.id.imgCapaPremium)
             val txtNome: TextView = itemView.findViewById(R.id.txtNomePremium)
+            val iconFav: TextView = itemView.findViewById(R.id.iconFavStar)
+
             init {
                 itemView.isFocusableInTouchMode = false
                 itemView.setOnFocusChangeListener { v, hasFocus -> 
@@ -128,11 +129,21 @@ class CanaisActivity : FragmentActivity() {
                     intentPlayer.putExtra("CATEGORY_CONTEXT", categoriaSelecionada)
                     itemView.context.startActivity(intentPlayer)
                 }
+                
+                // MÁGICA DO FAVORITO AQUI (Long Click acende e apaga a estrela)
                 itemView.setOnLongClickListener {
                     val canal = listaCanais[bindingAdapterPosition]; val prefs = itemView.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                     val favs: MutableList<String> = try { Gson().fromJson(prefs.getString("favoritos_tv", "[]"), object : TypeToken<MutableList<String>>(){}.type) ?: mutableListOf() } catch (e: Exception) { mutableListOf() }
                     val stringId = canal.stream_id.toString()
-                    if(favs.contains(stringId)) { favs.remove(stringId); Toast.makeText(itemView.context, "Canal removido dos favoritos", Toast.LENGTH_SHORT).show() } else { favs.add(stringId); Toast.makeText(itemView.context, "Canal guardado nos favoritos", Toast.LENGTH_SHORT).show() }
+                    if(favs.contains(stringId)) { 
+                        favs.remove(stringId)
+                        iconFav.alpha = 0.2f
+                        Toast.makeText(itemView.context, "Removido dos favoritos", Toast.LENGTH_SHORT).show() 
+                    } else { 
+                        favs.add(stringId)
+                        iconFav.alpha = 1.0f
+                        Toast.makeText(itemView.context, "Salvo nos favoritos", Toast.LENGTH_SHORT).show() 
+                    }
                     prefs.edit().putString("favoritos_tv", Gson().toJson(favs)).apply()
                     true
                 }
@@ -144,6 +155,11 @@ class CanaisActivity : FragmentActivity() {
             val canal = listaCanais[position]
             holder.txtNome.text = canal.name
             holder.txtNome.setTextColor(Color.WHITE)
+            
+            // Verifica o estado visual da estrela ao carregar o card
+            val prefs = holder.itemView.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+            val favs: List<String> = try { Gson().fromJson(prefs.getString("favoritos_tv", "[]"), object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
+            holder.iconFav.alpha = if (favs.contains(canal.stream_id.toString())) 1.0f else 0.2f
             
             if (!canal.stream_icon.isNullOrEmpty()) {
                 Glide.with(holder.itemView.context)
