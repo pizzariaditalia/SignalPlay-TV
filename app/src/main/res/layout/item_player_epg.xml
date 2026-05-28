@@ -4,24 +4,28 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="12dp"
-    android:focusable="true"
-    android:focusableInTouchMode="true"
-    android:background="@drawable/bg_card_premium_normal"
-    android:layout_marginBottom="8dp">
-
-    <TextView
-        android:id="@+id/txtEpgTituloLista"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textColor="#FFFFFF"
-        android:textSize="15sp"
-        android:textStyle="bold"/>
+    android:layout_marginBottom="5dp"
+    android:background="@drawable/bg_tv_card_selector"
+    android:focusable="true">
 
     <TextView
         android:id="@+id/txtEpgHorarioLista"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
+        android:text="14:00 - 15:00"
         android:textColor="#ffcc00"
         android:textSize="12sp"
-        android:layout_marginTop="4dp"/>
+        android:textStyle="bold"
+        android:layout_marginBottom="4dp"/>
+
+    <TextView
+        android:id="@+id/txtEpgTituloLista"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Título do Programa"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:maxLines="2"
+        android:ellipsize="end" />
 </LinearLayout>
