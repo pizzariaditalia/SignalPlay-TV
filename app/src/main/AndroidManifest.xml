@@ -33,35 +33,13 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name=".MainActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SignalPlay" />
-
-        <activity
-            android:name=".BuscaActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SignalPlay" />
-
-        <activity
-            android:name=".CanaisActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SignalPlay" />
-
-        <activity
-            android:name=".DetalhesActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SignalPlay" />
-
-        <activity
-            android:name=".PlayerActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SignalPlay" />
-
-        <activity
-            android:name=".EpgActivity"
-            android:exported="false"
-            android:theme="@style/Theme.SignalPlay" />
+        <activity android:name=".MainActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+        <activity android:name=".BuscaActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+        <activity android:name=".CanaisActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+        <activity android:name=".DetalhesActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+        <activity android:name=".PlayerActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+        
+        <activity android:name=".EpgActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
 
     </application>
 
