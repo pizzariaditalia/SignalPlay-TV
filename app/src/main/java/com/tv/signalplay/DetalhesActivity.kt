@@ -30,7 +30,6 @@ class DetalhesActivity : FragmentActivity() {
     private var videoTitulo = ""
     private var positionToResume = 0L
 
-    // Variáveis para a Série
     private val mapTemporadas = mutableMapOf<String, JsonArray>()
     private lateinit var rvTemporadas: RecyclerView
     private lateinit var rvEpisodios: RecyclerView
@@ -116,7 +115,6 @@ class DetalhesActivity : FragmentActivity() {
                             }
                         }
 
-                        // LÓGICA DAS SÉRIES: Extrai Episódios e Esconde o botão "Assistir"
                         if (isSeries && obj.has("episodes")) {
                             findViewById<Button>(R.id.btnAssistirDetalhes).visibility = View.GONE
                             findViewById<LinearLayout>(R.id.layoutSeriesExtras).visibility = View.VISIBLE
@@ -131,7 +129,6 @@ class DetalhesActivity : FragmentActivity() {
                             val chavesOrdenadas = mapTemporadas.keys.toList()
                             rvTemporadas.adapter = TemporadaAdapter(chavesOrdenadas)
                             
-                            // Força a primeira temporada a abrir por padrão
                             if (chavesOrdenadas.isNotEmpty()) {
                                 carregarEpisodios(chavesOrdenadas[0])
                             }
@@ -149,7 +146,6 @@ class DetalhesActivity : FragmentActivity() {
         }
     }
 
-    // --- ADAPTER DE TEMPORADAS ---
     inner class TemporadaAdapter(private val chaves: List<String>) : RecyclerView.Adapter<TemporadaAdapter.Holder>() {
         inner class Holder(val view: View) : RecyclerView.ViewHolder(view) {
             val txtNome: TextView = view.findViewById(R.id.txtNomeTemporada)
@@ -159,7 +155,6 @@ class DetalhesActivity : FragmentActivity() {
                     if (focus) { 
                         v.animate().scaleX(1.08f).scaleY(1.08f).start()
                         (v.findViewById<TextView>(R.id.txtNomeTemporada)).setTextColor(Color.parseColor("#ffcc00"))
-                        // Ao passar por cima, já atualiza os episódios!
                         carregarEpisodios(chaves[bindingAdapterPosition])
                     } else { 
                         v.animate().scaleX(1.0f).scaleY(1.0f).start()
@@ -174,7 +169,6 @@ class DetalhesActivity : FragmentActivity() {
         override fun getItemCount() = chaves.size
     }
 
-    // --- ADAPTER DE EPISÓDIOS ---
     inner class EpisodioAdapter(private val episodiosArray: JsonArray) : RecyclerView.Adapter<EpisodioAdapter.Holder>() {
         inner class Holder(val view: View) : RecyclerView.ViewHolder(view) {
             val imgCapa: ImageView = view.findViewById(R.id.imgCapaEpisodio)
@@ -195,6 +189,11 @@ class DetalhesActivity : FragmentActivity() {
                         val intentPlayer = Intent(itemView.context, PlayerActivity::class.java)
                         intentPlayer.putExtra("URL", urlServ); intentPlayer.putExtra("XTREAM_USER", xtUser); intentPlayer.putExtra("XTREAM_PASS", xtPass)
                         intentPlayer.putExtra("STREAM_ID", epId); intentPlayer.putExtra("TYPE", "series"); intentPlayer.putExtra("TITLE", epNome); intentPlayer.putExtra("EXTENSION", epExt)
+                        
+                        // O SEGREDO DO AUTOPLAY: Enviamos a lista de episódios da temporada
+                        intentPlayer.putExtra("EPISODES_JSON", episodiosArray.toString())
+                        intentPlayer.putExtra("EP_INDEX", bindingAdapterPosition)
+                        
                         itemView.context.startActivity(intentPlayer)
                     } catch (e: Exception) {}
                 }
