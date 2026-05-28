@@ -33,6 +33,34 @@
                 android:layout_alignBottom="@id/imgBackgroundDestaque"
                 android:background="@drawable/gradient_hero_bottom" />
 
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="120dp"
+                android:layout_alignParentTop="true"
+                android:background="@drawable/gradient_menu_topo" />
+
+            <LinearLayout
+                android:id="@+id/menuTopo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_alignParentTop="true"
+                android:orientation="horizontal"
+                android:paddingTop="30dp"
+                android:paddingStart="40dp"
+                android:paddingEnd="40dp"
+                android:gravity="center_vertical">
+
+                <ImageView android:id="@+id/navSearch" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_search" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="false" android:padding="4dp"/>
+                <TextView android:id="@+id/navInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+                <TextView android:id="@+id/navCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+                <TextView android:id="@+id/navFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+                <TextView android:id="@+id/navSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
+                
+                <TextView android:id="@+id/navGuia" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Guia de TV" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_weight="1"/>
+                
+                <TextView android:id="@+id/navPerfil" android:layout_width="45dp" android:layout_height="45dp" android:text="BR" android:textColor="#000000" android:textSize="16sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:focusableInTouchMode="false"/>
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/boxDestaque"
                 android:layout_width="match_parent"
@@ -70,7 +98,6 @@
         android:background="@color/bg_base">
         
         <View android:layout_width="match_parent" android:layout_height="400dp" android:background="#1A1A24" android:layout_marginBottom="20dp"/>
-        
         <View android:layout_width="200dp" android:layout_height="20dp" android:background="#1A1A24" android:layout_marginStart="50dp" android:layout_marginBottom="15dp"/>
         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:paddingStart="50dp" android:layout_marginBottom="30dp">
             <View android:layout_width="140dp" android:layout_height="210dp" android:background="#1A1A24" android:layout_marginEnd="15dp"/>
@@ -79,32 +106,6 @@
             <View android:layout_width="140dp" android:layout_height="210dp" android:background="#1A1A24" android:layout_marginEnd="15dp"/>
             <View android:layout_width="140dp" android:layout_height="210dp" android:background="#1A1A24" android:layout_marginEnd="15dp"/>
         </LinearLayout>
-    </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="120dp"
-        android:layout_alignParentTop="true"
-        android:background="@drawable/gradient_menu_topo" />
-
-    <LinearLayout
-        android:id="@+id/menuTopo"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
-        android:orientation="horizontal"
-        android:paddingTop="30dp"
-        android:paddingStart="40dp"
-        android:paddingEnd="40dp"
-        android:gravity="center_vertical">
-
-        <ImageView android:id="@+id/navSearch" android:layout_width="32dp" android:layout_height="32dp" android:src="@android:drawable/ic_menu_search" android:layout_marginEnd="20dp" android:focusable="true" android:focusableInTouchMode="false" android:padding="4dp"/>
-        <TextView android:id="@+id/navInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
-        <TextView android:id="@+id/navCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
-        <TextView android:id="@+id/navFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_marginEnd="15dp"/>
-        <TextView android:id="@+id/navSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="@color/text_muted" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:focusableInTouchMode="false" android:padding="10dp" android:layout_weight="1"/>
-        
-        <TextView android:id="@+id/navPerfil" android:layout_width="45dp" android:layout_height="45dp" android:text="BR" android:textColor="#000000" android:textSize="16sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:focusable="true" android:focusableInTouchMode="false"/>
     </LinearLayout>
 
     <RelativeLayout
@@ -124,86 +125,14 @@
             android:padding="35dp"
             android:gravity="center_horizontal">
 
-            <Button
-                android:id="@+id/btnModalFechar"
-                android:layout_width="35dp"
-                android:layout_height="35dp"
-                android:layout_gravity="end"
-                android:text="✕"
-                android:textColor="#FFFFFF"
-                android:textSize="16sp"
-                android:background="@android:color/transparent"
-                android:focusable="true"
-                android:focusableInTouchMode="false"/>
-
-            <TextView
-                android:id="@+id/txtModalAvatar"
-                android:layout_width="80dp"
-                android:layout_height="80dp"
-                android:text="BR"
-                android:textColor="#000000"
-                android:textSize="28sp"
-                android:textStyle="bold"
-                android:gravity="center"
-                android:background="@drawable/bg_perfil_amarelo"
-                android:layout_marginTop="-20dp"
-                android:layout_marginBottom="10dp"/>
-
-            <TextView
-                android:id="@+id/txtModalNome"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Olá, Cliente!"
-                android:textColor="#FFFFFF"
-                android:textSize="22sp"
-                android:textStyle="bold"/>
-
-            <TextView
-                android:id="@+id/txtStatusConta"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="CONTA ATIVA"
-                android:textColor="#2ed573"
-                android:textSize="10sp"
-                android:textStyle="bold"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:paddingTop="4dp"
-                android:paddingBottom="4dp"
-                android:background="@drawable/bg_badge_ativo"
-                android:layout_marginTop="5dp"
-                android:layout_marginBottom="15dp"/>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:background="#1A000000"
-                android:padding="10dp"
-                android:gravity="center"
-                android:layout_marginBottom="25dp">
-                
-                <TextView
-                    android:id="@+id/txtModalVencimento"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Vencimento: --/--/----"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:layout_marginEnd="15dp"/>
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="|"
-                    android:textColor="#4DFFFFFF"
-                    android:layout_marginEnd="15dp"/>
-                <TextView
-                    android:id="@+id/txtModalTelas"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Telas: 1 / Ilimitado"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"/>
+            <Button android:id="@+id/btnModalFechar" android:layout_width="35dp" android:layout_height="35dp" android:layout_gravity="end" android:text="✕" android:textColor="#FFFFFF" android:textSize="16sp" android:background="@android:color/transparent" android:focusable="true" android:focusableInTouchMode="false"/>
+            <TextView android:id="@+id/txtModalAvatar" android:layout_width="80dp" android:layout_height="80dp" android:text="BR" android:textColor="#000000" android:textSize="28sp" android:textStyle="bold" android:gravity="center" android:background="@drawable/bg_perfil_amarelo" android:layout_marginTop="-20dp" android:layout_marginBottom="10dp"/>
+            <TextView android:id="@+id/txtModalNome" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Olá, Cliente!" android:textColor="#FFFFFF" android:textSize="22sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/txtStatusConta" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CONTA ATIVA" android:textColor="#2ed573" android:textSize="10sp" android:textStyle="bold" android:paddingStart="12dp" android:paddingEnd="12dp" android:paddingTop="4dp" android:paddingBottom="4dp" android:background="@drawable/bg_badge_ativo" android:layout_marginTop="5dp" android:layout_marginBottom="15dp"/>
+            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:background="#1A000000" android:padding="10dp" android:gravity="center" android:layout_marginBottom="25dp">
+                <TextView android:id="@+id/txtModalVencimento" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Vencimento: --/--/----" android:textColor="#FFFFFF" android:textSize="12sp" android:layout_marginEnd="15dp"/>
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="|" android:textColor="#4DFFFFFF" android:layout_marginEnd="15dp"/>
+                <TextView android:id="@+id/txtModalTelas" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Telas: 1 / Ilimitado" android:textColor="#FFFFFF" android:textSize="12sp"/>
             </LinearLayout>
 
             <LinearLayout android:id="@+id/btnModalParental" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:focusableInTouchMode="false" android:padding="12dp" android:background="@drawable/bg_config_item">
@@ -211,15 +140,7 @@
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Controle Parental" android:textColor="#FFFFFF" android:textSize="15sp" android:textStyle="bold"/>
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar conteúdo adulto (+18)" android:textColor="#8e8e93" android:textSize="11sp"/>
                 </LinearLayout>
-                
-                <Switch
-                    android:id="@+id/switchParental"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_gravity="center_vertical"
-                    android:clickable="false"
-                    android:focusable="false"
-                    android:thumbTint="@color/accent_yellow"/>
+                <Switch android:id="@+id/switchParental" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_gravity="center_vertical" android:clickable="false" android:focusable="false" android:thumbTint="@color/accent_yellow"/>
             </LinearLayout>
 
             <LinearLayout android:id="@+id/btnModalLimparHist" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:focusable="true" android:focusableInTouchMode="false" android:padding="12dp" android:background="@drawable/bg_config_item" android:layout_marginTop="5dp">
@@ -238,31 +159,8 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⭐" android:textColor="#8e8e93" android:textSize="14sp" android:layout_gravity="center_vertical"/>
             </LinearLayout>
 
-            <Button
-                android:id="@+id/btnModalUpdateEpg"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="🔄 Atualizar Guia de TV (EPG)"
-                android:textColor="#000000"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:background="@drawable/bg_btn_yellow"
-                android:layout_marginTop="15dp"
-                android:focusable="true"
-                android:focusableInTouchMode="false"/>
-
-            <Button
-                android:id="@+id/btnModalLogout"
-                android:layout_width="match_parent"
-                android:layout_height="50dp"
-                android:text="Desconectar Conta"
-                android:textColor="#ff4757"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:background="@drawable/bg_btn_logout"
-                android:layout_marginTop="15dp"
-                android:focusable="true"
-                android:focusableInTouchMode="false"/>
+            <Button android:id="@+id/btnModalUpdateEpg" android:layout_width="match_parent" android:layout_height="50dp" android:text="🔄 Atualizar Guia de TV (EPG)" android:textColor="#000000" android:textSize="14sp" android:textStyle="bold" android:background="@drawable/bg_btn_yellow" android:layout_marginTop="15dp" android:focusable="true" android:focusableInTouchMode="false"/>
+            <Button android:id="@+id/btnModalLogout" android:layout_width="match_parent" android:layout_height="50dp" android:text="Desconectar Conta" android:textColor="#ff4757" android:textSize="14sp" android:textStyle="bold" android:background="@drawable/bg_btn_logout" android:layout_marginTop="15dp" android:focusable="true" android:focusableInTouchMode="false"/>
         </LinearLayout>
     </RelativeLayout>
 </RelativeLayout>
