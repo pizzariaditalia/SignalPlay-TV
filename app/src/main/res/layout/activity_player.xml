@@ -19,6 +19,54 @@
         android:layout_centerInParent="true" 
         android:indeterminateTint="#ffcc00" />
 
+    <LinearLayout
+        android:id="@+id/panelNextEpisode"
+        android:layout_width="320dp"
+        android:layout_height="wrap_content"
+        android:layout_alignParentEnd="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginEnd="40dp"
+        android:layout_marginBottom="120dp"
+        android:background="#E6111114"
+        android:orientation="vertical"
+        android:padding="20dp"
+        android:visibility="gone"
+        android:elevation="20dp">
+        
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="A seguir..."
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="5dp"/>
+            
+        <TextView
+            android:id="@+id/txtNextEpTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Nome do Episódio"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:layout_marginBottom="15dp"/>
+            
+        <Button
+            android:id="@+id/btnAssistirProximo"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:background="@drawable/bg_btn_yellow"
+            android:text="Assistir Agora (15s)"
+            android:textColor="#000000"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:focusable="true"
+            android:focusableInTouchMode="false"/>
+    </LinearLayout>
+
     <RelativeLayout 
         android:id="@+id/controlsOverlay" 
         android:layout_width="match_parent" 
