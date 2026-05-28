@@ -222,7 +222,6 @@ class PlayerActivity : FragmentActivity() {
         btnCatPrev.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex--; if(currentCatIndex < 0) currentCatIndex = categoryList.size - 1; atualizarListaCategoria() } }
         btnCatNext.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex++; if(currentCatIndex >= categoryList.size) currentCatIndex = 0; atualizarListaCategoria() } }
 
-        // MÁGICA: Tema de Diálogo de Alerta NATIVO para contraste perfeito
         btnAudio.setOnClickListener { exoPlayer?.let { player -> TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione o Idioma (Áudio)", player, C.TRACK_TYPE_AUDIO).setTheme(android.R.style.Theme_DeviceDefault_Dialog_Alert).build().show() } }
         btnLegenda.setOnClickListener { exoPlayer?.let { player -> TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione a Legenda", player, C.TRACK_TYPE_TEXT).setTheme(android.R.style.Theme_DeviceDefault_Dialog_Alert).build().show() } }
         
@@ -266,8 +265,6 @@ class PlayerActivity : FragmentActivity() {
             try {
                 val api = XtreamClient.create(urlServ)
                 
-                // MÁGICA: Isolando a requisição dos canais em um bloco protegido,
-                // para que a Playlist seja preenchida mesmo que o Guia EPG dê erro depois!
                 if (todosCanaisDoServidor.isEmpty()) {
                     try {
                         val respCat = api.getLiveCategories(xtUser, xtPass)
@@ -287,6 +284,7 @@ class PlayerActivity : FragmentActivity() {
 
                 withContext(Dispatchers.Main) {
                     val catUnicas = todosCanaisDoServidor.map { it.category_name ?: "Outros" }.distinct().sorted().toMutableList()
+                    catUnicas.remove("Favoritos")
                     catUnicas.add(0, "Favoritos")
                     categoryList = catUnicas
                     currentCatIndex = categoryList.indexOf(categoryContext)
