@@ -12,12 +12,17 @@
         android:name="android.software.leanback"
         android:required="true" />
 
-        <application
+    <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@drawable/icone_app"
+        android:roundIcon="@drawable/icone_app"
         android:banner="@drawable/banner_tv"
-        android:label="SignalPlay" />
-        
+        android:label="SignalPlay"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.SignalPlay"
+        android:usesCleartextTraffic="true"
+        android:largeHeap="true">
+
         <activity
             android:name=".LoginActivity"
             android:exported="true"
@@ -34,9 +39,7 @@
         <activity android:name=".CanaisActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
         <activity android:name=".DetalhesActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
         <activity android:name=".PlayerActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
-        
-   <activity android:name="com.tv.signalplay.EpgActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
-
+        <activity android:name="com.tv.signalplay.EpgActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
 
     </application>
 
