@@ -107,10 +107,15 @@ class MainActivity : FragmentActivity() {
             startActivity(intentCanais)
         }
         
+        // ESCUDO PROTETOR CONTRA O CRASH DO MANIFESTO!
         findViewById<TextView>(R.id.navGuia).setOnClickListener {
-            val intentEpg = Intent(this, EpgActivity::class.java)
-            intentEpg.putExtra("XTREAM_USER", xtUser); intentEpg.putExtra("XTREAM_PASS", xtPass); intentEpg.putExtra("URL", urlServ)
-            startActivity(intentEpg)
+            try {
+                val intentEpg = Intent(this, EpgActivity::class.java)
+                intentEpg.putExtra("XTREAM_USER", xtUser); intentEpg.putExtra("XTREAM_PASS", xtPass); intentEpg.putExtra("URL", urlServ)
+                startActivity(intentEpg)
+            } catch (e: Exception) {
+                Toast.makeText(this, "ERRO: O AndroidManifest.xml não foi atualizado no GitHub!", Toast.LENGTH_LONG).show()
+            }
         }
 
         findViewById<TextView>(R.id.navInicio).setOnClickListener { resetarCoresMenu(); findViewById<TextView>(R.id.navInicio).setTextColor(Color.WHITE); renderizarAbaHome() }
@@ -123,7 +128,6 @@ class MainActivity : FragmentActivity() {
         }
     }
 
-    // CORREÇÃO: Removido o renderizarAbaHome(). Agora o app não reseta a tela ao voltar de um filme!
     override fun onResume() { 
         super.onResume()
     }
