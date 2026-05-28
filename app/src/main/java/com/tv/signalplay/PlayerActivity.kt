@@ -31,6 +31,8 @@ import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
 import com.google.android.exoplayer2.ui.TrackSelectionDialogBuilder
 import com.google.gson.Gson
+import com.google.gson.JsonArray
+import com.google.gson.JsonParser
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,6 +52,14 @@ class PlayerActivity : FragmentActivity() {
     
     private lateinit var txtCatAtual: TextView; private lateinit var btnCatPrev: Button; private lateinit var btnCatNext: Button
     
+    // Variáveis do "Próximo Episódio" (Autoplay)
+    private lateinit var panelNextEpisode: LinearLayout
+    private lateinit var txtNextEpTitle: TextView
+    private lateinit var btnAssistirProximo: Button
+    private var episodiosArray: JsonArray? = null
+    private var currentEpIndex: Int = -1
+    private var isNextEpPanelShowing = false
+
     private val handler = Handler(Looper.getMainLooper()); private var isOverlayVisible = true; private var isFit = true 
 
     private var urlServ = ""; private var xtUser = ""; private var xtPass = ""; private var currentType = "live"
@@ -61,7 +71,6 @@ class PlayerActivity : FragmentActivity() {
     private var currentCatIndex = 0
     private var canaisDaPastaAtual: List<XtreamLive> = listOf()
 
-    // O Seletor de Faixas do ExoPlayer
     private lateinit var trackSelector: DefaultTrackSelector
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -80,13 +89,24 @@ class PlayerActivity : FragmentActivity() {
         
         txtCatAtual = findViewById(R.id.txtCatAtual); btnCatPrev = findViewById(R.id.btnCatPrev); btnCatNext = findViewById(R.id.btnCatNext)
 
-        rvPlaylist.layoutManager = LinearLayoutManager(this); rvEpg.layoutManager = LinearLayoutManager(this)
+        panelNextEpisode = findViewById(R.id.panelNextEpisode)
+        txtNextEpTitle = findViewById(R.id.txtNextEpTitle)
+        btnAssistirProximo = findViewById(R.id.btnAssistirProximo)
 
         urlServ = intent.getStringExtra("URL") ?: ""; xtUser = intent.getStringExtra("XTREAM_USER") ?: ""
         xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""; currentType = intent.getStringExtra("TYPE") ?: "live"
         currentStreamId = intent.getIntExtra("STREAM_ID", 0); currentTitle = intent.getStringExtra("TITLE") ?: ""
         currentExt = intent.getStringExtra("EXTENSION") ?: "mp4"
         categoryContext = intent.getStringExtra("CATEGORY_CONTEXT") ?: "Outros"
+
+        // Lendo os dados para o Autoplay
+        val epJsonString = intent.getStringExtra("EPISODES_JSON") ?: ""
+        currentEpIndex = intent.getIntExtra("EP_INDEX", -1)
+        if (epJsonString.isNotEmpty()) {
+            try {
+                episodiosArray = JsonParser.parseString(epJsonString).asJsonArray
+            } catch (e: Exception) {}
+        }
 
         findViewById<TextView>(R.id.txtPlayerTitulo).text = currentTitle
         
@@ -107,7 +127,6 @@ class PlayerActivity : FragmentActivity() {
         val videoUrl = when (currentType) { "live" -> "$urlServ/$xtUser/$xtPass/$currentStreamId"; "vod" -> "$urlServ/movie/$xtUser/$xtPass/$currentStreamId.$currentExt"; "series" -> "$urlServ/series/$xtUser/$xtPass/$currentStreamId.$currentExt"; else -> "" }
         if (exoPlayer != null) { exoPlayer?.release(); exoPlayer = null }
         
-        // Instanciando o Track Selector
         trackSelector = DefaultTrackSelector(this)
         exoPlayer = ExoPlayer.Builder(this).setTrackSelector(trackSelector).build()
         
@@ -117,7 +136,14 @@ class PlayerActivity : FragmentActivity() {
         exoPlayer?.prepare(); exoPlayer?.playWhenReady = true
 
         exoPlayer?.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) { findViewById<ProgressBar>(R.id.loadingSpinner).visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE }
+            override fun onPlaybackStateChanged(playbackState: Int) { 
+                findViewById<ProgressBar>(R.id.loadingSpinner).visibility = if (playbackState == Player.STATE_BUFFERING) View.VISIBLE else View.GONE 
+                
+                // MÁGICA: Se o vídeo acabou e o painel estiver na tela, pula pro próximo sozinho!
+                if (playbackState == Player.STATE_ENDED && isNextEpPanelShowing) {
+                    playNextEpisode()
+                }
+            }
             override fun onIsPlayingChanged(isPlaying: Boolean) { btnPlayPauseIcon.setImageResource(if (isPlaying) android.R.drawable.ic_media_pause else android.R.drawable.ic_media_play); if (isPlaying) esconderControlesAposDelay() else mostrarControles() }
         })
         atualizarLinhaDoTempoESalvarProgresso()
@@ -131,6 +157,28 @@ class PlayerActivity : FragmentActivity() {
                     if (dur > 0) {
                         findViewById<ProgressBar>(R.id.progressBarTempo).apply { max = 100; progress = ((pos * 100) / dur).toInt() }
                         findViewById<TextView>(R.id.txtTempoCompleto).text = "${formatarTempo(pos)} / ${formatarTempo(dur)}"
+                        
+                        // LÓGICA DO PRÓXIMO EPISÓDIO (AUTOPLAY)
+                        if (currentType == "series" && episodiosArray != null && currentEpIndex != -1 && currentEpIndex < (episodiosArray!!.size() - 1)) {
+                            val timeLeft = dur - pos
+                            if (timeLeft in 1..15000) { // Faltando 15 segundos
+                                if (!isNextEpPanelShowing) {
+                                    val nextEp = episodiosArray!!.get(currentEpIndex + 1).asJsonObject
+                                    val title = if (nextEp.has("title")) nextEp.get("title").asString else "Episódio ${currentEpIndex + 2}"
+                                    txtNextEpTitle.text = title
+                                    panelNextEpisode.visibility = View.VISIBLE
+                                    isNextEpPanelShowing = true
+                                    btnAssistirProximo.requestFocus() // Dá a chance do usuário apertar OK
+                                }
+                                val secs = timeLeft / 1000
+                                btnAssistirProximo.text = "Assistir Agora (${secs}s)"
+                            } else if (timeLeft > 15000 && isNextEpPanelShowing) {
+                                panelNextEpisode.visibility = View.GONE
+                                isNextEpPanelShowing = false
+                            }
+                        }
+
+                        // GRAVANDO O PROGRESSO
                         if ((currentType == "vod" || currentType == "series") && pos > 5000) {
                             val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                             val histJson = prefs.getString("iptv_continuar_vod", "[]")
@@ -142,9 +190,28 @@ class PlayerActivity : FragmentActivity() {
                         }
                     }
                 }
-                handler.postDelayed(this, 2000)
+                handler.postDelayed(this, 1000) // Verifica a cada 1 segundo (pra ficar mais fluido o reloginho do botão)
             }
-        }, 2000)
+        }, 1000)
+    }
+
+    private fun playNextEpisode() {
+        if (episodiosArray == null || currentEpIndex >= (episodiosArray!!.size() - 1)) return
+        
+        currentEpIndex++
+        val nextEp = episodiosArray!!.get(currentEpIndex).asJsonObject
+        
+        currentStreamId = if (nextEp.has("id")) nextEp.get("id").asInt else nextEp.get("stream_id").asInt
+        currentExt = if (nextEp.has("container_extension")) nextEp.get("container_extension").asString else "mp4"
+        currentTitle = if (nextEp.has("title")) nextEp.get("title").asString else "Episódio ${currentEpIndex + 1}"
+        
+        findViewById<TextView>(R.id.txtPlayerTitulo).text = currentTitle
+        panelNextEpisode.visibility = View.GONE
+        isNextEpPanelShowing = false
+        
+        // Zera o tempo para o novo episódio (Importante!)
+        intent.putExtra("RESUME_POSITION", 0L)
+        iniciarVideoExoPlayer()
     }
 
     private fun configurarBotoesPremiumSemFundo() {
@@ -169,17 +236,12 @@ class PlayerActivity : FragmentActivity() {
         btnCatPrev.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex--; if(currentCatIndex < 0) currentCatIndex = categoryList.size - 1; atualizarListaCategoria() } }
         btnCatNext.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex++; if(currentCatIndex >= categoryList.size) currentCatIndex = 0; atualizarListaCategoria() } }
 
-        // Ações dos novos botões de Áudio e Legenda
-        btnAudio.setOnClickListener {
-            exoPlayer?.let { player ->
-                TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione o Idioma (Áudio)", player, C.TRACK_TYPE_AUDIO).build().show()
-            }
-        }
-        btnLegenda.setOnClickListener {
-            exoPlayer?.let { player ->
-                TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione a Legenda", player, C.TRACK_TYPE_TEXT).build().show()
-            }
-        }
+        btnAudio.setOnClickListener { exoPlayer?.let { player -> TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione o Idioma (Áudio)", player, C.TRACK_TYPE_AUDIO).build().show() } }
+        btnLegenda.setOnClickListener { exoPlayer?.let { player -> TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione a Legenda", player, C.TRACK_TYPE_TEXT).build().show() } }
+        
+        // Ação do Botão Manual de Próximo Ep
+        btnAssistirProximo.setOnFocusChangeListener { v, focus -> if(focus) v.animate().scaleX(1.05f).start() else v.animate().scaleX(1.0f).start() }
+        btnAssistirProximo.setOnClickListener { playNextEpisode() }
     }
 
     private fun atualizarListaCategoria() {
@@ -305,7 +367,14 @@ class PlayerActivity : FragmentActivity() {
         esconderControlesAposDelay()
 
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { exoPlayer?.let { it.playWhenReady = !it.playWhenReady }; return true }
+            KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { 
+                if (isNextEpPanelShowing && btnAssistirProximo.hasFocus()) {
+                    btnAssistirProximo.performClick()
+                } else {
+                    exoPlayer?.let { it.playWhenReady = !it.playWhenReady }
+                }
+                return true 
+            }
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> { if (isOverlayVisible) finish() else mostrarControles(); return true }
         }
 
@@ -330,7 +399,7 @@ class PlayerActivity : FragmentActivity() {
 
     private fun mostrarAvisoTempo(texto: String) { val fb = findViewById<TextView>(R.id.txtFeedbackAvanco); fb.text = texto; fb.visibility = View.VISIBLE; handler.postDelayed({ fb.visibility = View.GONE }, 1000) }
     private fun mostrarControles() { controlsOverlay.visibility = View.VISIBLE; isOverlayVisible = true }
-    private val hideRunnable = Runnable { if (exoPlayer?.isPlaying == true && panelPlaylist.visibility == View.GONE && panelEpg.visibility == View.GONE) { controlsOverlay.visibility = View.GONE; isOverlayVisible = false } }
+    private val hideRunnable = Runnable { if (exoPlayer?.isPlaying == true && panelPlaylist.visibility == View.GONE && panelEpg.visibility == View.GONE && !isNextEpPanelShowing) { controlsOverlay.visibility = View.GONE; isOverlayVisible = false } }
     private fun esconderControlesAposDelay() { handler.removeCallbacks(hideRunnable); handler.postDelayed(hideRunnable, 4000) }
     override fun onDestroy() { super.onDestroy(); handler.removeCallbacksAndMessages(null); exoPlayer?.release(); exoPlayer = null }
 
