@@ -22,11 +22,14 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.engine.DiskCacheStrategy
+import com.google.android.exoplayer2.C
 import com.google.android.exoplayer2.ExoPlayer
 import com.google.android.exoplayer2.MediaItem
 import com.google.android.exoplayer2.Player
+import com.google.android.exoplayer2.trackselection.DefaultTrackSelector
 import com.google.android.exoplayer2.ui.AspectRatioFrameLayout
 import com.google.android.exoplayer2.ui.PlayerView
+import com.google.android.exoplayer2.ui.TrackSelectionDialogBuilder
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.CoroutineScope
@@ -41,6 +44,7 @@ class PlayerActivity : FragmentActivity() {
     private var exoPlayer: ExoPlayer? = null; private lateinit var playerView: PlayerView; private lateinit var controlsOverlay: RelativeLayout
     private lateinit var panelPlaylist: LinearLayout; private lateinit var panelEpg: LinearLayout; private lateinit var rvPlaylist: RecyclerView; private lateinit var rvEpg: RecyclerView
     private lateinit var btnAjustar: Button; private lateinit var btnEsticar: Button; private lateinit var btnModalPlaylist: Button; private lateinit var btnModalEpg: Button
+    private lateinit var btnAudio: Button; private lateinit var btnLegenda: Button; private lateinit var sepAudioAjuste: TextView
     private lateinit var btnPlayPauseIcon: ImageView
     private lateinit var btnPrev: ImageView; private lateinit var btnNext: ImageView
     
@@ -57,6 +61,9 @@ class PlayerActivity : FragmentActivity() {
     private var currentCatIndex = 0
     private var canaisDaPastaAtual: List<XtreamLive> = listOf()
 
+    // O Seletor de Faixas do ExoPlayer
+    private lateinit var trackSelector: DefaultTrackSelector
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player)
@@ -67,6 +74,7 @@ class PlayerActivity : FragmentActivity() {
         
         btnAjustar = findViewById(R.id.btnAjustar); btnEsticar = findViewById(R.id.btnEsticar)
         btnModalPlaylist = findViewById(R.id.btnModalPlaylist); btnModalEpg = findViewById(R.id.btnModalEpg)
+        btnAudio = findViewById(R.id.btnAudio); btnLegenda = findViewById(R.id.btnLegenda); sepAudioAjuste = findViewById(R.id.sepAudioAjuste)
         btnPlayPauseIcon = findViewById(R.id.btnPlayPauseIcon)
         btnPrev = findViewById(R.id.btnPrev); btnNext = findViewById(R.id.btnNext)
         
@@ -82,6 +90,12 @@ class PlayerActivity : FragmentActivity() {
 
         findViewById<TextView>(R.id.txtPlayerTitulo).text = currentTitle
         
+        if (currentType != "live") {
+            btnAudio.visibility = View.VISIBLE
+            btnLegenda.visibility = View.VISIBLE
+            sepAudioAjuste.visibility = View.VISIBLE
+        }
+        
         configurarBotoesPremiumSemFundo()
         iniciarVideoExoPlayer()
         
@@ -92,7 +106,12 @@ class PlayerActivity : FragmentActivity() {
     private fun iniciarVideoExoPlayer() {
         val videoUrl = when (currentType) { "live" -> "$urlServ/$xtUser/$xtPass/$currentStreamId"; "vod" -> "$urlServ/movie/$xtUser/$xtPass/$currentStreamId.$currentExt"; "series" -> "$urlServ/series/$xtUser/$xtPass/$currentStreamId.$currentExt"; else -> "" }
         if (exoPlayer != null) { exoPlayer?.release(); exoPlayer = null }
-        exoPlayer = ExoPlayer.Builder(this).build(); playerView.player = exoPlayer
+        
+        // Instanciando o Track Selector
+        trackSelector = DefaultTrackSelector(this)
+        exoPlayer = ExoPlayer.Builder(this).setTrackSelector(trackSelector).build()
+        
+        playerView.player = exoPlayer
         exoPlayer?.setMediaItem(MediaItem.fromUri(Uri.parse(videoUrl)))
         val resumePos = intent.getLongExtra("RESUME_POSITION", 0L); if (resumePos > 0) exoPlayer?.seekTo(resumePos)
         exoPlayer?.prepare(); exoPlayer?.playWhenReady = true
@@ -136,7 +155,7 @@ class PlayerActivity : FragmentActivity() {
                 if (v is Button) { if ((v.id == R.id.btnAjustar && isFit) || (v.id == R.id.btnEsticar && !isFit)) v.setTextColor(Color.parseColor("#ffcc00")) else v.setTextColor(Color.WHITE) } else if (v is ImageView) v.setColorFilter(Color.WHITE)
             }
         }
-        listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnPlayPauseIcon, btnPrev, btnNext, btnCatPrev, btnCatNext).forEach { it.setOnFocusChangeListener(listenerCor) }
+        listOf(btnAjustar, btnEsticar, btnModalPlaylist, btnModalEpg, btnPlayPauseIcon, btnPrev, btnNext, btnCatPrev, btnCatNext, btnAudio, btnLegenda).forEach { it.setOnFocusChangeListener(listenerCor) }
 
         btnPlayPauseIcon.setOnClickListener { exoPlayer?.let { it.playWhenReady = !it.playWhenReady } }
         btnPrev.setOnClickListener { exoPlayer?.let { it.seekTo(it.currentPosition - 20000) }; mostrarAvisoTempo("-20s") }
@@ -149,6 +168,18 @@ class PlayerActivity : FragmentActivity() {
 
         btnCatPrev.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex--; if(currentCatIndex < 0) currentCatIndex = categoryList.size - 1; atualizarListaCategoria() } }
         btnCatNext.setOnClickListener { if(categoryList.isNotEmpty()){ currentCatIndex++; if(currentCatIndex >= categoryList.size) currentCatIndex = 0; atualizarListaCategoria() } }
+
+        // Ações dos novos botões de Áudio e Legenda
+        btnAudio.setOnClickListener {
+            exoPlayer?.let { player ->
+                TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione o Idioma (Áudio)", player, C.TRACK_TYPE_AUDIO).build().show()
+            }
+        }
+        btnLegenda.setOnClickListener {
+            exoPlayer?.let { player ->
+                TrackSelectionDialogBuilder(this@PlayerActivity, "Selecione a Legenda", player, C.TRACK_TYPE_TEXT).build().show()
+            }
+        }
     }
 
     private fun atualizarListaCategoria() {
@@ -260,7 +291,6 @@ class PlayerActivity : FragmentActivity() {
     private fun formatarTempo(ms: Long): String { val tSec = ms / 1000; return String.format("%02d:%02d", tSec / 60, tSec % 60) }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        // Se a Playlist ou EPG estiverem abertos, feche-os.
         if (panelPlaylist.visibility == View.VISIBLE || panelEpg.visibility == View.VISIBLE) {
             if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_ESCAPE) { 
                 panelPlaylist.visibility = View.GONE
@@ -274,13 +304,11 @@ class PlayerActivity : FragmentActivity() {
         mostrarControles()
         esconderControlesAposDelay()
 
-        // Controles Universais
         when (keyCode) {
             KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE -> { exoPlayer?.let { it.playWhenReady = !it.playWhenReady }; return true }
             KeyEvent.KEYCODE_BACK, KeyEvent.KEYCODE_ESCAPE -> { if (isOverlayVisible) finish() else mostrarControles(); return true }
         }
 
-        // Lógica Dedicada por Tipo de Mídia
         if (currentType == "live") {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_RIGHT -> { mudarCanalLive(1); return true }
