@@ -39,7 +39,7 @@ data class ItemCatalogo(
     val titulo: String,
     val capa: String?,
     val tipo: String, 
-    val categoria: String = "Outros", 
+    val category_name: String = "Outros", 
     val isTop10: Boolean = false,
     val rankIndex: Int = 0,
     val tempoAtual: Long = 0L,
@@ -105,17 +105,6 @@ class MainActivity : FragmentActivity() {
             val intentCanais = Intent(this, CanaisActivity::class.java)
             intentCanais.putExtra("XTREAM_USER", xtUser); intentCanais.putExtra("XTREAM_PASS", xtPass); intentCanais.putExtra("URL", urlServ)
             startActivity(intentCanais)
-        }
-        
-        // ESCUDO PROTETOR CONTRA O CRASH DO MANIFESTO!
-        findViewById<TextView>(R.id.navGuia).setOnClickListener {
-            try {
-                val intentEpg = Intent(this, EpgActivity::class.java)
-                intentEpg.putExtra("XTREAM_USER", xtUser); intentEpg.putExtra("XTREAM_PASS", xtPass); intentEpg.putExtra("URL", urlServ)
-                startActivity(intentEpg)
-            } catch (e: Exception) {
-                Toast.makeText(this, "ERRO: O AndroidManifest.xml não foi atualizado no GitHub!", Toast.LENGTH_LONG).show()
-            }
         }
 
         findViewById<TextView>(R.id.navInicio).setOnClickListener { resetarCoresMenu(); findViewById<TextView>(R.id.navInicio).setTextColor(Color.WHITE); renderizarAbaHome() }
@@ -341,7 +330,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun configurarFocoMenusTV() { 
-        val menus = listOf(R.id.navSearch, R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navGuia, R.id.navPerfil)
+        val menus = listOf(R.id.navSearch, R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navPerfil)
         for (id in menus) { 
             findViewById<View>(id)?.setOnFocusChangeListener { v, focus -> 
                 if (focus) { v.animate().scaleX(1.1f).start(); if(v is TextView && v.id != R.id.navPerfil) v.setTextColor(Color.WHITE) } 
@@ -350,7 +339,7 @@ class MainActivity : FragmentActivity() {
         } 
     }
 
-    private fun resetarCoresMenu() { listOf(R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navGuia).forEach { findViewById<TextView>(it).setTextColor(Color.parseColor("#888888")) } }
+    private fun resetarCoresMenu() { listOf(R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries).forEach { findViewById<TextView>(it).setTextColor(Color.parseColor("#888888")) } }
     private fun extrairIniciais(nome: String): String { if (nome.isBlank()) return "BR"; val p = nome.trim().split(" "); if (p.size >= 2) return (p[0].substring(0, 1) + p[1].substring(0, 1)).uppercase(); return if (nome.length >= 2) nome.substring(0, 2).uppercase() else nome.uppercase() }
 
     inner class CatalogoAdapter(private val lista: List<ItemCatalogo>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -412,7 +401,7 @@ class MainActivity : FragmentActivity() {
             }
 
             h.view.setOnClickListener { 
-                abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria, img) 
+                abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.category_name, img) 
             }
 
             h.view.setOnLongClickListener {
