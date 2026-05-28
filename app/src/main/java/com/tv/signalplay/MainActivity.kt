@@ -123,9 +123,9 @@ class MainActivity : FragmentActivity() {
         }
     }
 
+    // CORREÇÃO: Removido o renderizarAbaHome(). Agora o app não reseta a tela ao voltar de um filme!
     override fun onResume() { 
         super.onResume()
-        if (masterFilmes.isNotEmpty()) renderizarAbaHome() 
     }
 
     private fun configurarModalPerfil() {
