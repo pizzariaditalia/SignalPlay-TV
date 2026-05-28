@@ -16,7 +16,7 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:banner="@drawable/banner_tv"
-        android:label="SignalPlay"
+        android:label="SignalPlay" />
         
         <activity
             android:name=".LoginActivity"
