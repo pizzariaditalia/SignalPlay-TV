@@ -32,7 +32,6 @@ class CanaisActivity : FragmentActivity() {
     private var xtUser = ""; private var xtPass = ""; private var urlServ = ""; private var isParentalOn = false
     private var categoriaSelecionada = "Outros"
 
-    // Pastas antigas removidas da ordem
     private val ordemFixaMobile = listOf("Canais | Abertos", "Canais | Notícias", "Canais | Globo", "Canais | SBT", "Canais | RecordTV", "Canais | Band", "Canais | Esportes", "Canais | Premiere", "Canais | ESPN", "Canais | SporTV", "Canais | Prime Video", "Canais | Brasileirão", "Canais | MAX", "Canais | DAZN", "Canais | UFC Fight Pass", "Canais | Paramount+", "Canais | Disney+", "Canais | Estaduais", "Canais | Futsal", "Canais | NBA League Pass", "Canais | Legendados", "Canais | Documentários", "Canais | Filmes e Séries", "Canais | Telecine", "Canais | HBO", "Canais | TNT", "Canais | Variedades", "Canais | Religiosos", "Canais | Infantil", "Canais | Diversos", "Canais | Pluto TV", "Canais | Dual Áudio", "Canais | 24h Infantil", "Canais | 24h Variados", "Canais | Cine Bit", "Canais | Adultos", "Canais | HachuTV Adultos", "Canais | Adultos [4K]", "Canais | Dormir e Relaxar", "Vídeos Educativos", "Treinos, Aulas e Receitas", "Câmeras", "Rádios", "Shows", "Outros", "Canais | COMÉDIA")
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -130,7 +129,6 @@ class CanaisActivity : FragmentActivity() {
                     itemView.context.startActivity(intentPlayer)
                 }
                 
-                // MÁGICA DO FAVORITO AQUI (Long Click acende e apaga a estrela)
                 itemView.setOnLongClickListener {
                     val canal = listaCanais[bindingAdapterPosition]; val prefs = itemView.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                     val favs: MutableList<String> = try { Gson().fromJson(prefs.getString("favoritos_tv", "[]"), object : TypeToken<MutableList<String>>(){}.type) ?: mutableListOf() } catch (e: Exception) { mutableListOf() }
@@ -149,29 +147,25 @@ class CanaisActivity : FragmentActivity() {
                 }
             }
         }
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalViewHolder = CanalViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.card_canal_premium, parent, false))
+        
+        // AGORA USA O CARD EXCLUSIVO DE GRID!
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalViewHolder = CanalViewHolder(LayoutInflater.from(parent.context).inflate(R.layout.card_canal_grid, parent, false))
         
         override fun onBindViewHolder(holder: CanalViewHolder, position: Int) { 
             val canal = listaCanais[position]
             holder.txtNome.text = canal.name
             holder.txtNome.setTextColor(Color.WHITE)
             
-            // Verifica o estado visual da estrela ao carregar o card
             val prefs = holder.itemView.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
             val favs: List<String> = try { Gson().fromJson(prefs.getString("favoritos_tv", "[]"), object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
             holder.iconFav.alpha = if (favs.contains(canal.stream_id.toString())) 1.0f else 0.2f
             
             if (!canal.stream_icon.isNullOrEmpty()) {
-                Glide.with(holder.itemView.context)
-                    .load(canal.stream_icon)
-                    .override(200, 200)
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .into(holder.imgLogo) 
+                Glide.with(holder.itemView.context).load(canal.stream_icon).override(200, 200).diskCacheStrategy(DiskCacheStrategy.ALL).into(holder.imgLogo) 
             } else {
                 holder.imgLogo.setImageDrawable(null) 
             }
         }
-        
         override fun getItemCount(): Int = listaCanais.size
     }
 }
