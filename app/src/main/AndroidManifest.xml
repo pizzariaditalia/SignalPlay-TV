@@ -14,8 +14,8 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/icone_app"
-        android:roundIcon="@drawable/icone_app"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:banner="@drawable/banner_tv"
         android:label="SignalPlay"
         android:supportsRtl="true"
@@ -39,7 +39,6 @@
         <activity android:name=".CanaisActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
         <activity android:name=".DetalhesActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
         <activity android:name=".PlayerActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
-        <activity android:name="com.tv.signalplay.EpgActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
 
     </application>
 
