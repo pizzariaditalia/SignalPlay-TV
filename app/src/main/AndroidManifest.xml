@@ -12,16 +12,12 @@
         android:name="android.software.leanback"
         android:required="true" />
 
-    <application
+        <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
+        android:banner="@drawable/banner_tv"
         android:label="SignalPlay"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:supportsRtl="true"
-        android:theme="@style/Theme.SignalPlay"
-        android:usesCleartextTraffic="true"
-        android:largeHeap="true">
-
+        
         <activity
             android:name=".LoginActivity"
             android:exported="true"
