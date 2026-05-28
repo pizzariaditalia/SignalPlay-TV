@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -37,6 +38,9 @@ class DetalhesActivity : FragmentActivity() {
     private var xtUser = ""; private var xtPass = ""; private var urlServ = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Habilitando as animações de janela antes de carregar o Layout
+        window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
+        
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_detalhes)
 
@@ -69,7 +73,8 @@ class DetalhesActivity : FragmentActivity() {
             btn.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.05f).start() else v.animate().scaleX(1.0f).start() }
         }
 
-        btnVoltar.setOnClickListener { finish() }
+        // Ao voltar, garante que a animação desfaça suavemente
+        btnVoltar.setOnClickListener { supportFinishAfterTransition() }
         
         btnAssistir.setOnClickListener {
             val intentPlayer = Intent(this, PlayerActivity::class.java)
@@ -80,6 +85,11 @@ class DetalhesActivity : FragmentActivity() {
         }
 
         if (mediaId != 0 && urlServ.isNotEmpty()) carregarSinopse(urlServ, xtUser, xtPass, mediaId, isSeries)
+    }
+    
+    // Força a animação de retorno no botão físico de Voltar do controle
+    override fun onBackPressed() {
+        supportFinishAfterTransition()
     }
 
     private fun carregarSinopse(url: String, user: String, pass: String, id: Int, isSeries: Boolean) {
@@ -107,6 +117,7 @@ class DetalhesActivity : FragmentActivity() {
                             findViewById<TextView>(R.id.txtSinopseDetalhes).text = sinopse
                             findViewById<TextView>(R.id.txtMetaDetalhes).text = "📅 $ano   ⭐ $nota   ${if(isSeries) "SÉRIE" else "FILME"}"
                             
+                            // A Imagem que recebe a transição!
                             if (capaGigante.isNotEmpty()) {
                                 Glide.with(this@DetalhesActivity).load(capaGigante).override(350, 500).diskCacheStrategy(DiskCacheStrategy.ALL).into(findViewById<ImageView>(R.id.imgPosterDetalhes))
                             }
@@ -189,8 +200,6 @@ class DetalhesActivity : FragmentActivity() {
                         val intentPlayer = Intent(itemView.context, PlayerActivity::class.java)
                         intentPlayer.putExtra("URL", urlServ); intentPlayer.putExtra("XTREAM_USER", xtUser); intentPlayer.putExtra("XTREAM_PASS", xtPass)
                         intentPlayer.putExtra("STREAM_ID", epId); intentPlayer.putExtra("TYPE", "series"); intentPlayer.putExtra("TITLE", epNome); intentPlayer.putExtra("EXTENSION", epExt)
-                        
-                        // O SEGREDO DO AUTOPLAY: Enviamos a lista de episódios da temporada
                         intentPlayer.putExtra("EPISODES_JSON", episodiosArray.toString())
                         intentPlayer.putExtra("EP_INDEX", bindingAdapterPosition)
                         
