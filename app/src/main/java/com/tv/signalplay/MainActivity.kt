@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
@@ -16,6 +17,8 @@ import android.widget.RelativeLayout
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.app.ActivityOptionsCompat
+import androidx.core.view.ViewCompat
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -59,13 +62,15 @@ class MainActivity : FragmentActivity() {
     private lateinit var mainScrollView: ScrollView
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        // Habilita transição visual nativa
+        window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
+        
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         shimmerOverlay = findViewById(R.id.shimmerOverlay)
         mainScrollView = findViewById(R.id.mainScrollView)
         
-        // Inicia a animação de pulsação (Shimmer Effect)
         shimmerOverlay.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pulse))
 
         try {
@@ -212,7 +217,6 @@ class MainActivity : FragmentActivity() {
                     if (respSeries.isJsonArray) { val brutos = Gson().fromJson<List<XtreamSerie>>(respSeries, object : TypeToken<List<XtreamSerie>>() {}.type); brutos.forEach { it.category_name = mapSeries[it.category_id ?: ""] ?: "Outros" }; masterSeries = brutos.filter { !isAdult(it.category_name) } }
                     if (respCanais.isJsonArray) { masterCanais = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type) }
                     
-                    // Finalizou os downloads? Para a animação do Shimmer e mostra a tela!
                     shimmerOverlay.clearAnimation()
                     shimmerOverlay.visibility = View.GONE
                     mainScrollView.visibility = View.VISIBLE
@@ -304,10 +308,12 @@ class MainActivity : FragmentActivity() {
         
         if(imagem != null) Glide.with(this).load(imagem).diskCacheStrategy(DiskCacheStrategy.ALL).into(findViewById<ImageView>(R.id.imgBackgroundDestaque))
         
-        btnAss.setOnClickListener { abrirSinopse(id, isSeries, "vod", titulo, "Outros") }
+        // Passa null para a animação do Hero (já que o Hero é widescreen e o poster é vertical)
+        btnAss.setOnClickListener { abrirSinopse(id, isSeries, "vod", titulo, "Outros", null) }
     }
 
-    private fun abrirSinopse(id: Int, isSeries: Boolean, tipo: String, tituloCanal: String = "", categoria: String = "Outros") { 
+    // NOVA ASSINATURA: Agora recebe a ImageView que o cliente clicou!
+    private fun abrirSinopse(id: Int, isSeries: Boolean, tipo: String, tituloCanal: String = "", categoria: String = "Outros", sharedImageView: ImageView?) { 
         if (tipo == "live") {
             val intent = Intent(this, PlayerActivity::class.java)
             intent.putExtra("URL", urlServ); intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass)
@@ -318,7 +324,15 @@ class MainActivity : FragmentActivity() {
             val intent = Intent(this, DetalhesActivity::class.java)
             intent.putExtra("MEDIA_ID", id); intent.putExtra("IS_SERIES", isSeries)
             intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("URL", urlServ)
-            startActivity(intent) 
+            
+            // A MÁGICA DO VOO DA IMAGEM
+            if (sharedImageView != null) {
+                ViewCompat.setTransitionName(sharedImageView, "poster_transition")
+                val options = ActivityOptionsCompat.makeSceneTransitionAnimation(this, sharedImageView, "poster_transition")
+                startActivity(intent, options.toBundle())
+            } else {
+                startActivity(intent) 
+            }
         }
     }
 
@@ -393,7 +407,10 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            h.view.setOnClickListener { abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria) }
+            // O EVENTO DE CLIQUE AGORA CAPTURA A IMAGEM EXATA E ENVIA PARA A ANIMAÇÃO!
+            h.view.setOnClickListener { 
+                abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria, img) 
+            }
 
             h.view.setOnLongClickListener {
                 if (item.tipo == "live") {
