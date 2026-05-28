@@ -14,8 +14,8 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher"
+        android:icon="@drawable/icone_app"
+        android:roundIcon="@drawable/icone_app"
         android:banner="@drawable/banner_tv"
         android:label="SignalPlay"
         android:supportsRtl="true"
