@@ -17,6 +17,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
+import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -79,6 +80,10 @@ class PlayerActivity : FragmentActivity() {
         playerView = findViewById(R.id.playerView); controlsOverlay = findViewById(R.id.controlsOverlay)
         panelPlaylist = findViewById(R.id.panelPlaylist); panelEpg = findViewById(R.id.panelEpg)
         rvPlaylist = findViewById(R.id.rvPlaylist); rvEpg = findViewById(R.id.rvEpg)
+        
+        // AQUI ESTAVA O VILÃO! Restaurei as linhas que dão formato à lista:
+        rvPlaylist.layoutManager = LinearLayoutManager(this)
+        rvEpg.layoutManager = LinearLayoutManager(this)
         
         btnAjustar = findViewById(R.id.btnAjustar); btnEsticar = findViewById(R.id.btnEsticar)
         btnModalPlaylist = findViewById(R.id.btnModalPlaylist); btnModalEpg = findViewById(R.id.btnModalEpg)
