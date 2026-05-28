@@ -7,11 +7,13 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
@@ -52,10 +54,19 @@ class MainActivity : FragmentActivity() {
     private var urlServ = ""
     private var firebaseUser = ""
     private var isParentalOn = false
+    
+    private lateinit var shimmerOverlay: LinearLayout
+    private lateinit var mainScrollView: ScrollView
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        shimmerOverlay = findViewById(R.id.shimmerOverlay)
+        mainScrollView = findViewById(R.id.mainScrollView)
+        
+        // Inicia a animação de pulsação (Shimmer Effect)
+        shimmerOverlay.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pulse))
 
         try {
             if (FirebaseApp.getApps(this).isEmpty()) {
@@ -201,6 +212,11 @@ class MainActivity : FragmentActivity() {
                     if (respSeries.isJsonArray) { val brutos = Gson().fromJson<List<XtreamSerie>>(respSeries, object : TypeToken<List<XtreamSerie>>() {}.type); brutos.forEach { it.category_name = mapSeries[it.category_id ?: ""] ?: "Outros" }; masterSeries = brutos.filter { !isAdult(it.category_name) } }
                     if (respCanais.isJsonArray) { masterCanais = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type) }
                     
+                    // Finalizou os downloads? Para a animação do Shimmer e mostra a tela!
+                    shimmerOverlay.clearAnimation()
+                    shimmerOverlay.visibility = View.GONE
+                    mainScrollView.visibility = View.VISIBLE
+                    
                     renderizarAbaHome()
                 }
             } catch (e: Exception) { }
@@ -248,7 +264,6 @@ class MainActivity : FragmentActivity() {
 
     private fun renderizarAbaFilmes() { 
         val container = findViewById<LinearLayout>(R.id.containerTrilhos); container.removeAllViews()
-        // Banner Rotativo em Filmes
         if (masterFilmes.isNotEmpty()) {
             val filmeAleatorio = masterFilmes.random()
             setHeroBanner(filmeAleatorio.name, filmeAleatorio.stream_icon, filmeAleatorio.stream_id, false)
@@ -259,7 +274,6 @@ class MainActivity : FragmentActivity() {
 
     private fun renderizarAbaSeries() { 
         val container = findViewById<LinearLayout>(R.id.containerTrilhos); container.removeAllViews()
-        // Banner Rotativo em Séries
         if (masterSeries.isNotEmpty()) {
             val serieAleatoria = masterSeries.random()
             setHeroBanner(serieAleatoria.name, serieAleatoria.cover, serieAleatoria.series_id, true)
@@ -355,11 +369,7 @@ class MainActivity : FragmentActivity() {
 
             val img = h.view.findViewById<ImageView>(R.id.imgCapaPremium)
             if (img != null && !item.capa.isNullOrEmpty()) {
-                Glide.with(h.view.context)
-                    .load(item.capa)
-                    .override(250, 350) 
-                    .diskCacheStrategy(DiskCacheStrategy.ALL)
-                    .into(img)
+                Glide.with(h.view.context).load(item.capa).override(250, 350).diskCacheStrategy(DiskCacheStrategy.ALL).into(img)
             } else {
                 img?.setImageDrawable(null)
             }
@@ -371,7 +381,6 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            // Controle Visual da Estrela (Apenas para Canais na Home)
             val iconFav = h.view.findViewById<TextView>(R.id.iconFavStar)
             if (iconFav != null) {
                 if (item.tipo == "live") {
@@ -386,7 +395,6 @@ class MainActivity : FragmentActivity() {
 
             h.view.setOnClickListener { abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria) }
 
-            // Long Click também funciona na Home
             h.view.setOnLongClickListener {
                 if (item.tipo == "live") {
                     val prefs = h.view.context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -406,21 +414,9 @@ class MainActivity : FragmentActivity() {
                 true
             }
         }
-
         override fun getItemCount() = lista.size
-
         inner class HolderGenerico(val view: View) : RecyclerView.ViewHolder(view) {
-            init {
-                view.setOnFocusChangeListener { v, focus -> 
-                    if (focus) { 
-                        v.animate().scaleX(1.08f).scaleY(1.08f).setDuration(150).start()
-                        v.elevation = 15f 
-                    } else { 
-                        v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start()
-                        v.elevation = 0f 
-                    } 
-                }
-            }
+            init { view.setOnFocusChangeListener { v, focus -> if (focus) { v.animate().scaleX(1.08f).scaleY(1.08f).setDuration(150).start(); v.elevation = 15f } else { v.animate().scaleX(1.0f).scaleY(1.0f).setDuration(150).start(); v.elevation = 0f } } }
         }
     }
 }
