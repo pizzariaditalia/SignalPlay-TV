@@ -1,7 +1,5 @@
 package com.tv.signalplay
 
-import android.animation.ObjectAnimator
-import android.animation.PropertyValuesHolder
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -10,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -59,7 +58,7 @@ class MainActivity : FragmentActivity() {
     private var firebaseUser = ""
     private var isParentalOn = false
     
-    private lateinit var splashOverlay: RelativeLayout
+    private lateinit var shimmerOverlay: LinearLayout
     private lateinit var mainScrollView: ScrollView
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -67,21 +66,9 @@ class MainActivity : FragmentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        splashOverlay = findViewById(R.id.splashOverlay)
+        shimmerOverlay = findViewById(R.id.shimmerOverlay)
         mainScrollView = findViewById(R.id.mainScrollView)
-        
-        // EFEITO VISCERAL DE CARREGAMENTO: Animação de Pulso na Logo
-        val imgSplashLogo = findViewById<ImageView>(R.id.imgSplashLogo)
-        val pulseAnimation = ObjectAnimator.ofPropertyValuesHolder(
-            imgSplashLogo,
-            PropertyValuesHolder.ofFloat(View.SCALE_X, 1.0f, 1.06f),
-            PropertyValuesHolder.ofFloat(View.SCALE_Y, 1.0f, 1.06f)
-        ).apply {
-            duration = 1000
-            repeatCount = ObjectAnimator.INFINITE
-            repeatMode = ObjectAnimator.REVERSE
-            start()
-        }
+        shimmerOverlay.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pulse))
 
         try {
             if (FirebaseApp.getApps(this).isEmpty()) {
@@ -178,6 +165,13 @@ class MainActivity : FragmentActivity() {
         findViewById<LinearLayout>(R.id.btnModalLimparHist).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("iptv_continuar_vod", "[]").apply(); Toast.makeText(this@MainActivity, "Histórico Removido!", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
         findViewById<LinearLayout>(R.id.btnModalLimparFavs).apply { setOnFocusChangeListener(listenerFocoConfig); setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().putString("favoritos_tv", "[]").apply(); Toast.makeText(this@MainActivity, "Favoritos Removidos!", Toast.LENGTH_SHORT).show(); overlay.visibility = View.GONE; renderizarAbaHome() } }
         
+        val btnUpdateEpg = findViewById<Button>(R.id.btnModalUpdateEpg)
+        btnUpdateEpg.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.03f).start() else v.animate().scaleX(1.0f).start() }
+        btnUpdateEpg.setOnClickListener {
+            Toast.makeText(this, "Atualizando Guia de Programação...", Toast.LENGTH_SHORT).show()
+            overlay.visibility = View.GONE
+        }
+
         val btnLogout = findViewById<Button>(R.id.btnModalLogout)
         btnLogout.setOnFocusChangeListener { v, focus -> if (focus) v.animate().scaleX(1.03f).start() else v.animate().scaleX(1.0f).start() }
         btnLogout.setOnClickListener { getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE).edit().clear().apply(); startActivity(Intent(this, LoginActivity::class.java)); finish() }
@@ -219,13 +213,9 @@ class MainActivity : FragmentActivity() {
                     if (respSeries.isJsonArray) { val brutos = Gson().fromJson<List<XtreamSerie>>(respSeries, object : TypeToken<List<XtreamSerie>>() {}.type); brutos.forEach { it.category_name = mapSeries[it.category_id ?: ""] ?: "Outros" }; masterSeries = brutos.filter { !isAdult(it.category_name) } }
                     if (respCanais.isJsonArray) { masterCanais = Gson().fromJson(respCanais, object : TypeToken<List<XtreamLive>>() {}.type) }
                     
-                    // A MÁGICA FINAL: Fade Out suave do Splash Screen quando tudo carrega!
+                    shimmerOverlay.clearAnimation()
+                    shimmerOverlay.visibility = View.GONE
                     mainScrollView.visibility = View.VISIBLE
-                    splashOverlay.animate()
-                        .alpha(0f)
-                        .setDuration(600)
-                        .withEndAction { splashOverlay.visibility = View.GONE }
-                        .start()
                     
                     renderizarAbaHome()
                 }
