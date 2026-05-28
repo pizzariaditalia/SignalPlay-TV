@@ -39,7 +39,8 @@
         <activity android:name=".DetalhesActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
         <activity android:name=".PlayerActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
         
-        <activity android:name=".EpgActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+   <activity android:name="com.tv.signalplay.EpgActivity" android:exported="false" android:theme="@style/Theme.SignalPlay" />
+
 
     </application>
 
