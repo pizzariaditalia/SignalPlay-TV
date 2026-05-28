@@ -62,15 +62,12 @@ class MainActivity : FragmentActivity() {
     private lateinit var mainScrollView: ScrollView
 
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Habilita transição visual nativa
         window.requestFeature(Window.FEATURE_ACTIVITY_TRANSITIONS)
-        
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         shimmerOverlay = findViewById(R.id.shimmerOverlay)
         mainScrollView = findViewById(R.id.mainScrollView)
-        
         shimmerOverlay.startAnimation(AnimationUtils.loadAnimation(this, R.anim.pulse))
 
         try {
@@ -108,6 +105,12 @@ class MainActivity : FragmentActivity() {
             val intentCanais = Intent(this, CanaisActivity::class.java)
             intentCanais.putExtra("XTREAM_USER", xtUser); intentCanais.putExtra("XTREAM_PASS", xtPass); intentCanais.putExtra("URL", urlServ)
             startActivity(intentCanais)
+        }
+        
+        findViewById<TextView>(R.id.navGuia).setOnClickListener {
+            val intentEpg = Intent(this, EpgActivity::class.java)
+            intentEpg.putExtra("XTREAM_USER", xtUser); intentEpg.putExtra("XTREAM_PASS", xtPass); intentEpg.putExtra("URL", urlServ)
+            startActivity(intentEpg)
         }
 
         findViewById<TextView>(R.id.navInicio).setOnClickListener { resetarCoresMenu(); findViewById<TextView>(R.id.navInicio).setTextColor(Color.WHITE); renderizarAbaHome() }
@@ -308,11 +311,9 @@ class MainActivity : FragmentActivity() {
         
         if(imagem != null) Glide.with(this).load(imagem).diskCacheStrategy(DiskCacheStrategy.ALL).into(findViewById<ImageView>(R.id.imgBackgroundDestaque))
         
-        // Passa null para a animação do Hero (já que o Hero é widescreen e o poster é vertical)
         btnAss.setOnClickListener { abrirSinopse(id, isSeries, "vod", titulo, "Outros", null) }
     }
 
-    // NOVA ASSINATURA: Agora recebe a ImageView que o cliente clicou!
     private fun abrirSinopse(id: Int, isSeries: Boolean, tipo: String, tituloCanal: String = "", categoria: String = "Outros", sharedImageView: ImageView?) { 
         if (tipo == "live") {
             val intent = Intent(this, PlayerActivity::class.java)
@@ -325,7 +326,6 @@ class MainActivity : FragmentActivity() {
             intent.putExtra("MEDIA_ID", id); intent.putExtra("IS_SERIES", isSeries)
             intent.putExtra("XTREAM_USER", xtUser); intent.putExtra("XTREAM_PASS", xtPass); intent.putExtra("URL", urlServ)
             
-            // A MÁGICA DO VOO DA IMAGEM
             if (sharedImageView != null) {
                 ViewCompat.setTransitionName(sharedImageView, "poster_transition")
                 val options = ActivityOptionsCompat.makeSceneTransitionAnimation(this, sharedImageView, "poster_transition")
@@ -337,7 +337,7 @@ class MainActivity : FragmentActivity() {
     }
 
     private fun configurarFocoMenusTV() { 
-        val menus = listOf(R.id.navSearch, R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navPerfil)
+        val menus = listOf(R.id.navSearch, R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navGuia, R.id.navPerfil)
         for (id in menus) { 
             findViewById<View>(id)?.setOnFocusChangeListener { v, focus -> 
                 if (focus) { v.animate().scaleX(1.1f).start(); if(v is TextView && v.id != R.id.navPerfil) v.setTextColor(Color.WHITE) } 
@@ -346,7 +346,7 @@ class MainActivity : FragmentActivity() {
         } 
     }
 
-    private fun resetarCoresMenu() { listOf(R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries).forEach { findViewById<TextView>(it).setTextColor(Color.parseColor("#888888")) } }
+    private fun resetarCoresMenu() { listOf(R.id.navInicio, R.id.navCanais, R.id.navFilmes, R.id.navSeries, R.id.navGuia).forEach { findViewById<TextView>(it).setTextColor(Color.parseColor("#888888")) } }
     private fun extrairIniciais(nome: String): String { if (nome.isBlank()) return "BR"; val p = nome.trim().split(" "); if (p.size >= 2) return (p[0].substring(0, 1) + p[1].substring(0, 1)).uppercase(); return if (nome.length >= 2) nome.substring(0, 2).uppercase() else nome.uppercase() }
 
     inner class CatalogoAdapter(private val lista: List<ItemCatalogo>) : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -407,7 +407,6 @@ class MainActivity : FragmentActivity() {
                 }
             }
 
-            // O EVENTO DE CLIQUE AGORA CAPTURA A IMAGEM EXATA E ENVIA PARA A ANIMAÇÃO!
             h.view.setOnClickListener { 
                 abrirSinopse(item.id, item.tipo == "series", item.tipo, item.titulo, item.categoria, img) 
             }
