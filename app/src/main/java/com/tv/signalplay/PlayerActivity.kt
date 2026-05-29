@@ -12,6 +12,7 @@ import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.VideoView
+import android.widget.Toast
 import androidx.fragment.app.FragmentActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -50,7 +51,6 @@ class PlayerActivity : FragmentActivity() {
         txtPlayerTitulo = findViewById(R.id.txtPlayerTitulo)
         boxInfoOverlay = findViewById(R.id.boxInfoOverlay)
 
-        // Resgata os parâmetros do fluxo de navegação
         urlServ = intent.getStringExtra("URL") ?: ""
         xtUser = intent.getStringExtra("XTREAM_USER") ?: ""
         xtPass = intent.getStringExtra("XTREAM_PASS") ?: ""
@@ -60,7 +60,6 @@ class PlayerActivity : FragmentActivity() {
 
         txtPlayerTitulo.text = titulo
 
-        // Recupera a lista de canais em cache local para a troca rápida de canais (Zapping)
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val listaJson = prefs.getString("iptv_canais_cache", "[]")
         
@@ -72,12 +71,10 @@ class PlayerActivity : FragmentActivity() {
 
         canalAtualIndex = listaCanais.indexOfFirst { it.stream_id == streamId }.let { if (it == -1) 0 else it }
 
-        // Configuração ultra-leve da lista lateral de canais
         rvCanaisLaterais.layoutManager = LinearLayoutManager(this)
         rvCanaisLaterais.setHasFixedSize(true)
         rvCanaisLaterais.adapter = CanalLateralAdapter(listaCanais)
 
-        // Listeners nativos de erro e buffer para evitar congelamentos de tela
         videoView.setOnPreparedListener { mp ->
             mp.setOnInfoListener { _, what, _ ->
                 when (what) {
@@ -104,7 +101,6 @@ class PlayerActivity : FragmentActivity() {
         playerLoading.visibility = View.VISIBLE
         txtPlayerTitulo.text = titulo
         
-        // Montagem limpa do link de streaming direto do servidor Xtream
         val sufixo = if (tipoMidia == "series") "series" else if (tipoMidia == "vod") "movie" else "live"
         val extensao = if (tipoMidia == "live") ".ts" else ".mp4"
         
@@ -125,14 +121,13 @@ class PlayerActivity : FragmentActivity() {
                         boxInfoOverlay.visibility = View.GONE
                     }
                 }
-            }, 4000) // Some em 4 segundos automaticamente
+            }, 4000)
         }
     }
 
-    // MAPEAMENTO DE TECLAS DO CONTROLE REMOTO (NATIVO E ULTRA RÁPIDO)
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
-            KeyEvent.KEYCODE_DPAD_UP -> { // Canal Anterior (Zapping)
+            KeyEvent.KEYCODE_DPAD_UP -> { 
                 if (listaCanais.isNotEmpty() && tipoMidia == "live") {
                     canalAtualIndex = if (canalAtualIndex - 1 < 0) listaCanais.size - 1 else canalAtualIndex - 1
                     val prox = listaCanais[canalAtualIndex]
@@ -141,7 +136,7 @@ class PlayerActivity : FragmentActivity() {
                 }
                 return true
             }
-            KeyEvent.KEYCODE_DPAD_DOWN -> { // Próximo Canal (Zapping)
+            KeyEvent.KEYCODE_DPAD_DOWN -> { 
                 if (listaCanais.isNotEmpty() && tipoMidia == "live") {
                     canalAtualIndex = if (canalAtualIndex + 1 >= listaCanais.size) 0 else canalAtualIndex + 1
                     val prox = listaCanais[canalAtualIndex]
@@ -151,7 +146,6 @@ class PlayerActivity : FragmentActivity() {
                 return true
             }
             KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_DPAD_CENTER -> { 
-                // Abre a lista rápida na lateral da tela
                 if (panelCanaisLateral.visibility == View.GONE && tipoMidia == "live") {
                     panelCanaisLateral.visibility = View.VISIBLE
                     rvCanaisLaterais.requestFocus()
@@ -159,7 +153,7 @@ class PlayerActivity : FragmentActivity() {
                 }
                 return true
             }
-            KeyEvent.KEYCODE_BACK -> { // Botão Voltar
+            KeyEvent.KEYCODE_BACK -> { 
                 if (panelCanaisLateral.visibility == View.VISIBLE) {
                     panelCanaisLateral.visibility = View.GONE
                     return true
@@ -175,13 +169,13 @@ class PlayerActivity : FragmentActivity() {
         super.onDestroy()
     }
 
-    // ADAPTER ULTRA LEVE DA REYCLERVIEW LATERAL
     inner class CanalLateralAdapter(private val canais: List<XtreamLive>) : 
         RecyclerView.Adapter<CanalLateralAdapter.CanalHolder>() {
 
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalHolder {
-            val view = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false)
-            view.isFocusable = true
+            val view = LayoutInflater.from(parent.context).inflate(android.R.layout.simple_list_item_1, parent, false).apply {
+                isFocusable = true
+            }
             return CanalHolder(view)
         }
 
@@ -190,7 +184,7 @@ class PlayerActivity : FragmentActivity() {
             val text = holder.itemView.findViewById<TextView>(android.R.id.text1)
             text.text = canal.name
             text.setTextColor(Color.parseColor("#CCCCCC"))
-            text.textSize = 14sp
+            text.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 14f)
 
             holder.itemView.setOnClickListener {
                 canalAtualIndex = position
