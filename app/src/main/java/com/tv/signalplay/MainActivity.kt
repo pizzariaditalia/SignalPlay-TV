@@ -8,6 +8,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.view.animation.AnimationUtils
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -70,10 +71,9 @@ class MainActivity : FragmentActivity() {
         loadingOverlay = findViewById(R.id.loadingOverlay)
         mainScrollView = findViewById(R.id.mainScrollView)
 
-        // OTIMIZAÇÃO DE MEMÓRIA: Configuração de redimensionamento e cache forçado de capas
         glideOptions = RequestOptions()
-            .override(140, 210) // Reduz fisicamente o tamanho do arquivo na RAM da TV
-            .diskCacheStrategy(DiskCacheStrategy.ALL) // Grava permanentemente no armazenamento
+            .override(140, 210) 
+            .diskCacheStrategy(DiskCacheStrategy.ALL) 
             .centerCrop()
 
         try {
@@ -172,8 +172,6 @@ class MainActivity : FragmentActivity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val api = XtreamClient.create(urlServ)
-                
-                // FAXINA: Removemos downloads repetidos de categorias e filtros inúteis do fluxo principal
                 val respVod = api.getVodStreams(xtUser, xtPass)
                 val respSeries = api.getSeriesStreams(xtUser, xtPass)
                 val respCanais = api.getLiveStreams(xtUser, xtPass)
@@ -205,7 +203,6 @@ class MainActivity : FragmentActivity() {
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
 
-        // Trilho 1: Continuar Assistindo (Se houver)
         val contJson = prefs.getString("iptv_continuar_vod", "[]")
         val contList: List<Map<String, Any>> = try { Gson().fromJson(contJson, object : TypeToken<List<Map<String, Any>>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
         val continuarItens = mutableListOf<ItemCatalogo>()
@@ -216,17 +213,14 @@ class MainActivity : FragmentActivity() {
         }
         if (continuarItens.isNotEmpty()) injetarTrilho(container, "Continuar Assistindo", continuarItens)
 
-        // Trilho 2: Favoritos
         val favsListJson = prefs.getString("favoritos_tv", "[]")
         val idsFavoritos: List<String> = try { Gson().fromJson(favsListJson, object : TypeToken<List<String>>(){}.type) ?: emptyList() } catch (e: Exception) { emptyList() }
         val canaisFavoritos = masterCanais.filter { idsFavoritos.contains(it.stream_id.toString()) }.map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "live", "Favoritos") }
         if(canaisFavoritos.isNotEmpty()) injetarTrilho(container, "Canais Favoritos", canaisFavoritos)
 
-        // Trilho 3: Novidades (Filmes adicionados recentemente)
         val ultimosFilmes = masterFilmes.take(20).map { ItemCatalogo(it.stream_id, it.name, it.stream_icon, "vod", "Outros") }
         if(ultimosFilmes.isNotEmpty()) injetarTrilho(container, "Últimos Filmes Adicionados", ultimosFilmes)
         
-        // Trilho 4: Novas Séries
         val seriesAlta = masterSeries.take(20).map { ItemCatalogo(it.series_id, it.name, it.cover, "series", "Outros") }
         if(seriesAlta.isNotEmpty()) injetarTrilho(container, "Séries Recentes", seriesAlta)
     }
@@ -248,8 +242,8 @@ class MainActivity : FragmentActivity() {
         view.findViewById<TextView>(R.id.txtTituloTrilho).text = titulo
         
         val rv = view.findViewById<RecyclerView>(R.id.rvTrilho).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity, RelativeLayout.HORIZONTAL, false)
-            setHasFixedSize(true) // OTIMIZAÇÃO CRUCIAL: Evita que o RecyclerView recalcule o tamanho dos cards toda hora
+            layoutManager = LinearLayoutManager(this@MainActivity, LinearLayoutManager.HORIZONTAL, false)
+            setHasFixedSize(true)
             adapter = CatalogoAdapter(itens)
         }
         container.addView(view)
@@ -315,7 +309,6 @@ class MainActivity : FragmentActivity() {
             holder.txtNome?.text = item.titulo
 
             if (holder.imgCapa != null && !item.capa.isNullOrEmpty()) {
-                // CARREGAMENTO SEGURO: Injetando as regras de otimização de imagem
                 Glide.with(holder.itemView.context)
                     .load(item.capa)
                     .apply(glideOptions)
