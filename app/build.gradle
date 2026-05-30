@@ -1,6 +1,8 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    // Aplica o plugin do Google Services
+    id 'com.google.gms.google-services'
 }
 
 android {
@@ -15,7 +17,6 @@ android {
         versionName "1.0"
     }
 
-    // Estas são as linhas novas que resolvem o conflito do Java 17:
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
@@ -23,4 +24,13 @@ android {
     kotlinOptions {
         jvmTarget = '17'
     }
+}
+
+// Bloco novo: Aqui dizemos para o aplicativo baixar as ferramentas do Firebase
+dependencies {
+    // Importa a BOM do Firebase (ela gerencia as versões corretas automaticamente)
+    implementation platform('com.google.firebase:firebase-bom:32.7.0')
+    
+    // Adiciona o motor do banco de dados Firestore (para validar usuário e senha)
+    implementation 'com.google.firebase:firebase-firestore'
 }
