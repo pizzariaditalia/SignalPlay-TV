@@ -6,39 +6,44 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-data class XtreamCategory(val category_id: String, val category_name: String)
-data class XtreamVod(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
-data class XtreamSerie(val series_id: Int, val name: String, val cover: String?, val category_id: String? = null, var category_name: String? = null, val rating: Double? = 0.0)
-data class XtreamLive(val stream_id: Int, val name: String, val stream_icon: String?, val category_id: String? = null, var category_name: String? = null, val epg_channel_id: String? = null)
+interface XtreamClient {
 
-data class XtreamEpgListing(val title: String?, val description: String?, val start_timestamp: String?, val stop_timestamp: String?)
+    // O Comando exato que faltava para o Login funcionar
+    @GET("player_api.php")
+    suspend fun authenticate(
+        @Query("username") user: String,
+        @Query("password") pass: String
+    ): JsonElement
 
-interface XtreamApiService {
-    @GET("player_api.php")
-    suspend fun getVodStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_streams"): JsonElement 
-    @GET("player_api.php")
-    suspend fun getSeriesStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_series"): JsonElement 
-    @GET("player_api.php")
-    suspend fun getLiveStreams(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_streams"): JsonElement
+    // As fundações preparadas para quando formos carregar os filmes e canais
+    @GET("player_api.php?action=get_live_categories")
+    suspend fun getLiveCategories(@Query("username") u: String, @Query("password") p: String): JsonElement
 
-    @GET("player_api.php")
-    suspend fun getLiveCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_live_categories"): JsonElement
-    @GET("player_api.php")
-    suspend fun getVodCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_categories"): JsonElement
-    @GET("player_api.php")
-    suspend fun getSeriesCategories(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_series_categories"): JsonElement
+    @GET("player_api.php?action=get_live_streams")
+    suspend fun getLiveStreams(@Query("username") u: String, @Query("password") p: String): JsonElement
 
-    @GET("player_api.php")
-    suspend fun getVodInfo(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_vod_info", @Query("vod_id") id: Int): JsonElement
-    @GET("player_api.php")
-    suspend fun getSeriesInfo(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_series_info", @Query("series_id") id: Int): JsonElement
-    @GET("player_api.php")
-    suspend fun getShortEpg(@Query("username") user: String, @Query("password") pass: String, @Query("action") action: String = "get_short_epg", @Query("stream_id") id: Int, @Query("limit") limit: Int = 10): JsonElement
-}
+    @GET("player_api.php?action=get_vod_categories")
+    suspend fun getVodCategories(@Query("username") u: String, @Query("password") p: String): JsonElement
 
-object XtreamClient {
-    fun create(baseUrl: String): XtreamApiService {
-        val formatUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
-        return Retrofit.Builder().baseUrl(formatUrl).addConverterFactory(GsonConverterFactory.create()).build().create(XtreamApiService::class.java)
+    @GET("player_api.php?action=get_vod_streams")
+    suspend fun getVodStreams(@Query("username") u: String, @Query("password") p: String): JsonElement
+
+    @GET("player_api.php?action=get_series_categories")
+    suspend fun getSeriesCategories(@Query("username") u: String, @Query("password") p: String): JsonElement
+
+    @GET("player_api.php?action=get_series")
+    suspend fun getSeriesStreams(@Query("username") u: String, @Query("password") p: String): JsonElement
+
+    companion object {
+        fun create(baseUrl: String): XtreamClient {
+            // Garante que a URL sempre termine com uma barra "/" para não dar erro no motor
+            val cleanUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
+            
+            val retrofit = Retrofit.Builder()
+                .baseUrl(cleanUrl)
+                .addConverterFactory(GsonConverterFactory.create())
+                .build()
+            return retrofit.create(XtreamClient::class.java)
+        }
     }
 }
