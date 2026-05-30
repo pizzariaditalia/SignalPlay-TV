@@ -10,7 +10,7 @@ jobs:
     name: Compilar APK
     runs-on: ubuntu-latest
 
-    steps:
+        steps:
       - name: Baixar Código do Repositório
         uses: actions/checkout@v4
 
@@ -20,6 +20,10 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
           cache: gradle
+
+      # ESSA É A LINHA NOVA QUE RESOLVE O ERRO:
+      - name: Gerar o Gradle Wrapper
+        run: gradle wrapper --gradle-version 8.4
 
       - name: Dar permissão ao Gradle
         run: chmod +x gradlew
