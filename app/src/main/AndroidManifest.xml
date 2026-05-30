@@ -10,8 +10,9 @@
         android:allowBackup="true"
         android:icon="@drawable/logo_oficial"
         android:banner="@drawable/banner_oficial"
-        android:label="SignalPlay"
+        android:label="SignalPlay TV"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
         
         <activity
