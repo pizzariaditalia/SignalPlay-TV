@@ -33,7 +33,10 @@ class HomeActivity : Activity() {
         val tvHeroBadge = findViewById<TextView>(R.id.heroBadge)
         val imgHero = findViewById<ImageView>(R.id.heroImage)
 
+        // Botões do Menu Superior
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
+        val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
+        val menuSeries = findViewById<TextView>(R.id.menuSeries)
 
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
@@ -53,7 +56,7 @@ class HomeActivity : Activity() {
         val pass = intent.getStringExtra("PASS") ?: ""
         val username = intent.getStringExtra("USERNAME") ?: ""
 
-        // Configura o botão Canais para abrir a tela dupla de TV
+        // Configura o menu CANAIS
         menuCanais.setOnClickListener {
             val intentTv = Intent(this@HomeActivity, TvActivity::class.java)
             intentTv.putExtra("URL", url)
@@ -63,29 +66,39 @@ class HomeActivity : Activity() {
             startActivity(intentTv)
         }
 
+        // Configura o menu FILMES
+        menuFilmes.setOnClickListener {
+            val intentVod = Intent(this@HomeActivity, VodActivity::class.java)
+            intentVod.putExtra("URL", url)
+            intentVod.putExtra("USER", user)
+            intentVod.putExtra("PASS", pass)
+            startActivity(intentVod)
+        }
+
+        // Configura o menu SÉRIES
+        menuSeries.setOnClickListener {
+            val intentSeries = Intent(this@HomeActivity, SeriesActivity::class.java)
+            intentSeries.putExtra("URL", url)
+            intentSeries.putExtra("USER", user)
+            intentSeries.putExtra("PASS", pass)
+            startActivity(intentSeries)
+        }
+
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()
-
-                // Passo 1: Puxar IDs favoritos do Firebase
                 val listaIdsFavoritos = mutableListOf<String>()
-                val usuarioDocs = db.collection("usuarios")
-                    .whereEqualTo("usuario", username)
-                    .get()
+                
+                db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
                         if (!snapshot.isEmpty) {
-                            val doc = snapshot.documents[0]
-                            val favs = doc.get("favoritos") as? List<*>
-                            favs?.forEach { id ->
-                                listaIdsFavoritos.add(id.toString())
-                            }
+                            val favs = snapshot.documents[0].get("favoritos") as? List<*>
+                            favs?.forEach { listaIdsFavoritos.add(it.toString()) }
                         }
                     }
                 
-                // Aguarda um instante para o Firebase responder antes de cruzar com o Xtream
                 withContext(Dispatchers.IO) { Thread.sleep(500) }
 
-                // Passo 2: Baixar Canais Ao Vivo para preencher os favoritos
                 val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
                 val resLive = client.newCall(reqLive).execute()
                 val jsonLive = resLive.body?.string() ?: "[]"
@@ -96,18 +109,15 @@ class HomeActivity : Activity() {
                     for (i in 0 until liveArray.length()) {
                         val obj = liveArray.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
-                        
-                        // Se o ID do canal estiver na lista de favoritos do Firebase, adiciona na prateleira!
                         if (listaIdsFavoritos.contains(id)) {
                             val nome = obj.optString("name", "Canal")
                             val icone = obj.optString("stream_icon", "")
                             val streamUrl = "$url/live/$user/$pass/$id.ts"
-                            listFavoritos.add(FilmeItem(id, nome, icone, streamUrl, "tv"))
+                            listFavoritos.add(FilmeItem(id, nome, icone, streamUrl, "tv", ""))
                         }
                     }
                 }
 
-                // Passo 3: Baixar Filmes (VOD)
                 val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
                 val resVod = client.newCall(reqVod).execute()
                 val jsonVod = resVod.body?.string() ?: "[]"
@@ -123,11 +133,10 @@ class HomeActivity : Activity() {
                         val icone = obj.optString("stream_icon", "")
                         val ext = obj.optString("container_extension", "mp4")
                         val streamUrl = "$url/movie/$user/$pass/$id.$ext"
-                        listFilmes.add(FilmeItem(id, nome, icone, streamUrl, "filme"))
+                        listFilmes.add(FilmeItem(id, nome, icone, streamUrl, "filme", ""))
                     }
                 }
 
-                // Passo 4: Baixar Séries
                 val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
                 val resSeries = client.newCall(reqSeries).execute()
                 val jsonSeries = resSeries.body?.string() ?: "[]"
@@ -142,24 +151,24 @@ class HomeActivity : Activity() {
                         val nome = obj.optString("name", "Sem Nome")
                         val icone = obj.optString("cover", "")
                         val streamUrl = "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=$id"
-                        listSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie"))
+                        listSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie", ""))
                     }
                 }
 
-                val ultimesFilmes = listFilmes.reversed().take(30)
+                val ultimosFilmes = listFilmes.reversed().take(30)
                 val topFilmes = listFilmes.take(15)
                 val seriesAlta = listSeries.reversed().take(30)
                 val topSeries = listSeries.take(15)
 
                 withContext(Dispatchers.Main) {
                     recyclerFavoritos.adapter = CardAdapter(listFavoritos)
-                    recyclerUltimos.adapter = CardAdapter(ultimesFilmes)
+                    recyclerUltimos.adapter = CardAdapter(ultimosFilmes)
                     recyclerTopFilmes.adapter = CardAdapter(topFilmes)
                     recyclerTopSeries.adapter = CardAdapter(topSeries)
                     recyclerSeriesAlta.adapter = CardAdapter(seriesAlta)
 
-                    if (ultimesFilmes.isNotEmpty()) {
-                        val destaque = ultimesFilmes[0]
+                    if (ultimosFilmes.isNotEmpty()) {
+                        val destaque = ultimosFilmes[0]
                         tvHeroTitle.text = destaque.nome
                         tvHeroDesc.text = "Aperte OK no controle para assistir agora."
                         tvHeroBadge.text = "NOVIDADE EM FILMES"
