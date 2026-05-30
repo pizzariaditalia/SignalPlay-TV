@@ -65,15 +65,22 @@ class PlayerTvActivity : Activity() {
         tvPainelTitulo.text = DataHolder.categoriaAtualNome
         recyclerPainelCanais.layoutManager = LinearLayoutManager(this)
         
-        // Usa o CanalAdapter que já temos para listar os canais no painel rápido!
-        recyclerPainelCanais.adapter = CanalAdapter(DataHolder.canaisZapping, emptyList()) { canalClicado ->
-            val novoIndice = DataHolder.canaisZapping.indexOf(canalClicado)
-            if (novoIndice != -1) {
-                indiceCanalAtual = novoIndice
-                painelCanais.visibility = View.GONE
-                iniciarCanal()
+        // AQUI ESTÁ A CORREÇÃO: Passando os dois parâmetros de clique exigidos pelo CanalAdapter
+        recyclerPainelCanais.adapter = CanalAdapter(
+            listaCanais = DataHolder.canaisZapping,
+            idsFavoritos = emptyList(),
+            onClick = { canalClicado ->
+                val novoIndice = DataHolder.canaisZapping.indexOf(canalClicado)
+                if (novoIndice != -1) {
+                    indiceCanalAtual = novoIndice
+                    painelCanais.visibility = View.GONE
+                    iniciarCanal()
+                }
+            },
+            onLongClick = { 
+                // No painel de zapping rápido, o clique longo não precisa fazer nada.
             }
-        }
+        )
 
         // Pega o canal inicial que o usuário clicou lá na grade
         indiceCanalAtual = intent.getIntExtra("INDICE_CANAL", 0)
