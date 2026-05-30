@@ -33,7 +33,6 @@ class HomeActivity : Activity() {
         val tvHeroBadge = findViewById<TextView>(R.id.heroBadge)
         val imgHero = findViewById<ImageView>(R.id.heroImage)
 
-        // Botões do Menu Superior
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
         val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
@@ -56,7 +55,19 @@ class HomeActivity : Activity() {
         val pass = intent.getStringExtra("PASS") ?: ""
         val username = intent.getStringExtra("USERNAME") ?: ""
 
-        // Configura o menu CANAIS
+        // LÓGICA DE NAVEGAÇÃO CENTRALIZADA
+        fun abrirDetalhes(itemClicado: FilmeItem) {
+            val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
+            intentDet.putExtra("URL", url)
+            intentDet.putExtra("USER", user)
+            intentDet.putExtra("PASS", pass)
+            intentDet.putExtra("MEDIA_ID", itemClicado.id)
+            intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
+            intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
+            intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
+            startActivity(intentDet)
+        }
+
         menuCanais.setOnClickListener {
             val intentTv = Intent(this@HomeActivity, TvActivity::class.java)
             intentTv.putExtra("URL", url)
@@ -66,7 +77,6 @@ class HomeActivity : Activity() {
             startActivity(intentTv)
         }
 
-        // Configura o menu FILMES
         menuFilmes.setOnClickListener {
             val intentVod = Intent(this@HomeActivity, VodActivity::class.java)
             intentVod.putExtra("URL", url)
@@ -75,7 +85,6 @@ class HomeActivity : Activity() {
             startActivity(intentVod)
         }
 
-        // Configura o menu SÉRIES
         menuSeries.setOnClickListener {
             val intentSeries = Intent(this@HomeActivity, SeriesActivity::class.java)
             intentSeries.putExtra("URL", url)
@@ -161,16 +170,18 @@ class HomeActivity : Activity() {
                 val topSeries = listSeries.take(15)
 
                 withContext(Dispatchers.Main) {
-                    recyclerFavoritos.adapter = CardAdapter(listFavoritos)
-                    recyclerUltimos.adapter = CardAdapter(ultimosFilmes)
-                    recyclerTopFilmes.adapter = CardAdapter(topFilmes)
-                    recyclerTopSeries.adapter = CardAdapter(topSeries)
-                    recyclerSeriesAlta.adapter = CardAdapter(seriesAlta)
+                    recyclerFavoritos.adapter = CardAdapter(listFavoritos) {
+                        // Canais abrem direto (será feito no player)
+                    }
+                    recyclerUltimos.adapter = CardAdapter(ultimosFilmes) { abrirDetalhes(it) }
+                    recyclerTopFilmes.adapter = CardAdapter(topFilmes) { abrirDetalhes(it) }
+                    recyclerTopSeries.adapter = CardAdapter(topSeries) { abrirDetalhes(it) }
+                    recyclerSeriesAlta.adapter = CardAdapter(seriesAlta) { abrirDetalhes(it) }
 
                     if (ultimosFilmes.isNotEmpty()) {
                         val destaque = ultimosFilmes[0]
                         tvHeroTitle.text = destaque.nome
-                        tvHeroDesc.text = "Aperte OK no controle para assistir agora."
+                        tvHeroDesc.text = "Aperte OK no controle para ver os detalhes."
                         tvHeroBadge.text = "NOVIDADE EM FILMES"
                         
                         Glide.with(this@HomeActivity)
