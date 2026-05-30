@@ -34,7 +34,6 @@ class MainActivity : Activity() {
             btnEntrar.isEnabled = false
             btnEntrar.text = "Validando Acesso..."
 
-            // Passo 1: Busca o usuário no Firebase
             db.collection("usuarios")
                 .whereEqualTo("usuario", usuario)
                 .whereEqualTo("senha", senha)
@@ -52,7 +51,6 @@ class MainActivity : Activity() {
                             val servidorId = documento.getString("servidor_id")
                             
                             if (servidorId != null) {
-                                // Passo 2: Busca a URL, User e Pass do Xtream na coleção servidores
                                 db.collection("servidores").document(servidorId).get()
                                     .addOnSuccessListener { serverDoc ->
                                         if (serverDoc.exists()) {
@@ -62,11 +60,11 @@ class MainActivity : Activity() {
 
                                             Toast.makeText(this@MainActivity, "Conectando ao catálogo...", Toast.LENGTH_SHORT).show()
 
-                                            // Envia os dados secretos do servidor para a tela Home
                                             val intent = Intent(this@MainActivity, HomeActivity::class.java)
                                             intent.putExtra("URL", url)
                                             intent.putExtra("USER", xtreamUser)
                                             intent.putExtra("PASS", xtreamPass)
+                                            intent.putExtra("USERNAME", usuario) // Linha nova importante!
                                             startActivity(intent)
                                             finish()
                                             
