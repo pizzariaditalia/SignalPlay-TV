@@ -26,8 +26,9 @@
         </activity>
 
         <activity android:name=".HomeActivity" />
-        
         <activity android:name=".TvActivity" />
+        <activity android:name=".VodActivity" />
+        <activity android:name=".SeriesActivity" />
 
     </application>
 </manifest>
