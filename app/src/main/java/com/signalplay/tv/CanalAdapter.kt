@@ -19,6 +19,7 @@ data class CanalItem(
 class CanalAdapter(
     private val listaCanais: List<CanalItem>,
     private val idsFavoritos: List<String>,
+    private val onClick: (CanalItem) -> Unit,       // NOVO: Adicionamos a ação de Clique Normal
     private val onLongClick: (CanalItem) -> Unit
 ) : RecyclerView.Adapter<CanalAdapter.CanalViewHolder>() {
 
@@ -42,7 +43,6 @@ class CanalAdapter(
             .placeholder(android.R.drawable.ic_menu_report_image)
             .into(holder.imgLogo)
 
-        // Se o canal for favorito, exibe a estrela amarela
         if (idsFavoritos.contains(canal.id)) {
             holder.imgStar.setImageResource(android.R.drawable.btn_star_big_on)
             holder.imgStar.visibility = View.VISIBLE
@@ -50,11 +50,11 @@ class CanalAdapter(
             holder.imgStar.visibility = View.GONE
         }
 
+        // Aciona o clique curto para abrir o player!
         holder.itemView.setOnClickListener {
-            // (Futuro: Iniciar reprodução no Player de Vídeo)
+            onClick(canal)
         }
 
-        // Mágica do clique longo para TV Box
         holder.itemView.setOnLongClickListener {
             onLongClick(canal)
             true
