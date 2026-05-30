@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -24,10 +25,13 @@ class VodActivity : Activity() {
 
     private lateinit var recyclerCanaisGrid: RecyclerView
     private lateinit var tvTituloCategoria: TextView
+    
+    private var url = ""
+    private var user = ""
+    private var pass = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // REAPROVEITAMOS O LAYOUT DA TV! 
         setContentView(R.layout.activity_tv)
 
         val recyclerCategories = findViewById<RecyclerView>(R.id.recyclerCategories)
@@ -35,19 +39,16 @@ class VodActivity : Activity() {
         tvTituloCategoria = findViewById<TextView>(R.id.tvTituloCategoria)
 
         recyclerCategories.layoutManager = LinearLayoutManager(this)
-        
-        // Pôsteres de filmes são mais finos que de TV, então cabem 5 por linha
         recyclerCanaisGrid.layoutManager = GridLayoutManager(this, 5)
 
-        val url = intent.getStringExtra("URL") ?: ""
-        val user = intent.getStringExtra("USER") ?: ""
-        val pass = intent.getStringExtra("PASS") ?: ""
+        url = intent.getStringExtra("URL") ?: ""
+        user = intent.getStringExtra("USER") ?: ""
+        pass = intent.getStringExtra("PASS") ?: ""
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()
 
-                // 1. Baixar Categorias de Filmes
                 val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_categories").build()
                 val resCat = client.newCall(reqCat).execute()
                 val jsonCat = resCat.body?.string() ?: "[]"
@@ -60,7 +61,6 @@ class VodActivity : Activity() {
                     }
                 }
 
-                // 2. Baixar todos os Filmes
                 val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
                 val resVod = client.newCall(reqVod).execute()
                 val jsonVod = resVod.body?.string() ?: "[]"
@@ -116,8 +116,15 @@ class VodActivity : Activity() {
         val filmesFiltrados = todosFilmes.filter { it.categoryId == catId }
 
         recyclerCanaisGrid.adapter = CardAdapter(filmesFiltrados) { filmeClicado ->
-            Toast.makeText(this, "Clicou no filme: ${filmeClicado.nome}", Toast.LENGTH_SHORT).show()
-            // (Próximo passo: Abrir a tela de Detalhes do Filme)
+            val intentDet = Intent(this, DetailsActivity::class.java)
+            intentDet.putExtra("URL", url)
+            intentDet.putExtra("USER", user)
+            intentDet.putExtra("PASS", pass)
+            intentDet.putExtra("MEDIA_ID", filmeClicado.id)
+            intentDet.putExtra("MEDIA_TIPO", filmeClicado.tipo)
+            intentDet.putExtra("MEDIA_NOME", filmeClicado.nome)
+            intentDet.putExtra("MEDIA_CAPA", filmeClicado.urlImagem)
+            startActivity(intentDet)
         }
     }
 }
