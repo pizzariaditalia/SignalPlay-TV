@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -43,7 +44,6 @@ class TvActivity : Activity() {
         tvTituloCategoria = findViewById<TextView>(R.id.tvTituloCategoria)
 
         recyclerCategories.layoutManager = LinearLayoutManager(this)
-        // Grade com 2 colunas de canais de TV deitados
         recyclerCanaisGrid.layoutManager = GridLayoutManager(this, 2)
 
         val url = intent.getStringExtra("URL") ?: ""
@@ -53,7 +53,6 @@ class TvActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 1. Carrega favoritos atuais do Firebase
                 db.collection("usuarios")
                     .whereEqualTo("usuario", username)
                     .get()
@@ -66,7 +65,6 @@ class TvActivity : Activity() {
 
                 val client = OkHttpClient()
 
-                // 2. Baixar Categorias
                 val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()
                 val resCat = client.newCall(reqCat).execute()
                 val jsonCat = resCat.body?.string() ?: "[]"
@@ -78,7 +76,6 @@ class TvActivity : Activity() {
                     }
                 }
 
-                // 3. Baixar Canais
                 val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
                 val resLive = client.newCall(reqLive).execute()
                 val jsonLive = resLive.body?.string() ?: "[]"
@@ -96,7 +93,6 @@ class TvActivity : Activity() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    // Renderiza a barra lateral de categorias
                     recyclerCategories.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_category, parent, false)
@@ -115,7 +111,6 @@ class TvActivity : Activity() {
                         override fun getItemCount(): Int = todasCategorias.size
                     }
 
-                    // Abre a primeira categoria por padrão
                     if (todasCategorias.isNotEmpty()) {
                         exibirCanaisDaCategoria(todasCategorias[0].id, todasCategorias[0].nome)
                     }
@@ -133,29 +128,42 @@ class TvActivity : Activity() {
         tvTituloCategoria.text = catNome
         val canaisFiltrados = todosCanais.filter { it.categoryId == catId }
 
-        recyclerCanaisGrid.adapter = CanalAdapter(canaisFiltrados, favoritosIds) { canalClicado ->
-            // LÓGICA DO CLIQUE LONGO: Alternar Favorito no Firebase
-            if (favoritosIds.contains(canalClicado.id)) {
-                favoritosIds.remove(canalClicado.id)
-                Toast.makeText(this, "Removido dos Favoritos", Toast.LENGTH_SHORT).show()
-            } else {
-                favoritosIds.add(canalClicado.id)
-                Toast.makeText(this, "Adicionado aos Favoritos!", Toast.LENGTH_SHORT).show()
-            }
-
-            // Sincroniza em tempo real com a Nuvem
-            db.collection("usuarios")
-                .whereEqualTo("usuario", username)
-                .get()
-                .addOnSuccessListener { snapshot ->
-                    if (!snapshot.isEmpty) {
-                        val docId = snapshot.documents[0].id
-                        db.collection("usuarios").document(docId).update("favoritos", favoritosIds)
-                    }
+        // Atualizamos o construtor para receber a lógica do clique NORMAL e LONGO
+        recyclerCanaisGrid.adapter = CanalAdapter(
+            listaCanais = canaisFiltrados,
+            idsFavoritos = favoritosIds,
+            onClick = { canalClicado ->
+                // MÁGICA: Grava a lista atual para o Zapping do Player!
+                DataHolder.canaisZapping = canaisFiltrados
+                DataHolder.categoriaAtualNome = catNome
+                
+                val indice = canaisFiltrados.indexOf(canalClicado)
+                
+                val intentPlayer = Intent(this, PlayerTvActivity::class.java)
+                intentPlayer.putExtra("INDICE_CANAL", indice)
+                startActivity(intentPlayer)
+            },
+            onLongClick = { canalClicado ->
+                if (favoritosIds.contains(canalClicado.id)) {
+                    favoritosIds.remove(canalClicado.id)
+                    Toast.makeText(this, "Removido dos Favoritos", Toast.LENGTH_SHORT).show()
+                } else {
+                    favoritosIds.add(canalClicado.id)
+                    Toast.makeText(this, "Adicionado aos Favoritos!", Toast.LENGTH_SHORT).show()
                 }
 
-            // Atualiza a grade visual para acender ou apagar a estrela
-            recyclerCanaisGrid.adapter?.notifyDataSetChanged()
-        }
+                db.collection("usuarios")
+                    .whereEqualTo("usuario", username)
+                    .get()
+                    .addOnSuccessListener { snapshot ->
+                        if (!snapshot.isEmpty) {
+                            val docId = snapshot.documents[0].id
+                            db.collection("usuarios").document(docId).update("favoritos", favoritosIds)
+                        }
+                    }
+
+                recyclerCanaisGrid.adapter?.notifyDataSetChanged()
+            }
+        )
     }
 }
