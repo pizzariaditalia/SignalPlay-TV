@@ -19,9 +19,13 @@ jobs:
         with:
           java-version: '17'
           distribution: 'temurin'
-          cache: gradle
 
-      # Removemos a necessidade do 'gradlew' e usamos o 'gradle' direto!
+      # Essa é a mágica: força o GitHub a usar a versão correta do motor
+      - name: Instalar Gradle Compatível
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          gradle-version: '8.2'
+
       - name: Construir o APK
         run: gradle assembleDebug
 
