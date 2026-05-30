@@ -5,12 +5,14 @@
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-    <application
+        <application
         android:allowBackup="true"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@drawable/ic_logo"
+        android:banner="@drawable/tv_banner"
         android:label="SignalPlay TV"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
+
         
         <activity
             android:name=".MainActivity"
