@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    // Aplica o plugin do Google Services
     id 'com.google.gms.google-services'
 }
 
@@ -27,22 +26,19 @@ android {
 }
 
 dependencies {
-    // Importa a BOM do Firebase
+    // Firebase
     implementation platform('com.google.firebase:firebase-bom:32.7.0')
-    
-    // Adiciona o motor do banco de dados Firestore
     implementation 'com.google.firebase:firebase-firestore'
 
-    // Motor do Carrossel (RecyclerView)
+    // Interface e Internet
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
-
-    // NOVAS FERRAMENTAS DE DESEMPENHO PARA BAIXAR O CATÁLOGO:
-    // Glide: Para baixar e exibir os pôsteres dos filmes instantaneamente
     implementation 'com.github.bumptech.glide:glide:4.16.0'
-    // OkHttp: Para fazer a conexão com a API do Xtream Codes
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
-    // Gson: Para traduzir as listas da API
     implementation 'com.google.code.gson:gson:2.10.1'
-    // Coroutines: Para rodar downloads sem congelar a tela da TV
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
+
+    // NOVO: Motor de Vídeo ExoPlayer (Media3)
+    implementation 'androidx.media3:media3-exoplayer:1.2.0'
+    implementation 'androidx.media3:media3-ui:1.2.0'
+    implementation 'androidx.media3:media3-hls:1.2.0'
 }
