@@ -55,7 +55,6 @@ class HomeActivity : Activity() {
         val pass = intent.getStringExtra("PASS") ?: ""
         val username = intent.getStringExtra("USERNAME") ?: ""
 
-        // LÓGICA DE NAVEGAÇÃO CENTRALIZADA
         fun abrirDetalhes(itemClicado: FilmeItem) {
             val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
             intentDet.putExtra("URL", url)
@@ -112,7 +111,8 @@ class HomeActivity : Activity() {
                 val resLive = client.newCall(reqLive).execute()
                 val jsonLive = resLive.body?.string() ?: "[]"
                 
-                val listFavoritos = mutableListOf<FilmeItem>()
+                // CORREÇÃO: Usar a classe CanalItem para a prateleira de favoritos!
+                val listFavoritos = mutableListOf<CanalItem>()
                 if (jsonLive.startsWith("[")) {
                     val liveArray = JSONArray(jsonLive)
                     for (i in 0 until liveArray.length()) {
@@ -122,7 +122,7 @@ class HomeActivity : Activity() {
                             val nome = obj.optString("name", "Canal")
                             val icone = obj.optString("stream_icon", "")
                             val streamUrl = "$url/live/$user/$pass/$id.ts"
-                            listFavoritos.add(FilmeItem(id, nome, icone, streamUrl, "tv", ""))
+                            listFavoritos.add(CanalItem(id, nome, icone, "Favoritos", streamUrl))
                         }
                     }
                 }
@@ -170,9 +170,23 @@ class HomeActivity : Activity() {
                 val topSeries = listSeries.take(15)
 
                 withContext(Dispatchers.Main) {
-                    recyclerFavoritos.adapter = CardAdapter(listFavoritos) {
-                        // Canais abrem direto (será feito no player)
-                    }
+                    
+                    // CORREÇÃO: Povoar a prateleira com o CanalAdapter
+                    recyclerFavoritos.adapter = CanalAdapter(
+                        listaCanais = listFavoritos,
+                        idsFavoritos = listaIdsFavoritos,
+                        onClick = { canalClicado ->
+                            DataHolder.canaisZapping = listFavoritos
+                            DataHolder.categoriaAtualNome = "Canais Favoritos"
+                            val indice = listFavoritos.indexOf(canalClicado)
+                            
+                            val intentPlayer = Intent(this@HomeActivity, PlayerTvActivity::class.java)
+                            intentPlayer.putExtra("INDICE_CANAL", indice)
+                            startActivity(intentPlayer)
+                        },
+                        onLongClick = { }
+                    )
+                    
                     recyclerUltimos.adapter = CardAdapter(ultimosFilmes) { abrirDetalhes(it) }
                     recyclerTopFilmes.adapter = CardAdapter(topFilmes) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = CardAdapter(topSeries) { abrirDetalhes(it) }
