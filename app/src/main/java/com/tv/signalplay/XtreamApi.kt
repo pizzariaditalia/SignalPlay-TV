@@ -6,7 +6,7 @@ import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
 import retrofit2.http.Query
 
-interface XtreamClient {
+interface XtreamApi {
 
     // O Comando exato que faltava para o Login funcionar
     @GET("player_api.php")
@@ -35,7 +35,7 @@ interface XtreamClient {
     suspend fun getSeriesStreams(@Query("username") u: String, @Query("password") p: String): JsonElement
 
     companion object {
-        fun create(baseUrl: String): XtreamClient {
+        fun create(baseUrl: String): XtreamApi {
             // Garante que a URL sempre termine com uma barra "/" para não dar erro no motor
             val cleanUrl = if (baseUrl.endsWith("/")) baseUrl else "$baseUrl/"
             
@@ -43,7 +43,7 @@ interface XtreamClient {
                 .baseUrl(cleanUrl)
                 .addConverterFactory(GsonConverterFactory.create())
                 .build()
-            return retrofit.create(XtreamClient::class.java)
+            return retrofit.create(XtreamApi::class.java)
         }
     }
 }
