@@ -4,52 +4,62 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
-import com.bumptech.glide.request.RequestOptions
 
-data class FilmeItem(
+data class CanalItem(
     val id: String,
     val nome: String,
     val urlImagem: String,
-    val streamUrl: String,
-    val tipo: String,
-    val categoryId: String = "" // Essencial para as pastas laterais
+    val categoryId: String,
+    val streamUrl: String
 )
 
-class CardAdapter(
-    private val listaItens: List<FilmeItem>,
-    private val onClick: ((FilmeItem) -> Unit)? = null // Esperando o clique no filme
-) : RecyclerView.Adapter<CardAdapter.CardViewHolder>() {
+class CanalAdapter(
+    private val listaCanais: List<CanalItem>,
+    private val idsFavoritos: List<String>,
+    private val onLongClick: (CanalItem) -> Unit
+) : RecyclerView.Adapter<CanalAdapter.CanalViewHolder>() {
 
-    class CardViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val cardImage: ImageView = view.findViewById(R.id.cardImage)
+    class CanalViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val imgLogo: ImageView = view.findViewById(R.id.canalImage)
+        val tvNome: TextView = view.findViewById(R.id.canalTitle)
+        val imgStar: ImageView = view.findViewById(R.id.canalStar)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CardViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_card, parent, false)
-        return CardViewHolder(view)
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CanalViewHolder {
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_canal, parent, false)
+        return CanalViewHolder(view)
     }
 
-    override fun onBindViewHolder(holder: CardViewHolder, position: Int) {
-        val itemAtual = listaItens[position]
-        
-        val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
-        
+    override fun onBindViewHolder(holder: CanalViewHolder, position: Int) {
+        val canal = listaCanais[position]
+        holder.tvNome.text = canal.nome
+
         Glide.with(holder.itemView.context)
-            .load(itemAtual.urlImagem)
-            .apply(options)
-            .into(holder.cardImage)
+            .load(canal.urlImagem)
+            .placeholder(android.R.drawable.ic_menu_report_image)
+            .into(holder.imgLogo)
 
-        // Aciona o clique no pôster e manda o dado pra frente
+        // Se o canal for favorito, exibe a estrela amarela
+        if (idsFavoritos.contains(canal.id)) {
+            holder.imgStar.setImageResource(android.R.drawable.btn_star_big_on)
+            holder.imgStar.visibility = View.VISIBLE
+        } else {
+            holder.imgStar.visibility = View.GONE
+        }
+
         holder.itemView.setOnClickListener {
-            onClick?.invoke(itemAtual)
+            // (Futuro: Iniciar reprodução no Player de Vídeo)
+        }
+
+        // Mágica do clique longo para TV Box
+        holder.itemView.setOnLongClickListener {
+            onLongClick(canal)
+            true
         }
     }
 
-    override fun getItemCount(): Int {
-        return listaItens.size
-    }
+    override fun getItemCount(): Int = listaCanais.size
 }
