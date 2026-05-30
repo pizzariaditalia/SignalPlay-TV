@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.ViewGroup
@@ -24,6 +25,10 @@ class SeriesActivity : Activity() {
 
     private lateinit var recyclerCanaisGrid: RecyclerView
     private lateinit var tvTituloCategoria: TextView
+    
+    private var url = ""
+    private var user = ""
+    private var pass = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -36,15 +41,14 @@ class SeriesActivity : Activity() {
         recyclerCategories.layoutManager = LinearLayoutManager(this)
         recyclerCanaisGrid.layoutManager = GridLayoutManager(this, 5)
 
-        val url = intent.getStringExtra("URL") ?: ""
-        val user = intent.getStringExtra("USER") ?: ""
-        val pass = intent.getStringExtra("PASS") ?: ""
+        url = intent.getStringExtra("URL") ?: ""
+        user = intent.getStringExtra("USER") ?: ""
+        pass = intent.getStringExtra("PASS") ?: ""
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()
 
-                // 1. Baixar Categorias de Séries
                 val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series_categories").build()
                 val resCat = client.newCall(reqCat).execute()
                 val jsonCat = resCat.body?.string() ?: "[]"
@@ -57,7 +61,6 @@ class SeriesActivity : Activity() {
                     }
                 }
 
-                // 2. Baixar todas as Séries
                 val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
                 val resSeries = client.newCall(reqSeries).execute()
                 val jsonSeries = resSeries.body?.string() ?: "[]"
@@ -68,7 +71,7 @@ class SeriesActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("series_id")
                         val nome = obj.optString("name")
-                        val icone = obj.optString("cover") // A API de séries costuma usar 'cover'
+                        val icone = obj.optString("cover") 
                         val catId = obj.optString("category_id")
                         val streamUrl = "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=$id"
                         
@@ -113,8 +116,15 @@ class SeriesActivity : Activity() {
         val seriesFiltradas = todasSeries.filter { it.categoryId == catId }
 
         recyclerCanaisGrid.adapter = CardAdapter(seriesFiltradas) { serieClicada ->
-            Toast.makeText(this, "Clicou na série: ${serieClicada.nome}", Toast.LENGTH_SHORT).show()
-            // (Próximo passo: Abrir a tela de Detalhes e Episódios)
+            val intentDet = Intent(this, DetailsActivity::class.java)
+            intentDet.putExtra("URL", url)
+            intentDet.putExtra("USER", user)
+            intentDet.putExtra("PASS", pass)
+            intentDet.putExtra("MEDIA_ID", serieClicada.id)
+            intentDet.putExtra("MEDIA_TIPO", serieClicada.tipo)
+            intentDet.putExtra("MEDIA_NOME", serieClicada.nome)
+            intentDet.putExtra("MEDIA_CAPA", serieClicada.urlImagem)
+            startActivity(intentDet)
         }
     }
 }
