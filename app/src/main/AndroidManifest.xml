@@ -1,27 +1,24 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- Informa que o app é projetado para TV e dispensa tela de toque -->
     <uses-feature android:name="android.software.leanback" android:required="true" />
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
 
-            <application
+    <application
         android:allowBackup="true"
         android:icon="@drawable/logo_oficial"
         android:banner="@drawable/banner_oficial"
         android:label="SignalPlay TV"
         android:supportsRtl="true"
         android:theme="@android:style/Theme.DeviceDefault.NoActionBar">
-
-
         
         <activity
             android:name=".MainActivity"
-            android:exported="true">
-            <intent-filter>
+            android:exported="true"
+            android:screenOrientation="landscape"> <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
-                <!-- Essa linha é a mágica que faz o app aparecer no menu principal da TV -->
                 <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+                <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
     </application>
