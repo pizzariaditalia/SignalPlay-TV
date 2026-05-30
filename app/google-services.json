@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "51000338902",
+    "project_id": "signalplay-tv",
+    "storage_bucket": "signalplay-tv.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:51000338902:android:346803d04ea3c0a93a1c77",
+        "android_client_info": {
+          "package_name": "com.signalplay.tv"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBdIrBgxKMOWRiOgh9QZijx1AuJAv1qI6o"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
