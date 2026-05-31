@@ -19,7 +19,7 @@ data class CanalItem(
 class CanalAdapter(
     private val listaCanais: List<CanalItem>,
     private val idsFavoritos: List<String>,
-    private val onClick: (CanalItem) -> Unit,       // NOVO: Adicionamos a ação de Clique Normal
+    private val onClick: (CanalItem) -> Unit,
     private val onLongClick: (CanalItem) -> Unit
 ) : RecyclerView.Adapter<CanalAdapter.CanalViewHolder>() {
 
@@ -37,11 +37,7 @@ class CanalAdapter(
     override fun onBindViewHolder(holder: CanalViewHolder, position: Int) {
         val canal = listaCanais[position]
         holder.tvNome.text = canal.nome
-
-        Glide.with(holder.itemView.context)
-            .load(canal.urlImagem)
-            .placeholder(android.R.drawable.ic_menu_report_image)
-            .into(holder.imgLogo)
+        Glide.with(holder.itemView.context).load(canal.urlImagem).placeholder(android.R.drawable.ic_menu_report_image).into(holder.imgLogo)
 
         if (idsFavoritos.contains(canal.id)) {
             holder.imgStar.setImageResource(android.R.drawable.btn_star_big_on)
@@ -50,15 +46,17 @@ class CanalAdapter(
             holder.imgStar.visibility = View.GONE
         }
 
-        // Aciona o clique curto para abrir o player!
-        holder.itemView.setOnClickListener {
-            onClick(canal)
+        // EFEITO NETFLIX NO CANAL TAMBÉM
+        holder.itemView.setOnFocusChangeListener { view, hasFocus ->
+            if (hasFocus) {
+                view.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            } else {
+                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            }
         }
 
-        holder.itemView.setOnLongClickListener {
-            onLongClick(canal)
-            true
-        }
+        holder.itemView.setOnClickListener { onClick(canal) }
+        holder.itemView.setOnLongClickListener { onLongClick(canal); true }
     }
 
     override fun getItemCount(): Int = listaCanais.size
