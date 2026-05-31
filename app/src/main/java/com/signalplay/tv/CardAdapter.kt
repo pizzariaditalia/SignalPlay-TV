@@ -37,19 +37,19 @@ class CardAdapter(
         val itemAtual = listaItens[position]
         
         val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
-        
-        Glide.with(holder.itemView.context)
-            .load(itemAtual.urlImagem)
-            .apply(options)
-            .into(holder.cardImage)
+        Glide.with(holder.itemView.context).load(itemAtual.urlImagem).apply(options).into(holder.cardImage)
 
-        // Aciona o clique no pôster e manda o dado pra frente
-        holder.itemView.setOnClickListener {
-            onClick?.invoke(itemAtual)
+        // EFEITO NETFLIX (ZOOM + SOMBRA BRANCA/ELEVAÇÃO)
+        holder.itemView.setOnFocusChangeListener { view, hasFocus ->
+            if (hasFocus) {
+                view.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            } else {
+                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            }
         }
+
+        holder.itemView.setOnClickListener { onClick?.invoke(itemAtual) }
     }
 
-    override fun getItemCount(): Int {
-        return listaItens.size
-    }
+    override fun getItemCount(): Int = listaItens.size
 }
