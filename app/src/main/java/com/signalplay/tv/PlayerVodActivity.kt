@@ -37,7 +37,6 @@ class PlayerVodActivity : Activity() {
     private var tipoMedia = ""
     private var streamUrlAtual = ""
     
-    // Controles do Avanço Contínuo Inteligente
     private var isSeeking = false
     private var currentSeekPos = 0L
 
@@ -102,9 +101,6 @@ class PlayerVodActivity : Activity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
         
-        // ===============================================
-        // MÁGICA 1: O SOLTAR DO BOTÃO (Fim do Avanço)
-        // ===============================================
         if (event.action == KeyEvent.ACTION_UP) {
             if (isSeeking && (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_LEFT)) {
                 isSeeking = false
@@ -115,9 +111,6 @@ class PlayerVodActivity : Activity() {
             }
         }
 
-        // ===============================================
-        // MÁGICA 2: O APERTAR DO BOTÃO (Navegação/Avanço)
-        // ===============================================
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_LEFT -> {
@@ -126,7 +119,6 @@ class PlayerVodActivity : Activity() {
                         return true
                     }
                     
-                    // Lógica Netflix: Pausa, esconde a interface padrão e acelera!
                     playerViewVod.hideController() 
                     
                     if (!isSeeking) {
@@ -135,7 +127,7 @@ class PlayerVodActivity : Activity() {
                         currentSeekPos = exoPlayer?.currentPosition ?: 0L
                     }
                     
-                    val basePulo = 10000L // 10 segundos iniciais
+                    val basePulo = 10000L
                     val multiplicador = if (event.repeatCount > 8) 4 else if (event.repeatCount > 3) 2 else 1
                     val pulo = basePulo * multiplicador
                     
@@ -158,7 +150,6 @@ class PlayerVodActivity : Activity() {
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (tipoMedia == "serie") {
                         if (painelEpisodios.visibility == View.VISIBLE) {
-                            // TRAVA O FOCO: Se for o primeiro da lista, impede que o foco fuja e feche o painel
                             if (!recyclerPainelEpisodios.canScrollVertically(-1)) return true
                             return super.dispatchKeyEvent(event)
                         } else if (!playerViewVod.isControllerFullyVisible) {
@@ -171,7 +162,6 @@ class PlayerVodActivity : Activity() {
                 
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (painelEpisodios.visibility == View.VISIBLE) {
-                        // TRAVA O FOCO no final da lista
                         if (!recyclerPainelEpisodios.canScrollVertically(1)) return true
                         return super.dispatchKeyEvent(event)
                     } else if (!playerViewVod.isControllerFullyVisible) {
