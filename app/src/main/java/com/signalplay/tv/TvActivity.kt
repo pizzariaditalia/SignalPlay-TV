@@ -19,6 +19,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 
+// A linha que eu havia esquecido! Ela conserta o erro de CategoriaItem.
+data class CategoriaItem(val id: String, val nome: String)
+
 class TvActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
@@ -130,7 +133,6 @@ class TvActivity : Activity() {
             idsFavoritos = favoritosIds,
             onClick = { canalClicado ->
                 
-                // Monta a lista de categorias final (Favoritos + Todas)
                 val liveCats = mutableListOf<CategoriaItem>()
                 liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
                 liveCats.addAll(todasCategorias)
