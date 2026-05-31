@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Intent
 import android.os.Bundle
 import android.view.View
 import android.widget.AdapterView
@@ -26,6 +27,9 @@ class DetailsActivity : Activity() {
 
     private val episodesMap = mutableMapOf<String, List<EpisodeItem>>()
     private val seasonsList = mutableListOf<String>()
+    
+    // Variável para guardar o link final do filme
+    private var streamUrlFilme: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,12 +52,11 @@ class DetailsActivity : Activity() {
         val user = intent.getStringExtra("USER") ?: ""
         val pass = intent.getStringExtra("PASS") ?: ""
         val idMedia = intent.getStringExtra("MEDIA_ID") ?: ""
-        val tipoMedia = intent.getStringExtra("MEDIA_TIPO") ?: "" // "filme" ou "serie"
+        val tipoMedia = intent.getStringExtra("MEDIA_TIPO") ?: "" 
         val nomeMedia = intent.getStringExtra("MEDIA_NOME") ?: ""
         val capaMedia = intent.getStringExtra("MEDIA_CAPA") ?: ""
 
         detTitle.text = nomeMedia
-        // Coloca a capinha como fundo provisório até baixar o backdrop gigante
         Glide.with(this).load(capaMedia).into(detBackdrop)
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -68,11 +71,17 @@ class DetailsActivity : Activity() {
                     if (jsonStr.startsWith("{")) {
                         val json = JSONObject(jsonStr)
                         val info = json.optJSONObject("info")
+                        val movieData = json.optJSONObject("movie_data")
+                        
                         if (info != null) {
                             val plot = info.optString("plot", "Sem sinopse disponível.")
                             val year = info.optString("releasedate", "")
                             val rating = info.optString("rating", "N/A")
                             val backdrop = info.optString("movie_image", capaMedia)
+
+                            // Monta o link do filme com a extensão correta
+                            val ext = movieData?.optString("container_extension", "mp4") ?: "mp4"
+                            streamUrlFilme = "$url/movie/$user/$pass/$idMedia.$ext"
 
                             withContext(Dispatchers.Main) {
                                 detPlot.text = plot
@@ -81,6 +90,7 @@ class DetailsActivity : Activity() {
                                 Glide.with(this@DetailsActivity).load(backdrop).into(detBackdrop)
                                 btnPlay.visibility = View.VISIBLE
                                 areaSeries.visibility = View.GONE
+                                btnPlay.requestFocus()
                             }
                         }
                     }
@@ -110,7 +120,6 @@ class DetailsActivity : Activity() {
                             }
                         }
 
-                        // Lógica complexa para varrer as Temporadas e Episódios
                         if (epsObj != null) {
                             val keys = epsObj.keys()
                             while (keys.hasNext()) {
@@ -150,7 +159,6 @@ class DetailsActivity : Activity() {
                             areaSeries.visibility = View.VISIBLE
 
                             if (seasonsList.isNotEmpty()) {
-                                // Organiza os números das temporadas (1, 2, 3...)
                                 seasonsList.sortBy { it.toIntOrNull() ?: 0 }
                                 
                                 val adapter = ArrayAdapter(this@DetailsActivity, android.R.layout.simple_spinner_item, seasonsList.map { "Temporada $it" })
@@ -163,8 +171,13 @@ class DetailsActivity : Activity() {
                                         val epsToDisplay = episodesMap[selectedSeason] ?: emptyList()
                                         
                                         recyclerEpisodes.adapter = EpisodeAdapter(epsToDisplay) { epClicado ->
-                                            Toast.makeText(this@DetailsActivity, "Iniciando: ${epClicado.title}", Toast.LENGTH_SHORT).show()
-                                            // (Futuro: Abrir o Player de Vídeo)
+                                            // CLIQUE NO EPISÓDIO DA SÉRIE
+                                            VodDataHolder.listaEpisodios = epsToDisplay // Manda a temporada atual para o player
+                                            
+                                            val intentVod = Intent(this@DetailsActivity, PlayerVodActivity::class.java)
+                                            intentVod.putExtra("STREAM_URL", epClicado.streamUrl)
+                                            intentVod.putExtra("TIPO", "serie")
+                                            startActivity(intentVod)
                                         }
                                     }
                                     override fun onNothingSelected(parent: AdapterView<*>?) {}
@@ -180,9 +193,16 @@ class DetailsActivity : Activity() {
             }
         }
         
+        // CLIQUE NO BOTÃO DE FILME
         btnPlay.setOnClickListener {
-            Toast.makeText(this, "Iniciando Filme!", Toast.LENGTH_SHORT).show()
-            // (Futuro: Abrir o Player de Vídeo)
+            if (streamUrlFilme.isNotEmpty()) {
+                val intentVod = Intent(this, PlayerVodActivity::class.java)
+                intentVod.putExtra("STREAM_URL", streamUrlFilme)
+                intentVod.putExtra("TIPO", "filme")
+                startActivity(intentVod)
+            } else {
+                Toast.makeText(this, "Aguarde o carregamento do link...", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
