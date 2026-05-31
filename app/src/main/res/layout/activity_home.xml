@@ -1,55 +1,62 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.core.widget.NestedScrollView 
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.core.widget.NestedScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="#111114"
     android:fillViewport="true">
 
-    <LinearLayout
+    <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical"
-        android:paddingBottom="48dp">
+        android:layout_height="wrap_content">
 
+        <!-- DESTAQUE (HERO) -->
         <RelativeLayout
+            android:id="@+id/heroSection"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="32dp"
-            android:layout_marginBottom="-90dp"
-            android:elevation="10dp"
-            android:outlineProvider="none">
+            android:layout_height="400dp">
 
+            <ImageView
+                android:id="@+id/heroImage"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerCrop"
+                android:src="#222222" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_hero_gradient" />
+
+            <!-- MENU SUPERIOR -->
             <LinearLayout
-                android:layout_width="wrap_content"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:layout_alignParentStart="true"
+                android:padding="32dp"
                 android:gravity="center_vertical">
-                
-                <TextView
-                    android:id="@+id/menuPesquisar"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Pesquisar"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:focusable="true"
-                    android:clickable="true"
-                    android:layout_marginEnd="24dp"/>
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/logo_oficial"
+                    android:layout_marginEnd="32dp" />
 
                 <TextView
                     android:id="@+id/menuCanais"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Canais"
+                    android:text="Canais de TV"
                     android:textColor="#FFFFFF"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:focusable="true"
                     android:clickable="true"
-                    android:layout_marginEnd="24dp"/>
+                    android:background="@drawable/bg_menu_focus"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginEnd="16dp" />
 
                 <TextView
                     android:id="@+id/menuFilmes"
@@ -61,7 +68,12 @@
                     android:textStyle="bold"
                     android:focusable="true"
                     android:clickable="true"
-                    android:layout_marginEnd="24dp"/>
+                    android:background="@drawable/bg_menu_focus"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp"
+                    android:layout_marginEnd="16dp" />
 
                 <TextView
                     android:id="@+id/menuSeries"
@@ -72,106 +84,75 @@
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:focusable="true"
-                    android:clickable="true"/>
+                    android:clickable="true"
+                    android:background="@drawable/bg_menu_focus"
+                    android:paddingStart="20dp"
+                    android:paddingEnd="20dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="8dp" />
             </LinearLayout>
 
-            <TextView
-                android:id="@+id/menuConfig"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Configurações"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:focusable="true"
-                android:clickable="true"
-                android:layout_alignParentEnd="true"/>
-        </RelativeLayout>
-
-        <RelativeLayout
-            android:layout_width="match_parent"
-            android:layout_height="450dp"
-            android:background="#222222">
-
-            <ImageView
-                android:id="@+id/heroImage"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:scaleType="centerCrop"
-                android:src="@drawable/banner_oficial" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="#44000000" />
-            
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:background="@drawable/bg_hero_gradient" />
-
+            <!-- INFORMAÇÕES DO DESTAQUE E BOTÃO -->
             <LinearLayout
-                android:layout_width="match_parent"
+                android:layout_width="600dp"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
                 android:layout_alignParentBottom="true"
-                android:paddingStart="48dp"
-                android:paddingEnd="48dp"
-                android:paddingBottom="48dp">
+                android:orientation="vertical"
+                android:padding="48dp">
 
                 <TextView
                     android:id="@+id/heroBadge"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="FILME EM DESTAQUE"
+                    android:text="CARREGANDO..."
                     android:textColor="#FFC107"
                     android:textSize="14sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:id="@+id/heroTitle"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Carregando Destaque..."
+                    android:text="Aguarde"
                     android:textColor="#FFFFFF"
-                    android:textSize="48sp"
+                    android:textSize="36sp"
                     android:textStyle="bold"
-                    android:layout_marginBottom="8dp"/>
+                    android:layout_marginBottom="8dp" />
 
                 <TextView
                     android:id="@+id/heroDesc"
-                    android:layout_width="600dp"
+                    android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Aguarde, conectando ao servidor para baixar o catálogo principal..."
+                    android:text="..."
                     android:textColor="#CCCCCC"
                     android:textSize="16sp"
-                    android:maxLines="3"
-                    android:ellipsize="end"/>
+                    android:layout_marginBottom="24dp"/>
+
+                <!-- NOVO BOTÃO ASSISTIR AGORA -->
+                <Button
+                    android:id="@+id/btnAssistirDestaque"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#FFFFFF"
+                    android:textColor="#000000"
+                    android:text="ASSISTIR AGORA"
+                    android:textStyle="bold"
+                    android:paddingStart="32dp"
+                    android:paddingEnd="32dp"
+                    android:visibility="gone" />
             </LinearLayout>
         </RelativeLayout>
 
+        <!-- PRATELEIRAS -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
+            android:layout_below="@id/heroSection"
             android:paddingStart="48dp"
-            android:paddingTop="24dp">
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Continuar Assistindo"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerContinuar"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:orientation="horizontal"/>
+            android:paddingTop="24dp"
+            android:paddingBottom="48dp">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -180,28 +161,12 @@
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:layout_marginBottom="12dp" />
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerFavoritos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:orientation="horizontal"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Top 10 Filmes"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerTopFilmes"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:orientation="horizontal"/>
+                android:layout_marginBottom="32dp" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -210,13 +175,40 @@
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:layout_marginBottom="12dp" />
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerUltimos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:orientation="horizontal"/>
+                android:layout_marginBottom="32dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Top 10 Filmes"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerTopFilmes"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp" />
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Séries em Alta"
+                android:textColor="#FFFFFF"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerSeriesAlta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -225,29 +217,12 @@
                 android:textColor="#FFFFFF"
                 android:textSize="20sp"
                 android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
+                android:layout_marginBottom="12dp" />
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/recyclerTopSeries"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:orientation="horizontal"/>
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Séries em Alta"
-                android:textColor="#FFFFFF"
-                android:textSize="20sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp"/>
-            <androidx.recyclerview.widget.RecyclerView
-                android:id="@+id/recyclerSeriesAlta"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginBottom="24dp"
-                android:orientation="horizontal"/>
-
+                android:layout_marginBottom="32dp" />
         </LinearLayout>
-    </LinearLayout>
+    </RelativeLayout>
 </androidx.core.widget.NestedScrollView>
