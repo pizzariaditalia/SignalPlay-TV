@@ -10,6 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:use_controller="true"
+        app:controller_auto_show="false"
         app:show_timeout="3000"
         app:resize_mode="fit" />
 
@@ -26,9 +27,9 @@
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         android:background="#B3000000"
-        android:padding="16dp"
+        android:padding="24dp"
         android:textColor="#FFC107"
-        android:textSize="32sp"
+        android:textSize="38sp"
         android:textStyle="bold"
         android:visibility="gone" />
 
