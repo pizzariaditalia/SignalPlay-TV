@@ -1,103 +1,66 @@
 <?xml version="1.0" encoding="utf-8"?>
-<RelativeLayout 
-    xmlns:android="http://schemas.android.com/apk/res/android"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#1a1a1a"
-    android:padding="48dp">
-
-    <ImageView
-        android:id="@+id/logoImage"
-        android:layout_width="250dp"
-        android:layout_height="80dp"
-        android:src="@drawable/signal"
-        android:scaleType="fitStart"
-        android:layout_alignParentStart="true"
-        android:layout_alignParentTop="true" />
-
-    <TextView
-        android:id="@+id/faleConoscoText"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Fale Conosco"
-        android:textColor="#FFFFFF"
-        android:textSize="18sp"
-        android:textStyle="bold"
-        android:focusable="true"
-        android:clickable="true"
-        android:layout_alignParentEnd="true"
-        android:layout_alignTop="@id/logoImage"
-        android:layout_alignBottom="@id/logoImage"
-        android:gravity="center_vertical" />
+    android:background="#111114">
 
     <LinearLayout
-        android:layout_width="400dp"
+        android:layout_width="450dp"
         android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
         android:orientation="vertical"
-        android:layout_below="@id/logoImage"
-        android:layout_alignParentStart="true"
-        android:layout_marginTop="64dp">
+        android:gravity="center"
+        android:background="@drawable/bg_card_focus"
+        android:padding="48dp">
+
+        <ImageView
+            android:layout_width="140dp"
+            android:layout_height="140dp"
+            android:src="@drawable/logo_oficial"
+            android:layout_marginBottom="24dp" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Entrar"
+            android:text="Bem-vindo ao SignalPlay"
             android:textColor="#FFFFFF"
-            android:textSize="48sp"
+            android:textSize="24sp"
             android:textStyle="bold"
             android:layout_marginBottom="32dp" />
 
         <EditText
-            android:id="@+id/emailInput"
+            android:id="@+id/edtUsuario"
             android:layout_width="match_parent"
-            android:layout_height="65dp"
-            android:background="#333333"
-            android:hint="Email ou número de telefone"
-            android:textColorHint="#8C8C8C"
+            android:layout_height="60dp"
+            android:hint="Digite seu usuário..."
+            android:textColorHint="#888888"
             android:textColor="#FFFFFF"
-            android:paddingHorizontal="20dp"
             android:textSize="18sp"
-            android:inputType="textEmailAddress"
-            android:layout_marginBottom="16dp"
-            android:focusable="true" />
-
-        <EditText
-            android:id="@+id/passwordInput"
-            android:layout_width="match_parent"
-            android:layout_height="65dp"
-            android:background="#333333"
-            android:hint="Senha"
-            android:textColorHint="#8C8C8C"
-            android:textColor="#FFFFFF"
-            android:paddingHorizontal="20dp"
-            android:textSize="18sp"
-            android:inputType="textPassword"
-            android:layout_marginBottom="32dp"
-            android:focusable="true" />
+            android:background="#222222"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:layout_marginBottom="24dp"
+            android:singleLine="true"
+            android:imeOptions="actionDone" />
 
         <Button
-            android:id="@+id/loginButton"
+            android:id="@+id/btnEntrar"
             android:layout_width="match_parent"
-            android:layout_height="65dp"
-            android:backgroundTint="#FFC107"
-            android:text="Entrar"
-            android:textColor="#1a1a1a"
-            android:textSize="20sp"
+            android:layout_height="60dp"
+            android:text="ENTRAR"
+            android:textColor="#000000"
             android:textStyle="bold"
-            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:backgroundTint="#FFC107"
             android:focusable="true"
-            android:layout_marginBottom="16dp" />
+            android:clickable="true" />
 
-        <CheckBox
-            android:id="@+id/rememberMeCheck"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Lembre-se de mim"
-            android:textColor="#B3B3B3"
-            android:buttonTint="#FFC107"
-            android:textSize="16sp"
-            android:focusable="true" />
+        <ProgressBar
+            android:id="@+id/progressBar"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:indeterminateTint="#FFC107"
+            android:visibility="gone" />
 
     </LinearLayout>
-
 </RelativeLayout>
