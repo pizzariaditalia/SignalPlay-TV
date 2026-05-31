@@ -1,21 +1,35 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="130dp"
-    android:layout_height="195dp"
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="140dp"
+    android:layout_height="210dp"
     android:layout_marginEnd="16dp"
-    android:layout_marginTop="8dp"
-    android:layout_marginBottom="8dp"
+    android:layout_marginBottom="16dp"
     android:focusable="true"
     android:clickable="true"
     android:background="@drawable/bg_card_focus"
-    android:orientation="vertical"
-    android:padding="2dp">
+    android:padding="4dp">
 
-    <ImageView
-        android:id="@+id/cardImage"
+    <RelativeLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"
-        android:background="#222222" />
+        android:background="#222222">
 
-</LinearLayout>
+        <ImageView
+            android:id="@+id/cardImage"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop" />
+
+        <ProgressBar
+            android:id="@+id/progressFilme"
+            style="?android:attr/progressBarStyleHorizontal"
+            android:layout_width="match_parent"
+            android:layout_height="6dp"
+            android:layout_alignParentBottom="true"
+            android:max="100"
+            android:progressTint="#FFC107"
+            android:progressBackgroundTint="#88000000"
+            android:visibility="gone" />
+
+    </RelativeLayout>
+</RelativeLayout>
