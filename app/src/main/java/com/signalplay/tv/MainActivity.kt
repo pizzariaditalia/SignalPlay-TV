@@ -33,6 +33,7 @@ class MainActivity : Activity() {
         chkLembrar = findViewById(R.id.chkLembrar)
         progressBar = findViewById(R.id.progressBar)
 
+        // Animação de botão
         btnEntrar.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
@@ -45,11 +46,7 @@ class MainActivity : Activity() {
         val lembrar = prefs.getBoolean("LEMBRAR", false)
 
         if (lembrar && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            edtUsuario.visibility = View.GONE
-            edtSenha.visibility = View.GONE
-            btnEntrar.visibility = View.GONE
-            chkLembrar.visibility = View.GONE
-            progressBar.visibility = View.VISIBLE
+            esconderFormulario()
             fazerLogin(savedUser, savedPass, true)
         } else {
             if (!savedUser.isNullOrEmpty()) edtUsuario.setText(savedUser)
@@ -63,12 +60,7 @@ class MainActivity : Activity() {
             val querLembrar = chkLembrar.isChecked
 
             if (userDigitado.isNotEmpty() && passDigitada.isNotEmpty()) {
-                edtUsuario.visibility = View.GONE
-                edtSenha.visibility = View.GONE
-                btnEntrar.visibility = View.GONE
-                chkLembrar.visibility = View.GONE
-                progressBar.visibility = View.VISIBLE
-                
+                esconderFormulario()
                 fazerLogin(userDigitado, passDigitada, querLembrar)
             } else {
                 Toast.makeText(this, "Preencha o Usuário e a Senha!", Toast.LENGTH_SHORT).show()
@@ -76,50 +68,85 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun esconderFormulario() {
+        edtUsuario.visibility = View.GONE
+        edtSenha.visibility = View.GONE
+        btnEntrar.visibility = View.GONE
+        chkLembrar.visibility = View.GONE
+        progressBar.visibility = View.VISIBLE
+    }
+
     private fun fazerLogin(username: String, passDigitada: String, salvarLogin: Boolean) {
+        // =========================================================
+        // ETAPA 1: Vai na tabela "usuarios" e valida o acesso
+        // =========================================================
         db.collection("usuarios")
             .whereEqualTo("usuario", username)
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
-                    val doc = snapshot.documents[0]
+                    val userDoc = snapshot.documents[0]
+                    val senhaBanco = userDoc.getString("senha") ?: ""
                     
-                    val senhaBanco = doc.getString("senha") ?: ""
-                    val xtreamPass = doc.getString("pass") ?: ""
-                    
-                    if (passDigitada == senhaBanco || passDigitada == xtreamPass) {
+                    if (passDigitada == senhaBanco) {
                         
-                        // BLINDAGEM DA URL: Garante que o link não quebre o aplicativo!
-                        val rawUrl = doc.getString("url") ?: ""
-                        var xtreamUrl = rawUrl.trim()
+                        val servidorId = userDoc.getString("servidor_id") ?: ""
                         
-                        if (xtreamUrl.isNotEmpty() && !xtreamUrl.startsWith("http")) {
-                            xtreamUrl = "http://$xtreamUrl"
-                        }
-                        if (xtreamUrl.endsWith("/")) {
-                            xtreamUrl = xtreamUrl.dropLast(1)
-                        }
+                        if (servidorId.isNotEmpty()) {
+                            // =========================================================
+                            // ETAPA 2: Vai na tabela "servidores" buscar URL e Xtream
+                            // =========================================================
+                            db.collection("servidores")
+                                .document(servidorId)
+                                .get()
+                                .addOnSuccessListener { serverDoc ->
+                                    if (serverDoc.exists()) {
+                                        
+                                        val rawUrl = serverDoc.getString("url") ?: ""
+                                        var xtreamUrl = rawUrl.trim()
+                                        
+                                        // Blindagem para não deixar o link dar erro no OkHttp
+                                        if (xtreamUrl.isNotEmpty() && !xtreamUrl.startsWith("http")) {
+                                            xtreamUrl = "http://$xtreamUrl"
+                                        }
+                                        if (xtreamUrl.endsWith("/")) {
+                                            xtreamUrl = xtreamUrl.dropLast(1)
+                                        }
 
-                        val xtreamUser = doc.getString("user") ?: ""
+                                        val xtreamUser = serverDoc.getString("xtream_user") ?: ""
+                                        val xtreamPass = serverDoc.getString("xtream_pass") ?: ""
 
-                        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                        if (salvarLogin) {
-                            prefs.edit()
-                                .putString("USERNAME", username)
-                                .putString("PASSWORD", passDigitada)
-                                .putBoolean("LEMBRAR", true)
-                                .apply()
+                                        // Salva na memória do Android
+                                        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                                        if (salvarLogin) {
+                                            prefs.edit()
+                                                .putString("USERNAME", username)
+                                                .putString("PASSWORD", passDigitada)
+                                                .putBoolean("LEMBRAR", true)
+                                                .apply()
+                                        } else {
+                                            prefs.edit().clear().apply()
+                                        }
+
+                                        // Inicia a HomeActivity com tudo certinho!
+                                        val intent = Intent(this, HomeActivity::class.java)
+                                        intent.putExtra("URL", xtreamUrl)
+                                        intent.putExtra("USER", xtreamUser)
+                                        intent.putExtra("PASS", xtreamPass)
+                                        intent.putExtra("USERNAME", username)
+                                        startActivity(intent)
+                                        finish()
+
+                                    } else {
+                                        falhaLogin("O Servidor vinculado não foi encontrado.")
+                                    }
+                                }
+                                .addOnFailureListener {
+                                    falhaLogin("Erro ao buscar dados do Servidor.")
+                                }
                         } else {
-                            prefs.edit().clear().apply()
+                            falhaLogin("Nenhum servidor vinculado a este usuário.")
                         }
-
-                        val intent = Intent(this, HomeActivity::class.java)
-                        intent.putExtra("URL", xtreamUrl)
-                        intent.putExtra("USER", xtreamUser)
-                        intent.putExtra("PASS", xtreamPass)
-                        intent.putExtra("USERNAME", username)
-                        startActivity(intent)
-                        finish()
                     } else {
                         falhaLogin("Senha incorreta.")
                     }
