@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.ProgressBar
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
@@ -16,7 +17,8 @@ data class FilmeItem(
     val urlImagem: String,
     val streamUrl: String,
     val tipo: String,
-    val categoryId: String = "" 
+    val categoryId: String = "",
+    var progresso: Int = 0 // NOVO: Controle de Porcentagem (0 a 100)
 )
 
 class CardAdapter(
@@ -26,6 +28,8 @@ class CardAdapter(
 
     class CardViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val cardImage: ImageView = view.findViewById(R.id.cardImage)
+        // Busca a barrinha horizontal no seu item_card.xml (Adicione ela lá se não existir)
+        val progressBar: ProgressBar? = view.findViewById(R.id.progressFilme)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CardViewHolder {
@@ -39,10 +43,19 @@ class CardAdapter(
         val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
         Glide.with(holder.itemView.context).load(itemAtual.urlImagem).apply(options).into(holder.cardImage)
 
+        // MÁGICA DA TIMELINE: Se tiver progresso, mostra a barra preenchida
+        if (holder.progressBar != null) {
+            if (itemAtual.progresso > 0) {
+                holder.progressBar.visibility = View.VISIBLE
+                holder.progressBar.progress = itemAtual.progresso
+            } else {
+                holder.progressBar.visibility = View.GONE
+            }
+        }
+
         // SUPER ZOOM E SOMBRA ATIVADOS
         holder.itemView.setOnFocusChangeListener { view, hasFocus ->
             if (hasFocus) {
-                // Joga o item pra frente da tela para não ser engolido pelos vizinhos
                 view.bringToFront()
                 view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(200).start()
             } else {
