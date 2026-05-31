@@ -19,8 +19,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 
-data class CategoriaItem(val id: String, val nome: String)
-
 class TvActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
@@ -71,8 +69,7 @@ class TvActivity : Activity() {
                 if (jsonCat.startsWith("[")) {
                     val arr = JSONArray(jsonCat)
                     for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        todasCategorias.add(CategoriaItem(obj.optString("category_id"), obj.optString("category_name")))
+                        todasCategorias.add(CategoriaItem(arr.getJSONObject(i).optString("category_id"), arr.getJSONObject(i).optString("category_name")))
                     }
                 }
 
@@ -132,9 +129,15 @@ class TvActivity : Activity() {
             listaCanais = canaisFiltrados,
             idsFavoritos = favoritosIds,
             onClick = { canalClicado ->
-                // MÁGICA: Manda TODAS as categorias e TODOS os canais para o Player!
-                DataHolder.todasCategorias = todasCategorias
+                
+                // Monta a lista de categorias final (Favoritos + Todas)
+                val liveCats = mutableListOf<CategoriaItem>()
+                liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
+                liveCats.addAll(todasCategorias)
+                
+                DataHolder.todasCategorias = liveCats
                 DataHolder.todosCanais = todosCanais
+                DataHolder.favoritosIds = favoritosIds
                 DataHolder.categoriaAtualId = catId
                 
                 val indice = canaisFiltrados.indexOf(canalClicado)
