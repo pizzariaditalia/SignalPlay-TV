@@ -7,13 +7,14 @@
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:clipChildren="false"
+        android:clipToPadding="false">
 
-        <!-- DESTAQUE (HERO) -->
         <RelativeLayout
             android:id="@+id/heroSection"
             android:layout_width="match_parent"
-            android:layout_height="400dp">
+            android:layout_height="450dp">
 
             <ImageView
                 android:id="@+id/heroImage"
@@ -25,80 +26,118 @@
             <View
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
+                android:background="#44000000" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
                 android:background="@drawable/bg_hero_gradient" />
 
-            <!-- MENU SUPERIOR -->
-            <LinearLayout
+            <RelativeLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:padding="32dp"
-                android:gravity="center_vertical">
+                android:padding="32dp">
 
-                <ImageView
-                    android:layout_width="40dp"
-                    android:layout_height="40dp"
-                    android:src="@drawable/logo_oficial"
-                    android:layout_marginEnd="32dp" />
-
-                <TextView
-                    android:id="@+id/menuCanais"
+                <LinearLayout
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="Canais de TV"
+                    android:orientation="horizontal"
+                    android:layout_alignParentStart="true"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:id="@+id/menuPesquisar"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Pesquisar"
+                        android:textColor="#FFFFFF"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:background="@drawable/bg_menu_focus"
+                        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+                        android:layout_marginEnd="16dp"/>
+
+                    <TextView
+                        android:id="@+id/menuInicio"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Início"
+                        android:textColor="#FFFFFF"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:background="@drawable/bg_menu_focus"
+                        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+                        android:layout_marginEnd="16dp"/>
+
+                    <TextView
+                        android:id="@+id/menuCanais"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Canais de TV"
+                        android:textColor="#FFFFFF"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:background="@drawable/bg_menu_focus"
+                        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+                        android:layout_marginEnd="16dp"/>
+
+                    <TextView
+                        android:id="@+id/menuFilmes"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Filmes"
+                        android:textColor="#FFFFFF"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:background="@drawable/bg_menu_focus"
+                        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+                        android:layout_marginEnd="16dp"/>
+
+                    <TextView
+                        android:id="@+id/menuSeries"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Séries"
+                        android:textColor="#FFFFFF"
+                        android:textSize="18sp"
+                        android:textStyle="bold"
+                        android:focusable="true"
+                        android:clickable="true"
+                        android:background="@drawable/bg_menu_focus"
+                        android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"/>
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/menuConfig"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Configurações"
                     android:textColor="#FFFFFF"
                     android:textSize="18sp"
                     android:textStyle="bold"
                     android:focusable="true"
                     android:clickable="true"
                     android:background="@drawable/bg_menu_focus"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginEnd="16dp" />
+                    android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"
+                    android:layout_alignParentEnd="true"/>
+            </RelativeLayout>
 
-                <TextView
-                    android:id="@+id/menuFilmes"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Filmes"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:focusable="true"
-                    android:clickable="true"
-                    android:background="@drawable/bg_menu_focus"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp"
-                    android:layout_marginEnd="16dp" />
-
-                <TextView
-                    android:id="@+id/menuSeries"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Séries"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
-                    android:textStyle="bold"
-                    android:focusable="true"
-                    android:clickable="true"
-                    android:background="@drawable/bg_menu_focus"
-                    android:paddingStart="20dp"
-                    android:paddingEnd="20dp"
-                    android:paddingTop="8dp"
-                    android:paddingBottom="8dp" />
-            </LinearLayout>
-
-            <!-- INFORMAÇÕES DO DESTAQUE E BOTÃO -->
             <LinearLayout
                 android:layout_width="600dp"
                 android:layout_height="wrap_content"
                 android:layout_alignParentBottom="true"
                 android:orientation="vertical"
-                android:padding="48dp">
+                android:paddingStart="48dp"
+                android:paddingEnd="48dp"
+                android:paddingBottom="48dp">
 
                 <TextView
                     android:id="@+id/heroBadge"
@@ -116,7 +155,7 @@
                     android:layout_height="wrap_content"
                     android:text="Aguarde"
                     android:textColor="#FFFFFF"
-                    android:textSize="36sp"
+                    android:textSize="42sp"
                     android:textStyle="bold"
                     android:layout_marginBottom="8dp" />
 
@@ -124,12 +163,11 @@
                     android:id="@+id/heroDesc"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
-                    android:text="..."
+                    android:text="Conectando ao servidor..."
                     android:textColor="#CCCCCC"
                     android:textSize="16sp"
                     android:layout_marginBottom="24dp"/>
 
-                <!-- NOVO BOTÃO ASSISTIR AGORA -->
                 <Button
                     android:id="@+id/btnAssistirDestaque"
                     android:layout_width="wrap_content"
@@ -144,7 +182,6 @@
             </LinearLayout>
         </RelativeLayout>
 
-        <!-- PRATELEIRAS -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -152,7 +189,9 @@
             android:layout_below="@id/heroSection"
             android:paddingStart="48dp"
             android:paddingTop="24dp"
-            android:paddingBottom="48dp">
+            android:paddingBottom="48dp"
+            android:clipChildren="false"
+            android:clipToPadding="false">
 
             <TextView
                 android:layout_width="wrap_content"
@@ -166,7 +205,8 @@
                 android:id="@+id/recyclerFavoritos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp" />
+                android:layout_marginBottom="32dp"
+                android:clipChildren="false" android:clipToPadding="false" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -180,7 +220,8 @@
                 android:id="@+id/recyclerUltimos"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp" />
+                android:layout_marginBottom="32dp"
+                android:clipChildren="false" android:clipToPadding="false" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -194,7 +235,8 @@
                 android:id="@+id/recyclerTopFilmes"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp" />
+                android:layout_marginBottom="32dp"
+                android:clipChildren="false" android:clipToPadding="false" />
                 
             <TextView
                 android:layout_width="wrap_content"
@@ -208,7 +250,8 @@
                 android:id="@+id/recyclerSeriesAlta"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp" />
+                android:layout_marginBottom="32dp"
+                android:clipChildren="false" android:clipToPadding="false" />
 
             <TextView
                 android:layout_width="wrap_content"
@@ -222,7 +265,8 @@
                 android:id="@+id/recyclerTopSeries"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginBottom="32dp" />
+                android:layout_marginBottom="32dp"
+                android:clipChildren="false" android:clipToPadding="false" />
         </LinearLayout>
     </RelativeLayout>
 </androidx.core.widget.NestedScrollView>
