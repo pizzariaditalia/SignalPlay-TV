@@ -2,7 +2,12 @@ package com.signalplay.tv
 
 import android.app.Activity
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
+import android.view.View
+import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
 import android.widget.Toast
@@ -21,21 +26,48 @@ import org.json.JSONArray
 class HomeActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
+    
+    // Variáveis do Carrossel Automático
+    private var filmesDestaque = listOf<FilmeItem>()
+    private var indexCarrossel = 0
+    private val handlerCarrossel = Handler(Looper.getMainLooper())
+    private lateinit var btnAssistirDestaque: Button
+
+    private var urlGlobal = ""
+    private var userGlobal = ""
+    private var passGlobal = ""
+
+    // Motor do Carrossel (Gira a cada 6 segundos)
+    private val runnableCarrossel = object : Runnable {
+        override fun run() {
+            if (filmesDestaque.isNotEmpty()) {
+                indexCarrossel = (indexCarrossel + 1) % filmesDestaque.size
+                atualizarBanner(filmesDestaque[indexCarrossel])
+            }
+            handlerCarrossel.postDelayed(this, 6000)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
 
         db = FirebaseFirestore.getInstance()
-
-        val tvHeroTitle = findViewById<TextView>(R.id.heroTitle)
-        val tvHeroDesc = findViewById<TextView>(R.id.heroDesc)
-        val tvHeroBadge = findViewById<TextView>(R.id.heroBadge)
-        val imgHero = findViewById<ImageView>(R.id.heroImage)
+        
+        btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
 
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
         val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
+
+        // Efeito inteligente de troca de cor da letra do menu ao focar
+        val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
+            val txt = v as TextView
+            if (hasFocus) txt.setTextColor(Color.BLACK) else txt.setTextColor(Color.WHITE)
+        }
+        menuCanais.onFocusChangeListener = menuFocusListener
+        menuFilmes.onFocusChangeListener = menuFocusListener
+        menuSeries.onFocusChangeListener = menuFocusListener
 
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
@@ -50,45 +82,33 @@ class HomeActivity : Activity() {
         recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
         val urlOriginal = intent.getStringExtra("URL") ?: ""
-        val url = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
-        val user = intent.getStringExtra("USER") ?: ""
-        val pass = intent.getStringExtra("PASS") ?: ""
+        urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
+        userGlobal = intent.getStringExtra("USER") ?: ""
+        passGlobal = intent.getStringExtra("PASS") ?: ""
         val username = intent.getStringExtra("USERNAME") ?: ""
-
-        fun abrirDetalhes(itemClicado: FilmeItem) {
-            val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
-            intentDet.putExtra("URL", url)
-            intentDet.putExtra("USER", user)
-            intentDet.putExtra("PASS", pass)
-            intentDet.putExtra("MEDIA_ID", itemClicado.id)
-            intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
-            intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
-            intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
-            startActivity(intentDet)
-        }
 
         menuCanais.setOnClickListener {
             val intentTv = Intent(this@HomeActivity, TvActivity::class.java)
-            intentTv.putExtra("URL", url)
-            intentTv.putExtra("USER", user)
-            intentTv.putExtra("PASS", pass)
+            intentTv.putExtra("URL", urlGlobal)
+            intentTv.putExtra("USER", userGlobal)
+            intentTv.putExtra("PASS", passGlobal)
             intentTv.putExtra("USERNAME", username)
             startActivity(intentTv)
         }
 
         menuFilmes.setOnClickListener {
             val intentVod = Intent(this@HomeActivity, VodActivity::class.java)
-            intentVod.putExtra("URL", url)
-            intentVod.putExtra("USER", user)
-            intentVod.putExtra("PASS", pass)
+            intentVod.putExtra("URL", urlGlobal)
+            intentVod.putExtra("USER", userGlobal)
+            intentVod.putExtra("PASS", passGlobal)
             startActivity(intentVod)
         }
 
         menuSeries.setOnClickListener {
             val intentSeries = Intent(this@HomeActivity, SeriesActivity::class.java)
-            intentSeries.putExtra("URL", url)
-            intentSeries.putExtra("USER", user)
-            intentSeries.putExtra("PASS", pass)
+            intentSeries.putExtra("URL", urlGlobal)
+            intentSeries.putExtra("USER", userGlobal)
+            intentSeries.putExtra("PASS", passGlobal)
             startActivity(intentSeries)
         }
 
@@ -107,11 +127,10 @@ class HomeActivity : Activity() {
                 
                 withContext(Dispatchers.IO) { Thread.sleep(500) }
 
-                // INOVAÇÃO AQUI: Baixar as pastas de TV direto na Home
                 val liveCats = mutableListOf<CategoriaItem>()
                 liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
                 
-                val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()
+                val reqCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
                 val resCat = client.newCall(reqCat).execute()
                 val jsonCat = resCat.body?.string() ?: "[]"
                 if (jsonCat.startsWith("[")) {
@@ -121,7 +140,7 @@ class HomeActivity : Activity() {
                     }
                 }
 
-                val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
+                val reqLive = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
                 val resLive = client.newCall(reqLive).execute()
                 val jsonLive = resLive.body?.string() ?: "[]"
                 
@@ -136,18 +155,15 @@ class HomeActivity : Activity() {
                         val nome = obj.optString("name", "Canal")
                         val icone = obj.optString("stream_icon", "")
                         val catId = obj.optString("category_id")
-                        val streamUrl = "$url/live/$user/$pass/$id.ts"
+                        val streamUrl = "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts"
                         
                         val canal = CanalItem(id, nome, icone, catId, streamUrl)
                         listTodosCanais.add(canal)
-                        
-                        if (listaIdsFavoritos.contains(id)) {
-                            listFavoritos.add(canal)
-                        }
+                        if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
                     }
                 }
 
-                val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
+                val reqVod = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
                 val resVod = client.newCall(reqVod).execute()
                 val jsonVod = resVod.body?.string() ?: "[]"
                 
@@ -161,12 +177,12 @@ class HomeActivity : Activity() {
                         val nome = obj.optString("name", "Sem Nome")
                         val icone = obj.optString("stream_icon", "")
                         val ext = obj.optString("container_extension", "mp4")
-                        val streamUrl = "$url/movie/$user/$pass/$id.$ext"
+                        val streamUrl = "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext"
                         listFilmes.add(FilmeItem(id, nome, icone, streamUrl, "filme", ""))
                     }
                 }
 
-                val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
+                val reqSeries = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
                 val resSeries = client.newCall(reqSeries).execute()
                 val jsonSeries = resSeries.body?.string() ?: "[]"
                 
@@ -179,51 +195,42 @@ class HomeActivity : Activity() {
                         val id = obj.optString("series_id", "")
                         val nome = obj.optString("name", "Sem Nome")
                         val icone = obj.optString("cover", "")
-                        val streamUrl = "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=$id"
+                        val streamUrl = "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id"
                         listSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie", ""))
                     }
                 }
 
                 val ultimosFilmes = listFilmes.reversed().take(30)
-                val topFilmes = listFilmes.take(15)
+                val topFilmes = listFilmes.take(10)
                 val seriesAlta = listSeries.reversed().take(30)
-                val topSeries = listSeries.take(15)
+                val topSeries = listSeries.take(10)
+
+                // Armazena os destaques para o carrossel (os 5 mais novos)
+                filmesDestaque = ultimosFilmes.take(5)
 
                 withContext(Dispatchers.Main) {
                     
-                    recyclerFavoritos.adapter = CanalAdapter(
-                        listaCanais = listFavoritos,
-                        idsFavoritos = listaIdsFavoritos,
-                        onClick = { canalClicado ->
-                            DataHolder.todasCategorias = liveCats
-                            DataHolder.todosCanais = listTodosCanais
-                            DataHolder.favoritosIds = listaIdsFavoritos
-                            DataHolder.categoriaAtualId = "FAV"
-                            
-                            // Acha o índice do canal clicado, mas dentro da sublista
-                            val indice = listFavoritos.indexOf(canalClicado)
-                            
-                            val intentPlayer = Intent(this@HomeActivity, PlayerTvActivity::class.java)
-                            intentPlayer.putExtra("INDICE_CANAL", indice)
-                            startActivity(intentPlayer)
-                        },
-                        onLongClick = { }
-                    )
+                    recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
+                        DataHolder.todasCategorias = liveCats
+                        DataHolder.todosCanais = listTodosCanais
+                        DataHolder.favoritosIds = listaIdsFavoritos
+                        DataHolder.categoriaAtualId = "FAV"
+                        startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply {
+                            putExtra("INDICE_CANAL", listFavoritos.indexOf(canalClicado))
+                        })
+                    }, { })
                     
                     recyclerUltimos.adapter = CardAdapter(ultimosFilmes) { abrirDetalhes(it) }
-                    recyclerTopFilmes.adapter = CardAdapter(topFilmes) { abrirDetalhes(it) }
-                    recyclerTopSeries.adapter = CardAdapter(topSeries) { abrirDetalhes(it) }
                     recyclerSeriesAlta.adapter = CardAdapter(seriesAlta) { abrirDetalhes(it) }
+                    
+                    // MÁGICA: Povoa os trilhos de Top 10 com o novo layout numérico!
+                    recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
+                    recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
 
-                    if (ultimosFilmes.isNotEmpty()) {
-                        val destaque = ultimosFilmes[0]
-                        tvHeroTitle.text = destaque.nome
-                        tvHeroDesc.text = "Aperte OK no controle para ver os detalhes."
-                        tvHeroBadge.text = "NOVIDADE EM FILMES"
-                        
-                        Glide.with(this@HomeActivity)
-                            .load(destaque.urlImagem)
-                            .into(imgHero)
+                    // Liga o Carrossel
+                    if (filmesDestaque.isNotEmpty()) {
+                        atualizarBanner(filmesDestaque[0])
+                        handlerCarrossel.postDelayed(runnableCarrossel, 6000)
                     }
                 }
 
@@ -233,5 +240,35 @@ class HomeActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun atualizarBanner(filme: FilmeItem) {
+        findViewById<TextView>(R.id.heroTitle).text = filme.nome
+        findViewById<TextView>(R.id.heroBadge).text = if (filme.tipo == "serie") "DESTAQUE EM SÉRIES" else "NOVIDADE EM FILMES"
+        findViewById<TextView>(R.id.heroDesc).text = "Disponível agora no catálogo"
+        
+        btnAssistirDestaque.visibility = View.VISIBLE
+        btnAssistirDestaque.setOnClickListener {
+            abrirDetalhes(filme)
+        }
+        
+        Glide.with(this).load(filme.urlImagem).into(findViewById(R.id.heroImage))
+    }
+
+    private fun abrirDetalhes(itemClicado: FilmeItem) {
+        val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
+        intentDet.putExtra("URL", urlGlobal)
+        intentDet.putExtra("USER", userGlobal)
+        intentDet.putExtra("PASS", passGlobal)
+        intentDet.putExtra("MEDIA_ID", itemClicado.id)
+        intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
+        intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
+        intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
+        startActivity(intentDet)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        handlerCarrossel.removeCallbacks(runnableCarrossel)
     }
 }
