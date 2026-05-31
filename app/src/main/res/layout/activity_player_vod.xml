@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:use_controller="true"
-        app:show_timeout="4000"
+        app:show_timeout="3000"
         app:resize_mode="fit" />
 
     <ProgressBar
@@ -18,8 +18,7 @@
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_centerInParent="true"
-        android:indeterminateTint="#FFC107"
-        android:visibility="visible" />
+        android:indeterminateTint="#FFC107" />
 
     <TextView
         android:id="@+id/tvAvisoAspecto"
@@ -29,13 +28,13 @@
         android:background="#B3000000"
         android:padding="16dp"
         android:textColor="#FFC107"
-        android:textSize="24sp"
+        android:textSize="32sp"
         android:textStyle="bold"
         android:visibility="gone" />
 
     <LinearLayout
         android:id="@+id/painelEpisodios"
-        android:layout_width="380dp"
+        android:layout_width="400dp"
         android:layout_height="match_parent"
         android:layout_alignParentStart="true"
         android:background="#F2111114"
@@ -43,20 +42,44 @@
         android:padding="16dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/tvPainelEpTitle"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Lista de Episódios"
-            android:textColor="#FFC107"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀"
+                android:textColor="#FFC107"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+                
+            <TextView
+                android:id="@+id/tvPainelEpTitle"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Temporada 1"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▶"
+                android:textColor="#FFC107"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerPainelEpisodios"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </LinearLayout>
-
 </RelativeLayout>
