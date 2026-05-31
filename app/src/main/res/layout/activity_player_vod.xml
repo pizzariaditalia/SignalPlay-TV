@@ -10,7 +10,7 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:use_controller="true"
-        app:controller_auto_show="false"
+        app:auto_show="false"
         app:show_timeout="3000"
         app:resize_mode="fit" />
 
@@ -21,6 +21,7 @@
         android:layout_centerInParent="true"
         android:indeterminateTint="#FFC107" />
 
+    <!-- AVISO DE AVANÇO GIGANTE E LIMPO -->
     <TextView
         android:id="@+id/tvAvisoAspecto"
         android:layout_width="wrap_content"
