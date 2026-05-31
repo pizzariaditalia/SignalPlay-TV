@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -20,6 +21,7 @@ import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -131,7 +133,6 @@ class HomeActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // LÊ O CONTROLE PARENTAL DA MEMÓRIA
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
@@ -149,28 +150,32 @@ class HomeActivity : Activity() {
                 
                 withContext(Dispatchers.IO) { Thread.sleep(500) }
 
+                // 🔥 MÁGICA: PROCESSAMENTO PARALELO DE DADOS! 🔥
+                // Baixa TODAS as tabelas do servidor AO MESMO TEMPO (Async)
+                val defLiveCats = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()).execute().body?.string() ?: "[]" }
+                val defLive = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()).execute().body?.string() ?: "[]" }
+                val defVod = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()).execute().body?.string() ?: "[]" }
+                val defSeries = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()).execute().body?.string() ?: "[]" }
+
+                val jsonCat = defLiveCats.await()
+                val jsonLive = defLive.await()
+                val jsonVod = defVod.await()
+                val jsonSeries = defSeries.await()
+
                 val liveCats = mutableListOf<CategoriaItem>()
                 liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
                 
-                val reqCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
-                val resCat = client.newCall(reqCat).execute()
-                val jsonCat = resCat.body?.string() ?: "[]"
                 if (jsonCat.startsWith("[")) {
                     val arr = JSONArray(jsonCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        // FILTRO PARENTAL
                         val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
                         if (!isParentalActive || !isAdult) {
                             liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
                         }
                     }
                 }
-
-                val reqLive = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
-                val resLive = client.newCall(reqLive).execute()
-                val jsonLive = resLive.body?.string() ?: "[]"
                 
                 val listTodosCanais = mutableListOf<CanalItem>()
                 val listFavoritos = mutableListOf<CanalItem>()
@@ -184,16 +189,11 @@ class HomeActivity : Activity() {
                         val icone = obj.optString("stream_icon", "")
                         val catId = obj.optString("category_id")
                         val streamUrl = "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts"
-                        
                         val canal = CanalItem(id, nome, icone, catId, streamUrl)
                         listTodosCanais.add(canal)
                         if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
                     }
                 }
-
-                val reqVod = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
-                val resVod = client.newCall(reqVod).execute()
-                val jsonVod = resVod.body?.string() ?: "[]"
                 
                 val listFilmes = mutableListOf<FilmeItem>()
                 if (jsonVod.startsWith("[")) {
@@ -209,10 +209,6 @@ class HomeActivity : Activity() {
                         listFilmes.add(FilmeItem(id, nome, icone, streamUrl, "filme", ""))
                     }
                 }
-
-                val reqSeries = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
-                val resSeries = client.newCall(reqSeries).execute()
-                val jsonSeries = resSeries.body?.string() ?: "[]"
                 
                 val listSeries = mutableListOf<FilmeItem>()
                 if (jsonSeries.startsWith("[")) {
@@ -234,6 +230,9 @@ class HomeActivity : Activity() {
                 val topSeries = listSeries.take(10)
 
                 withContext(Dispatchers.Main) {
+                    // DESLIGA O CARREGAMENTO
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                    
                     recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
                         DataHolder.todasCategorias = liveCats
                         DataHolder.todosCanais = listTodosCanais
@@ -255,7 +254,10 @@ class HomeActivity : Activity() {
                 }
 
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show() }
+                withContext(Dispatchers.Main) { 
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                    Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show() 
+                }
             }
         }
     }
@@ -270,7 +272,6 @@ class HomeActivity : Activity() {
         
         val imageView = findViewById<ImageView>(R.id.heroImage)
         
-        // MATRIZ TOPCROP: Essa magia garante que o topo do pôster sempre apareça na TV!
         Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
@@ -279,7 +280,7 @@ class HomeActivity : Activity() {
                 val matrix = Matrix()
                 val scale = view.width.toFloat() / resource.intrinsicWidth.toFloat()
                 matrix.setScale(scale, scale)
-                matrix.postTranslate(0f, 0f) // Alinha exato no TOPO!
+                matrix.postTranslate(0f, 0f)
                 view.imageMatrix = matrix
                 view.setImageDrawable(resource)
             }
