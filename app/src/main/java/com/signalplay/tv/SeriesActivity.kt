@@ -33,6 +33,7 @@ class SeriesActivity : Activity() {
     private var url = ""
     private var user = ""
     private var pass = ""
+    private var username = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -48,6 +49,7 @@ class SeriesActivity : Activity() {
         url = intent.getStringExtra("URL") ?: ""
         user = intent.getStringExtra("USER") ?: ""
         pass = intent.getStringExtra("PASS") ?: ""
+        username = intent.getStringExtra("USERNAME") ?: ""
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -57,7 +59,6 @@ class SeriesActivity : Activity() {
 
                 val client = OkHttpClient()
 
-                // PARALELISMO NA BUSCA DAS SÉRIES
                 val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series_categories").build()).execute().body?.string() ?: "[]" }
                 val defSeries = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()).execute().body?.string() ?: "[]" }
 
@@ -69,11 +70,8 @@ class SeriesActivity : Activity() {
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        
                         val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) {
-                            todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
-                        }
+                        if (!isParentalActive || !isAdult) todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
                     }
                 }
                 
@@ -86,8 +84,7 @@ class SeriesActivity : Activity() {
                         val icone = obj.optString("cover") 
                         val catId = obj.optString("category_id")
                         val streamUrl = "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=$id"
-                        
-                        todasSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie", catId))
+                        todasSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie", catId, 0))
                     }
                 }
 
@@ -132,6 +129,7 @@ class SeriesActivity : Activity() {
             intentDet.putExtra("URL", url)
             intentDet.putExtra("USER", user)
             intentDet.putExtra("PASS", pass)
+            intentDet.putExtra("USERNAME", username) // PASSA O USERNAME
             intentDet.putExtra("MEDIA_ID", serieClicada.id)
             intentDet.putExtra("MEDIA_TIPO", serieClicada.tipo)
             intentDet.putExtra("MEDIA_NOME", serieClicada.nome)
