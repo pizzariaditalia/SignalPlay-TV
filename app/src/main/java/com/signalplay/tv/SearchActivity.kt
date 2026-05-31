@@ -39,6 +39,7 @@ class SearchActivity : Activity() {
     private var url = ""
     private var user = ""
     private var pass = ""
+    private var username = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,6 +48,7 @@ class SearchActivity : Activity() {
         url = intent.getStringExtra("URL") ?: ""
         user = intent.getStringExtra("USER") ?: ""
         pass = intent.getStringExtra("PASS") ?: ""
+        username = intent.getStringExtra("USERNAME") ?: ""
 
         val edtSearch = findViewById<EditText>(R.id.edtSearch)
         val recycler = findViewById<RecyclerView>(R.id.recyclerSearchResults)
@@ -71,6 +73,7 @@ class SearchActivity : Activity() {
                 intentDet.putExtra("URL", url)
                 intentDet.putExtra("USER", user)
                 intentDet.putExtra("PASS", pass)
+                intentDet.putExtra("USERNAME", username) // PASSA O USERNAME
                 intentDet.putExtra("MEDIA_ID", itemClicado.id)
                 intentDet.putExtra("MEDIA_TIPO", if (itemClicado.tipo == "FILME") "filme" else "serie")
                 intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
@@ -81,14 +84,13 @@ class SearchActivity : Activity() {
         recycler.adapter = adapter
 
         CoroutineScope(Dispatchers.IO).launch {
-            // TRAVA DE SEGURANÇA QUE EVITA O CRASH!
             if (url.isEmpty() || !url.startsWith("http")) {
                 withContext(Dispatchers.Main) {
                     progress.visibility = View.GONE
                     tvStatus.text = "Erro: URL do servidor inválida."
                     Toast.makeText(this@SearchActivity, "Falha na conexão.", Toast.LENGTH_SHORT).show()
                 }
-                return@launch // Interrompe o processo antes do OkHttp tentar rodar e quebrar o app
+                return@launch
             }
 
             try {
