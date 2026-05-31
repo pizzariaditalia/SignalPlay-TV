@@ -12,11 +12,11 @@ import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 
 object VodDataHolder {
     var seasonsList: List<String> = emptyList()
@@ -38,16 +38,10 @@ class PlayerVodActivity : Activity() {
     private var username: String = ""
     private var mediaId: String = ""
 
-    private var modoAspectoAtual = 0
-    private var tipoMedia = ""
     private var streamUrlAtual = ""
+    private var tipoMedia = ""
     
-    private var isSeeking = false
-    private var currentSeekPos = 0L
     private var hasRestoredPosition = false
-
-    private val handlerAviso = Handler(Looper.getMainLooper())
-    private val avisoRunnable = Runnable { tvAvisoAspecto.visibility = View.GONE }
 
     // Salvamento periódico a cada 10 segundos
     private val saveProgressHandler = Handler(Looper.getMainLooper())
@@ -94,7 +88,7 @@ class PlayerVodActivity : Activity() {
         recyclerPainelEpisodios.adapter = EpisodeAdapter(eps) { epClicado ->
             painelEpisodios.visibility = View.GONE
             streamUrlAtual = epClicado.streamUrl
-            mediaId = epClicado.id // Atualiza o ID para o episódio correto
+            mediaId = epClicado.id // Atualiza ID para o episódio
             hasRestoredPosition = false
             iniciarVideo()
         }
@@ -105,11 +99,12 @@ class PlayerVodActivity : Activity() {
         playerViewVod.player = exoPlayer
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_BUFFERING) progressBarVod.visibility = View.VISIBLE
-                else if (playbackState == Player.STATE_READY) {
+                if (playbackState == Player.STATE_BUFFERING) {
+                    progressBarVod.visibility = View.VISIBLE
+                } else if (playbackState == Player.STATE_READY) {
                     progressBarVod.visibility = View.GONE
                     
-                    // Restaura a posição na primeira vez que o vídeo carrega
+                    // Restaura de onde parou na primeira vez que o vídeo carrega
                     if (!hasRestoredPosition) {
                         hasRestoredPosition = true
                         restaurarProgressoDoFirebase()
@@ -129,23 +124,32 @@ class PlayerVodActivity : Activity() {
         saveProgressHandler.postDelayed(saveProgressRunnable, 10000)
     }
 
-    // ==========================================
-    // MAGIA DO CONTINUAR ASSISTINDO (FIREBASE)
-    // ==========================================
+    // ==========================================================
+    // MÁGICA CORRIGIDA: SALVA MESMO SE O USUÁRIO FOR NOVO
+    // ==========================================================
     private fun salvarProgressoNoFirebase() {
         if (username.isEmpty() || mediaId.isEmpty()) return
         val position = exoPlayer?.currentPosition ?: 0L
         val duration = exoPlayer?.duration ?: 0L
 
-        if (position > 5000L && duration > 0L) { // Só salva se passou de 5 segundos
+        // Só salva se passou de 5 segundos de filme
+        if (position > 5000L && duration > 0L) { 
             db.collection("usuarios").whereEqualTo("usuario", username).get()
                 .addOnSuccessListener { snapshot ->
                     if (!snapshot.isEmpty) {
                         val docId = snapshot.documents[0].id
-                        // Salva num mapa usando o ID do filme/episódio como chave
-                        db.collection("usuarios").document(docId)
-                            .update("historico_vod.$mediaId.posicao", position,
-                                    "historico_vod.$mediaId.duracao", duration)
+                        
+                        // SetOptions.merge() vai CRIAR a gaveta "historico_vod" se ela não existir
+                        val dados = mapOf(
+                            "historico_vod" to mapOf(
+                                mediaId to mapOf(
+                                    "posicao" to position,
+                                    "duracao" to duration
+                                )
+                            )
+                        )
+                        
+                        db.collection("usuarios").document(docId).set(dados, SetOptions.merge())
                     }
                 }
         }
@@ -157,13 +161,15 @@ class PlayerVodActivity : Activity() {
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
                     val doc = snapshot.documents[0]
-                    val historico = doc.get("historico_vod") as? Map<String, Map<String, Long>>
-                    val dadosMedia = historico?.get(mediaId)
+                    val historico = doc.get("historico_vod") as? Map<String, Any>
                     
-                    if (dadosMedia != null) {
-                        val posicaoSalva = dadosMedia["posicao"] ?: 0L
-                        if (posicaoSalva > 0L) {
-                            exoPlayer?.seekTo(posicaoSalva)
+                    if (historico != null) {
+                        val dadosMedia = historico[mediaId] as? Map<String, Any>
+                        if (dadosMedia != null) {
+                            val posicaoSalva = dadosMedia["posicao"]?.toString()?.toLongOrNull() ?: 0L
+                            if (posicaoSalva > 0L) {
+                                exoPlayer?.seekTo(posicaoSalva)
+                            }
                         }
                     }
                 }
@@ -171,13 +177,50 @@ class PlayerVodActivity : Activity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        // [O seu código de dispatchKeyEvent original permanece intocado aqui]
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            when (event.keyCode) {
+                KeyEvent.KEYCODE_BACK -> {
+                    if (painelEpisodios.visibility == View.VISIBLE) {
+                        painelEpisodios.visibility = View.GONE
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_UP -> {
+                    if (tipoMedia == "serie" && painelEpisodios.visibility == View.GONE) {
+                        painelEpisodios.visibility = View.VISIBLE
+                        recyclerPainelEpisodios.requestFocus()
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> {
+                    if (painelEpisodios.visibility == View.GONE) {
+                        val atual = exoPlayer?.currentPosition ?: 0L
+                        exoPlayer?.seekTo(atual + 10000L) // Pula 10s
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (painelEpisodios.visibility == View.GONE) {
+                        val atual = exoPlayer?.currentPosition ?: 0L
+                        exoPlayer?.seekTo(if (atual - 10000L > 0) atual - 10000L else 0L) // Volta 10s
+                        return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    if (painelEpisodios.visibility == View.GONE) {
+                        if (exoPlayer?.isPlaying == true) exoPlayer?.pause() else exoPlayer?.play()
+                        return true
+                    }
+                }
+            }
+        }
         return super.dispatchKeyEvent(event)
     }
 
     override fun onPause() {
         super.onPause()
-        salvarProgressoNoFirebase() // Salva antes de sair
+        salvarProgressoNoFirebase()
+        exoPlayer?.pause()
     }
 
     override fun onDestroy() {
