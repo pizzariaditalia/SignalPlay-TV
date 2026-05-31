@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
@@ -14,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -71,9 +74,15 @@ class TvActivity : Activity() {
 
                 val client = OkHttpClient()
 
-                val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()
-                val resCat = client.newCall(reqCat).execute()
-                val jsonCat = resCat.body?.string() ?: "[]"
+                // ==========================================
+                // PARALELISMO NA BUSCA DE CANAIS (MUITO MAIS RÁPIDO)
+                // ==========================================
+                val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()).execute().body?.string() ?: "[]" }
+                val defLive = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()).execute().body?.string() ?: "[]" }
+
+                val jsonCat = defCat.await()
+                val jsonLive = defLive.await()
+
                 if (jsonCat.startsWith("[")) {
                     val arr = JSONArray(jsonCat)
                     for (i in 0 until arr.length()) {
@@ -87,9 +96,6 @@ class TvActivity : Activity() {
                     }
                 }
 
-                val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
-                val resLive = client.newCall(reqLive).execute()
-                val jsonLive = resLive.body?.string() ?: "[]"
                 if (jsonLive.startsWith("[")) {
                     val arr = JSONArray(jsonLive)
                     for (i in 0 until arr.length()) {
@@ -104,6 +110,9 @@ class TvActivity : Activity() {
                 }
 
                 withContext(Dispatchers.Main) {
+                    // MÁGICA: DESLIGA O SPINNER QUANDO CARREGA TUDO!
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+
                     recyclerCategories.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_category, parent, false)
@@ -126,7 +135,11 @@ class TvActivity : Activity() {
                 }
 
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { Toast.makeText(this@TvActivity, "Erro ao conectar com a API de TV.", Toast.LENGTH_SHORT).show() }
+                withContext(Dispatchers.Main) {
+                    // DESLIGA O SPINNER EM CASO DE ERRO TAMBÉM!
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                    Toast.makeText(this@TvActivity, "Erro ao conectar com a API de TV.", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
