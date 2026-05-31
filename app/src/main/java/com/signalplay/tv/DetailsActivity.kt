@@ -55,6 +55,7 @@ class DetailsActivity : Activity() {
         val url = intent.getStringExtra("URL") ?: ""
         val user = intent.getStringExtra("USER") ?: ""
         val pass = intent.getStringExtra("PASS") ?: ""
+        val username = intent.getStringExtra("USERNAME") ?: "" // LÊ O USUÁRIO AQUI
         val idMedia = intent.getStringExtra("MEDIA_ID") ?: ""
         val tipoMedia = intent.getStringExtra("MEDIA_TIPO") ?: "filme" 
         val nomeMedia = intent.getStringExtra("MEDIA_NOME") ?: ""
@@ -63,19 +64,16 @@ class DetailsActivity : Activity() {
         detTitle.text = nomeMedia
         detTypeBadge.text = if (tipoMedia == "serie") "SÉRIE" else "FILME"
         
-        // Carrega o Fundo Escurecido e o Pôster com cantos arredondados!
         Glide.with(this).load(capaMedia).into(detBackdrop)
         val options = RequestOptions().transform(CenterCrop(), RoundedCorners(16))
         Glide.with(this).load(capaMedia).apply(options).into(detPoster)
 
-        // Botão Voltar
         btnVoltar.setOnClickListener { finish() }
         btnVoltar.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.1f).scaleY(1.1f).translationZ(10f).setDuration(150).start()
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
         }
 
-        // Animação de Zoom para o Botão Assistir Agora
         btnPlay.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
@@ -182,6 +180,8 @@ class DetailsActivity : Activity() {
                                             val intentVod = Intent(this@DetailsActivity, PlayerVodActivity::class.java)
                                             intentVod.putExtra("STREAM_URL", epClicado.streamUrl)
                                             intentVod.putExtra("TIPO", "serie")
+                                            intentVod.putExtra("USERNAME", username) // ENVIA O USER PRO PLAYER
+                                            intentVod.putExtra("MEDIA_ID", epClicado.id) // ENVIA O ID DO EPISÓDIO
                                             startActivity(intentVod)
                                         }
                                     }
@@ -203,6 +203,8 @@ class DetailsActivity : Activity() {
                 val intentVod = Intent(this, PlayerVodActivity::class.java)
                 intentVod.putExtra("STREAM_URL", streamUrlFilme)
                 intentVod.putExtra("TIPO", "filme")
+                intentVod.putExtra("USERNAME", username) // ENVIA O USER PRO PLAYER
+                intentVod.putExtra("MEDIA_ID", idMedia) // ENVIA O ID DO FILME
                 startActivity(intentVod)
             } else {
                 Toast.makeText(this, "Aguarde o carregamento do link...", Toast.LENGTH_SHORT).show()
