@@ -4,6 +4,7 @@ import android.app.Activity
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.util.Base64
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
@@ -17,6 +18,16 @@ import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object DataHolder {
     var todasCategorias: List<CategoriaItem> = emptyList()
@@ -83,7 +94,6 @@ class PlayerTvActivity : Activity() {
             DataHolder.todosCanais.filter { it.categoryId == cat.id }
         }
 
-        // USANDO O NOVO ADAPTADOR DE LINHA AQUI!
         recyclerPainelCanais.adapter = CanalLinhaAdapter(DataHolder.canaisFiltrados) { canalClicado ->
             val novoIndice = DataHolder.canaisFiltrados.indexOf(canalClicado)
             if (novoIndice != -1) {
@@ -108,16 +118,86 @@ class PlayerTvActivity : Activity() {
     private fun iniciarCanal() {
         if (DataHolder.canaisFiltrados.isEmpty()) return
         val canal = DataHolder.canaisFiltrados[indiceCanalAtual]
+        
         osdChannelName.text = canal.nome
-        osdEpgText.text = "Ao Vivo"
+        osdEpgText.text = "Carregando programação..."
         Glide.with(this).load(canal.urlImagem).into(osdLogo)
+        
+        // MÁGICA: Bate na API para puxar o EPG dinâmico!
+        buscarEPGDinamico(canal)
+
         osdContainer.visibility = View.VISIBLE
         handlerOSD.removeCallbacks(osdRunnable)
-        handlerOSD.postDelayed(osdRunnable, 4000)
+        handlerOSD.postDelayed(osdRunnable, 5000)
+        
         exoPlayer?.stop()
         exoPlayer?.setMediaItem(MediaItem.fromUri(canal.streamUrl))
         exoPlayer?.prepare()
         exoPlayer?.playWhenReady = true
+    }
+
+    // =========================================================================
+    // O MESMO MOTOR DE EPG DINÂMICO USADO NO JS (apptv.js)
+    // =========================================================================
+    private fun buscarEPGDinamico(canal: CanalItem) {
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                // Fatiamos o link para recuperar os dados e montar a rota de EPG
+                val urlLiveIdx = canal.streamUrl.indexOf("/live/")
+                if (urlLiveIdx == -1) return@launch
+
+                val baseUrl = canal.streamUrl.substring(0, urlLiveIdx)
+                val parts = canal.streamUrl.split("/")
+                val pass = parts[parts.size - 2]
+                val user = parts[parts.size - 3]
+                val streamId = canal.id
+
+                val apiUrl = "$baseUrl/player_api.php?username=$user&password=$pass&action=get_short_epg&stream_id=$streamId&limit=2"
+
+                val client = OkHttpClient()
+                val req = Request.Builder().url(apiUrl).build()
+                val res = client.newCall(req).execute()
+                val jsonStr = res.body?.string() ?: ""
+
+                if (jsonStr.startsWith("{")) {
+                    val json = JSONObject(jsonStr)
+                    val listings = json.optJSONArray("epg_listings")
+                    
+                    if (listings != null && listings.length() > 0) {
+                        val atual = listings.getJSONObject(0)
+                        val titleB64 = atual.optString("title", "")
+                        var titleDecoded = "Programa Local"
+
+                        if (titleB64.isNotEmpty()) {
+                            try {
+                                titleDecoded = String(Base64.decode(titleB64, Base64.DEFAULT))
+                            } catch (e: Exception) {}
+                        }
+
+                        // Formatação do Relógio (Hora de Início - Fim)
+                        val startTs = atual.optLong("start_timestamp", 0)
+                        val stopTs = atual.optLong("stop_timestamp", 0)
+                        var horario = ""
+
+                        if (startTs > 0 && stopTs > 0) {
+                            val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
+                            val hInicio = sdf.format(Date(startTs * 1000))
+                            val hFim = sdf.format(Date(stopTs * 1000))
+                            horario = "$hInicio - $hFim • "
+                        }
+
+                        withContext(Dispatchers.Main) { osdEpgText.text = "$horario$titleDecoded" }
+                    } else {
+                        withContext(Dispatchers.Main) { osdEpgText.text = "Sem programação" }
+                    }
+                } else {
+                    withContext(Dispatchers.Main) { osdEpgText.text = "Sem programação" }
+                }
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { osdEpgText.text = "Sem programação" }
+            }
+        }
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
@@ -143,12 +223,11 @@ class PlayerTvActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (painelCanais.visibility == View.VISIBLE) {
-                        // CORREÇÃO: Pega a posição exata do item atual. Se for o 1º (0), bloqueia a saída pelo topo.
                         val child = recyclerPainelCanais.focusedChild
                         if (child != null && recyclerPainelCanais.getChildAdapterPosition(child) == 0) {
                             return true
                         }
-                        return super.dispatchKeyEvent(event) // Deixa a lista rolar!
+                        return super.dispatchKeyEvent(event)
                     }
                     painelCanais.visibility = View.VISIBLE
                     recyclerPainelCanais.post {
@@ -159,7 +238,6 @@ class PlayerTvActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (painelCanais.visibility == View.VISIBLE) {
-                        // CORREÇÃO: Bloqueia a saída pelo fundo.
                         val child = recyclerPainelCanais.focusedChild
                         if (child != null && recyclerPainelCanais.getChildAdapterPosition(child) == DataHolder.canaisFiltrados.size - 1) {
                             return true
@@ -171,6 +249,15 @@ class PlayerTvActivity : Activity() {
                     if (painelCanais.visibility == View.VISIBLE) {
                         painelCanais.visibility = View.GONE
                         return true
+                    }
+                }
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    if (painelCanais.visibility == View.GONE) {
+                        osdContainer.visibility = View.VISIBLE
+                        handlerOSD.removeCallbacks(osdRunnable)
+                        handlerOSD.postDelayed(osdRunnable, 4000)
+                    } else {
+                        return super.dispatchKeyEvent(event)
                     }
                 }
             }
