@@ -37,7 +37,7 @@ class PlayerVodActivity : Activity() {
     private var tipoMedia = ""
     private var streamUrlAtual = ""
     
-    // Variáveis para o Avanço Contínuo Inteligente
+    // Controles do Avanço Contínuo Inteligente
     private var isSeeking = false
     private var currentSeekPos = 0L
 
@@ -100,14 +100,11 @@ class PlayerVodActivity : Activity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        // Se a interface nativa do player estiver visível, deixa o Android tratar normal
-        if (playerViewVod.isControllerFullyVisible && painelEpisodios.visibility == View.GONE) {
-            return super.dispatchKeyEvent(event)
-        }
-
         val keyCode = event.keyCode
         
-        // EVENTOS QUANDO SOLTA O BOTÃO (Fim do Avanço)
+        // ===============================================
+        // MÁGICA 1: O SOLTAR DO BOTÃO (Fim do Avanço)
+        // ===============================================
         if (event.action == KeyEvent.ACTION_UP) {
             if (isSeeking && (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_LEFT)) {
                 isSeeking = false
@@ -118,57 +115,69 @@ class PlayerVodActivity : Activity() {
             }
         }
 
-        // EVENTOS QUANDO APERTA/SEGURA O BOTÃO
+        // ===============================================
+        // MÁGICA 2: O APERTAR DO BOTÃO (Navegação/Avanço)
+        // ===============================================
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (keyCode) {
-                // AVANÇO/RETROCESSO PERSONALIZADO (INTERCEPTA O EXOPLAYER)
                 KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (painelEpisodios.visibility == View.VISIBLE) {
-                        // Se o painel estiver aberto, navega nas temporadas
-                        if (event.repeatCount == 0) {
-                            mudarTemporada(if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1)
-                        }
-                        return true
-                    } else {
-                        // Se estiver assistindo, faz o avanço sem mostrar controles
-                        if (!isSeeking) {
-                            isSeeking = true
-                            exoPlayer?.pause()
-                            currentSeekPos = exoPlayer?.currentPosition ?: 0L
-                        }
-                        
-                        val pulo = 10000L // Pula de 10 em 10 segundos
-                        if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) currentSeekPos += pulo
-                        else currentSeekPos -= pulo
-                        
-                        if (currentSeekPos < 0) currentSeekPos = 0
-                        
-                        // Mostra o tempo visualmente na tela
-                        val minutos = (currentSeekPos / 1000) / 60
-                        val segundos = (currentSeekPos / 1000) % 60
-                        tvAvisoAspecto.text = String.format("%02d:%02d", minutos, segundos)
-                        tvAvisoAspecto.visibility = View.VISIBLE
+                        if (event.repeatCount == 0) mudarTemporada(if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1)
                         return true
                     }
+                    
+                    // Lógica Netflix: Pausa, esconde a interface padrão e acelera!
+                    playerViewVod.hideController() 
+                    
+                    if (!isSeeking) {
+                        isSeeking = true
+                        exoPlayer?.pause()
+                        currentSeekPos = exoPlayer?.currentPosition ?: 0L
+                    }
+                    
+                    val basePulo = 10000L // 10 segundos iniciais
+                    val multiplicador = if (event.repeatCount > 8) 4 else if (event.repeatCount > 3) 2 else 1
+                    val pulo = basePulo * multiplicador
+                    
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) currentSeekPos += pulo
+                    else currentSeekPos -= pulo
+                    
+                    if (currentSeekPos < 0) currentSeekPos = 0
+                    val duration = exoPlayer?.duration ?: 0L
+                    if (duration > 0 && currentSeekPos > duration) currentSeekPos = duration
+                    
+                    val min = (currentSeekPos / 1000) / 60
+                    val seg = (currentSeekPos / 1000) % 60
+                    val tMin = (duration / 1000) / 60
+                    val tSeg = (duration / 1000) % 60
+                    tvAvisoAspecto.text = String.format("%02d:%02d / %02d:%02d", min, seg, tMin, tSeg)
+                    tvAvisoAspecto.visibility = View.VISIBLE
+                    return true
                 }
                 
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (tipoMedia == "serie") {
-                        if (painelEpisodios.visibility == View.GONE) {
+                        if (painelEpisodios.visibility == View.VISIBLE) {
+                            // TRAVA O FOCO: Se for o primeiro da lista, impede que o foco fuja e feche o painel
+                            if (!recyclerPainelEpisodios.canScrollVertically(-1)) return true
+                            return super.dispatchKeyEvent(event)
+                        } else if (!playerViewVod.isControllerFullyVisible) {
                             painelEpisodios.visibility = View.VISIBLE
                             recyclerPainelEpisodios.requestFocus()
                             return true
                         }
                     }
-                    return super.dispatchKeyEvent(event) // Deixa a lista rolar
                 }
                 
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
-                    if (painelEpisodios.visibility == View.GONE) {
+                    if (painelEpisodios.visibility == View.VISIBLE) {
+                        // TRAVA O FOCO no final da lista
+                        if (!recyclerPainelEpisodios.canScrollVertically(1)) return true
+                        return super.dispatchKeyEvent(event)
+                    } else if (!playerViewVod.isControllerFullyVisible) {
                         alternarAspectoTela()
                         return true
                     }
-                    return super.dispatchKeyEvent(event)
                 }
                 
                 KeyEvent.KEYCODE_BACK -> {
@@ -178,10 +187,10 @@ class PlayerVodActivity : Activity() {
                     }
                 }
                 
-                // OK -> Play/Pause apenas (abre o controlador rapidamente se precisar)
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                     if (painelEpisodios.visibility == View.GONE) {
-                        playerViewVod.showController()
+                        if (playerViewVod.isControllerFullyVisible) playerViewVod.hideController()
+                        else playerViewVod.showController()
                     }
                 }
             }
