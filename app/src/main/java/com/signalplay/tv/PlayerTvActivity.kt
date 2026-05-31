@@ -83,19 +83,15 @@ class PlayerTvActivity : Activity() {
             DataHolder.todosCanais.filter { it.categoryId == cat.id }
         }
 
-        recyclerPainelCanais.adapter = CanalAdapter(
-            listaCanais = DataHolder.canaisFiltrados,
-            idsFavoritos = emptyList(),
-            onClick = { canalClicado ->
-                val novoIndice = DataHolder.canaisFiltrados.indexOf(canalClicado)
-                if (novoIndice != -1) {
-                    indiceCanalAtual = novoIndice
-                    painelCanais.visibility = View.GONE
-                    iniciarCanal()
-                }
-            },
-            onLongClick = { }
-        )
+        // USANDO O NOVO ADAPTADOR DE LINHA AQUI!
+        recyclerPainelCanais.adapter = CanalLinhaAdapter(DataHolder.canaisFiltrados) { canalClicado ->
+            val novoIndice = DataHolder.canaisFiltrados.indexOf(canalClicado)
+            if (novoIndice != -1) {
+                indiceCanalAtual = novoIndice
+                painelCanais.visibility = View.GONE
+                iniciarCanal()
+            }
+        }
     }
 
     private fun inicializarPlayer() {
@@ -147,20 +143,27 @@ class PlayerTvActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (painelCanais.visibility == View.VISIBLE) {
-                        if (!recyclerPainelCanais.canScrollVertically(-1)) return true
-                        return super.dispatchKeyEvent(event)
+                        // CORREÇÃO: Pega a posição exata do item atual. Se for o 1º (0), bloqueia a saída pelo topo.
+                        val child = recyclerPainelCanais.focusedChild
+                        if (child != null && recyclerPainelCanais.getChildAdapterPosition(child) == 0) {
+                            return true
+                        }
+                        return super.dispatchKeyEvent(event) // Deixa a lista rolar!
                     }
                     painelCanais.visibility = View.VISIBLE
                     recyclerPainelCanais.post {
-                        recyclerPainelCanais.scrollToPosition(indiceCanalAtual)
-                        recyclerPainelCanais.layoutManager?.findViewByPosition(indiceCanalAtual)?.requestFocus()
+                        recyclerPainelCanais.findViewHolderForAdapterPosition(indiceCanalAtual)?.itemView?.requestFocus()
                             ?: recyclerPainelCanais.requestFocus()
                     }
                     return true
                 }
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (painelCanais.visibility == View.VISIBLE) {
-                        if (!recyclerPainelCanais.canScrollVertically(1)) return true
+                        // CORREÇÃO: Bloqueia a saída pelo fundo.
+                        val child = recyclerPainelCanais.focusedChild
+                        if (child != null && recyclerPainelCanais.getChildAdapterPosition(child) == DataHolder.canaisFiltrados.size - 1) {
+                            return true
+                        }
                         return super.dispatchKeyEvent(event)
                     }
                 }
