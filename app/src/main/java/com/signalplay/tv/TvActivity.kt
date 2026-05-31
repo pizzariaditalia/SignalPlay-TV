@@ -44,8 +44,6 @@ class TvActivity : Activity() {
         tvTituloCategoria = findViewById<TextView>(R.id.tvTituloCategoria)
 
         recyclerCategories.layoutManager = LinearLayoutManager(this)
-        
-        // CORREÇÃO: Mudamos de 2 para 5 colunas para o layout ficar igual ao print!
         recyclerCanaisGrid.layoutManager = GridLayoutManager(this, 5)
 
         val url = intent.getStringExtra("URL") ?: ""
@@ -134,8 +132,11 @@ class TvActivity : Activity() {
             listaCanais = canaisFiltrados,
             idsFavoritos = favoritosIds,
             onClick = { canalClicado ->
-                DataHolder.canaisZapping = canaisFiltrados
-                DataHolder.categoriaAtualNome = catNome
+                // MÁGICA: Manda TODAS as categorias e TODOS os canais para o Player!
+                DataHolder.todasCategorias = todasCategorias
+                DataHolder.todosCanais = todosCanais
+                DataHolder.categoriaAtualId = catId
+                
                 val indice = canaisFiltrados.indexOf(canalClicado)
                 
                 val intentPlayer = Intent(this, PlayerTvActivity::class.java)
