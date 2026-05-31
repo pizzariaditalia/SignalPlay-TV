@@ -4,8 +4,6 @@ import android.app.Activity
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
@@ -26,48 +24,45 @@ import org.json.JSONArray
 class HomeActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
-    
-    // Variáveis do Carrossel Automático
-    private var filmesDestaque = listOf<FilmeItem>()
-    private var indexCarrossel = 0
-    private val handlerCarrossel = Handler(Looper.getMainLooper())
     private lateinit var btnAssistirDestaque: Button
 
     private var urlGlobal = ""
     private var userGlobal = ""
     private var passGlobal = ""
 
-    // Motor do Carrossel (Gira a cada 6 segundos)
-    private val runnableCarrossel = object : Runnable {
-        override fun run() {
-            if (filmesDestaque.isNotEmpty()) {
-                indexCarrossel = (indexCarrossel + 1) % filmesDestaque.size
-                atualizarBanner(filmesDestaque[indexCarrossel])
-            }
-            handlerCarrossel.postDelayed(this, 6000)
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_home)
 
         db = FirebaseFirestore.getInstance()
-        
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
 
+        // Menu Restaurado
+        val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
+        val menuInicio = findViewById<TextView>(R.id.menuInicio)
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
         val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
+        val menuConfig = findViewById<TextView>(R.id.menuConfig)
 
-        // Efeito inteligente de troca de cor da letra do menu ao focar
+        // Efeito de cor na pílula do menu
         val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
             val txt = v as TextView
-            if (hasFocus) txt.setTextColor(Color.BLACK) else txt.setTextColor(Color.WHITE)
+            if (hasFocus) {
+                txt.setTextColor(Color.BLACK)
+                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(8f).setDuration(150).start()
+            } else {
+                txt.setTextColor(Color.WHITE)
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            }
         }
+        
+        menuPesquisar.onFocusChangeListener = menuFocusListener
+        menuInicio.onFocusChangeListener = menuFocusListener
         menuCanais.onFocusChangeListener = menuFocusListener
         menuFilmes.onFocusChangeListener = menuFocusListener
         menuSeries.onFocusChangeListener = menuFocusListener
+        menuConfig.onFocusChangeListener = menuFocusListener
 
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
@@ -201,12 +196,9 @@ class HomeActivity : Activity() {
                 }
 
                 val ultimosFilmes = listFilmes.reversed().take(30)
-                val topFilmes = listFilmes.take(10)
+                val topFilmes = listFilmes.take(15)
                 val seriesAlta = listSeries.reversed().take(30)
-                val topSeries = listSeries.take(10)
-
-                // Armazena os destaques para o carrossel (os 5 mais novos)
-                filmesDestaque = ultimosFilmes.take(5)
+                val topSeries = listSeries.take(15)
 
                 withContext(Dispatchers.Main) {
                     
@@ -222,15 +214,12 @@ class HomeActivity : Activity() {
                     
                     recyclerUltimos.adapter = CardAdapter(ultimosFilmes) { abrirDetalhes(it) }
                     recyclerSeriesAlta.adapter = CardAdapter(seriesAlta) { abrirDetalhes(it) }
-                    
-                    // MÁGICA: Povoa os trilhos de Top 10 com o novo layout numérico!
                     recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
 
-                    // Liga o Carrossel
-                    if (filmesDestaque.isNotEmpty()) {
-                        atualizarBanner(filmesDestaque[0])
-                        handlerCarrossel.postDelayed(runnableCarrossel, 6000)
+                    // A MÁGICA DO BANNER CORRETO: Pega apenas 1 filme aleatório do catálogo na hora que a tela abre
+                    if (listFilmes.isNotEmpty()) {
+                        atualizarBanner(listFilmes.random())
                     }
                 }
 
@@ -244,7 +233,7 @@ class HomeActivity : Activity() {
 
     private fun atualizarBanner(filme: FilmeItem) {
         findViewById<TextView>(R.id.heroTitle).text = filme.nome
-        findViewById<TextView>(R.id.heroBadge).text = if (filme.tipo == "serie") "DESTAQUE EM SÉRIES" else "NOVIDADE EM FILMES"
+        findViewById<TextView>(R.id.heroBadge).text = "NOVIDADE EM FILMES"
         findViewById<TextView>(R.id.heroDesc).text = "Disponível agora no catálogo"
         
         btnAssistirDestaque.visibility = View.VISIBLE
@@ -265,10 +254,5 @@ class HomeActivity : Activity() {
         intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
         intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
         startActivity(intentDet)
-    }
-
-    override fun onDestroy() {
-        super.onDestroy()
-        handlerCarrossel.removeCallbacks(runnableCarrossel)
     }
 }
