@@ -28,15 +28,19 @@ class Top10Adapter(
 
     override fun onBindViewHolder(holder: Top10ViewHolder, position: Int) {
         val item = listaItens[position]
-        
-        // Define o número gigante (posição + 1)
         holder.topNumber.text = (position + 1).toString()
         
         val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
-        Glide.with(holder.itemView.context)
-            .load(item.urlImagem)
-            .apply(options)
-            .into(holder.cardImage)
+        Glide.with(holder.itemView.context).load(item.urlImagem).apply(options).into(holder.cardImage)
+
+        // EFEITO NETFLIX
+        holder.itemView.setOnFocusChangeListener { view, hasFocus ->
+            if (hasFocus) {
+                view.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            } else {
+                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            }
+        }
 
         holder.itemView.setOnClickListener { onClick(item) }
     }
