@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -19,7 +20,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 
-// A linha que eu havia esquecido! Ela conserta o erro de CategoriaItem.
 data class CategoriaItem(val id: String, val nome: String)
 
 class TvActivity : Activity() {
@@ -54,6 +54,11 @@ class TvActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // FILTRO PARENTAL ATIVADO
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+
                 db.collection("usuarios")
                     .whereEqualTo("usuario", username)
                     .get()
@@ -72,7 +77,13 @@ class TvActivity : Activity() {
                 if (jsonCat.startsWith("[")) {
                     val arr = JSONArray(jsonCat)
                     for (i in 0 until arr.length()) {
-                        todasCategorias.add(CategoriaItem(arr.getJSONObject(i).optString("category_id"), arr.getJSONObject(i).optString("category_name")))
+                        val obj = arr.getJSONObject(i)
+                        val catName = obj.optString("category_name", "")
+                        
+                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
+                        if (!isParentalActive || !isAdult) {
+                            todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
+                        }
                     }
                 }
 
@@ -103,9 +114,7 @@ class TvActivity : Activity() {
                             val cat = todasCategorias[position]
                             val txt = holder.itemView as TextView
                             txt.text = cat.nome
-                            txt.setOnClickListener {
-                                exibirCanaisDaCategoria(cat.id, cat.nome)
-                            }
+                            txt.setOnClickListener { exibirCanaisDaCategoria(cat.id, cat.nome) }
                         }
 
                         override fun getItemCount(): Int = todasCategorias.size
@@ -117,9 +126,7 @@ class TvActivity : Activity() {
                 }
 
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@TvActivity, "Erro ao conectar com a API de TV.", Toast.LENGTH_SHORT).show()
-                }
+                withContext(Dispatchers.Main) { Toast.makeText(this@TvActivity, "Erro ao conectar com a API de TV.", Toast.LENGTH_SHORT).show() }
             }
         }
     }
@@ -132,7 +139,6 @@ class TvActivity : Activity() {
             listaCanais = canaisFiltrados,
             idsFavoritos = favoritosIds,
             onClick = { canalClicado ->
-                
                 val liveCats = mutableListOf<CategoriaItem>()
                 liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
                 liveCats.addAll(todasCategorias)
@@ -143,7 +149,6 @@ class TvActivity : Activity() {
                 DataHolder.categoriaAtualId = catId
                 
                 val indice = canaisFiltrados.indexOf(canalClicado)
-                
                 val intentPlayer = Intent(this, PlayerTvActivity::class.java)
                 intentPlayer.putExtra("INDICE_CANAL", indice)
                 startActivity(intentPlayer)
