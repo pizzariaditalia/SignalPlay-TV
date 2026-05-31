@@ -37,7 +37,7 @@ class HomeActivity : Activity() {
         db = FirebaseFirestore.getInstance()
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
         
-        // Aplica o fundo do botão criado agora
+        // Aplica o fundo do botão criado
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
         // Animação de Foco para o Botão "Assistir Agora"
@@ -56,6 +56,7 @@ class HomeActivity : Activity() {
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
         val menuConfig = findViewById<TextView>(R.id.menuConfig)
 
+        // Efeito Pílula: Cor e Zoom no menu
         val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
             val txt = v as TextView
             if (hasFocus) {
@@ -91,6 +92,15 @@ class HomeActivity : Activity() {
         userGlobal = intent.getStringExtra("USER") ?: ""
         passGlobal = intent.getStringExtra("PASS") ?: ""
         val username = intent.getStringExtra("USERNAME") ?: ""
+
+        // CLIQUES DO MENU SUPERIOR
+        menuPesquisar.setOnClickListener {
+            val intentPesquisa = Intent(this@HomeActivity, SearchActivity::class.java)
+            intentPesquisa.putExtra("URL", urlGlobal)
+            intentPesquisa.putExtra("USER", userGlobal)
+            intentPesquisa.putExtra("PASS", passGlobal)
+            startActivity(intentPesquisa)
+        }
 
         menuCanais.setOnClickListener {
             val intentTv = Intent(this@HomeActivity, TvActivity::class.java)
@@ -227,6 +237,7 @@ class HomeActivity : Activity() {
                     recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
 
+                    // Sorteia um filme aleatório do catálogo para o Banner
                     if (listFilmes.isNotEmpty()) {
                         atualizarBanner(listFilmes.random())
                     }
