@@ -1,96 +1,100 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
+import android.view.View
 import android.widget.Button
 import android.widget.EditText
+import android.widget.ProgressBar
 import android.widget.Toast
 import com.google.firebase.firestore.FirebaseFirestore
 
 class MainActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
+    private lateinit var progressBar: ProgressBar
+    private lateinit var btnEntrar: Button
+    private lateinit var edtUsuario: EditText
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         db = FirebaseFirestore.getInstance()
+        
+        edtUsuario = findViewById(R.id.edtUsuario)
+        btnEntrar = findViewById(R.id.btnEntrar)
+        progressBar = findViewById(R.id.progressBar)
 
-        val inputUsuario = findViewById<EditText>(R.id.emailInput)
-        val inputSenha = findViewById<EditText>(R.id.passwordInput)
-        val btnEntrar = findViewById<Button>(R.id.loginButton)
+        // 1. VERIFICA O LOGIN AUTOMÁTICO
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        val savedUser = prefs.getString("USERNAME", "")
 
-        btnEntrar.setOnClickListener {
-            val usuario = inputUsuario.text.toString().trim()
-            val senha = inputSenha.text.toString().trim()
-
-            if (usuario.isEmpty() || senha.isEmpty()) {
-                Toast.makeText(this@MainActivity, "Preencha usuário e senha!", Toast.LENGTH_LONG).show()
-                return@setOnClickListener
-            }
-
-            btnEntrar.isEnabled = false
-            btnEntrar.text = "Validando Acesso..."
-
-            db.collection("usuarios")
-                .whereEqualTo("usuario", usuario)
-                .whereEqualTo("senha", senha)
-                .get()
-                .addOnSuccessListener { documentos ->
-                    if (documentos.isEmpty) {
-                        Toast.makeText(this@MainActivity, "Usuário ou senha inválidos!", Toast.LENGTH_LONG).show()
-                        btnEntrar.isEnabled = true
-                        btnEntrar.text = "Entrar"
-                    } else {
-                        val documento = documentos.documents[0]
-                        val status = documento.getString("status")
-
-                        if (status == "ativo" || status == "teste") {
-                            val servidorId = documento.getString("servidor_id")
-                            
-                            if (servidorId != null) {
-                                db.collection("servidores").document(servidorId).get()
-                                    .addOnSuccessListener { serverDoc ->
-                                        if (serverDoc.exists()) {
-                                            val url = serverDoc.getString("url") ?: ""
-                                            val xtreamUser = serverDoc.getString("xtream_user") ?: ""
-                                            val xtreamPass = serverDoc.getString("xtream_pass") ?: ""
-
-                                            Toast.makeText(this@MainActivity, "Conectando ao catálogo...", Toast.LENGTH_SHORT).show()
-
-                                            val intent = Intent(this@MainActivity, HomeActivity::class.java)
-                                            intent.putExtra("URL", url)
-                                            intent.putExtra("USER", xtreamUser)
-                                            intent.putExtra("PASS", xtreamPass)
-                                            intent.putExtra("USERNAME", usuario) // Linha nova importante!
-                                            startActivity(intent)
-                                            finish()
-                                            
-                                        } else {
-                                            Toast.makeText(this@MainActivity, "Erro: Servidor não encontrado.", Toast.LENGTH_LONG).show()
-                                            btnEntrar.isEnabled = true
-                                            btnEntrar.text = "Entrar"
-                                        }
-                                    }
-                            } else {
-                                Toast.makeText(this@MainActivity, "Conta sem servidor vinculado.", Toast.LENGTH_LONG).show()
-                                btnEntrar.isEnabled = true
-                                btnEntrar.text = "Entrar"
-                            }
-                        } else {
-                            Toast.makeText(this@MainActivity, "Acesso Suspenso: Conta expirada ou bloqueada!", Toast.LENGTH_LONG).show()
-                            btnEntrar.isEnabled = true
-                            btnEntrar.text = "Entrar"
-                        }
-                    }
-                }
-                .addOnFailureListener {
-                    Toast.makeText(this@MainActivity, "Erro ao conectar com o banco de dados.", Toast.LENGTH_LONG).show()
-                    btnEntrar.isEnabled = true
-                    btnEntrar.text = "Entrar"
-                }
+        if (!savedUser.isNullOrEmpty()) {
+            // Se já tem usuário salvo, esconde tudo, mostra o loading e faz o login fantasma
+            edtUsuario.visibility = View.GONE
+            btnEntrar.visibility = View.GONE
+            progressBar.visibility = View.VISIBLE
+            fazerLogin(savedUser)
+        } else {
+            // Se não tem, mostra o campo normal
+            progressBar.visibility = View.GONE
         }
+
+        // 2. BOTÃO ENTRAR MANUAL
+        btnEntrar.setOnClickListener {
+            val userDigitado = edtUsuario.text.toString().trim()
+            if (userDigitado.isNotEmpty()) {
+                btnEntrar.visibility = View.GONE
+                progressBar.visibility = View.VISIBLE
+                fazerLogin(userDigitado)
+            } else {
+                Toast.makeText(this, "Digite seu usuário!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun fazerLogin(username: String) {
+        db.collection("usuarios")
+            .whereEqualTo("usuario", username)
+            .get()
+            .addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    val xtreamUrl = doc.getString("url") ?: ""
+                    val xtreamUser = doc.getString("user") ?: ""
+                    val xtreamPass = doc.getString("pass") ?: ""
+
+                    // SALVA O USUÁRIO NA MEMÓRIA PARA AS PRÓXIMAS VEZES!
+                    val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                    prefs.edit().putString("USERNAME", username).apply()
+
+                    val intent = Intent(this, HomeActivity::class.java)
+                    intent.putExtra("URL", xtreamUrl)
+                    intent.putExtra("USER", xtreamUser)
+                    intent.putExtra("PASS", xtreamPass)
+                    intent.putExtra("USERNAME", username)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    falhaLogin("Usuário não encontrado.")
+                }
+            }
+            .addOnFailureListener {
+                falhaLogin("Erro ao conectar no banco de dados.")
+            }
+    }
+
+    private fun falhaLogin(mensagem: String) {
+        // Se der erro (ex: usuário deletado), limpa a memória e volta a tela
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        prefs.edit().clear().apply()
+        
+        progressBar.visibility = View.GONE
+        edtUsuario.visibility = View.VISIBLE
+        btnEntrar.visibility = View.VISIBLE
+        Toast.makeText(this, mensagem, Toast.LENGTH_LONG).show()
     }
 }
