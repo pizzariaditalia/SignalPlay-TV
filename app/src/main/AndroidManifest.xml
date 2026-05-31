@@ -31,8 +31,9 @@
         <activity android:name=".SeriesActivity" />
         <activity android:name=".DetailsActivity" />
         <activity android:name=".PlayerTvActivity" />
-        
         <activity android:name=".PlayerVodActivity" />
+        
+        <activity android:name=".SearchActivity" />
 
     </application>
 </manifest>
