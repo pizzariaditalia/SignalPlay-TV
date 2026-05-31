@@ -55,7 +55,7 @@ class DetailsActivity : Activity() {
         val url = intent.getStringExtra("URL") ?: ""
         val user = intent.getStringExtra("USER") ?: ""
         val pass = intent.getStringExtra("PASS") ?: ""
-        val username = intent.getStringExtra("USERNAME") ?: "" // LÊ O USUÁRIO AQUI
+        val username = intent.getStringExtra("USERNAME") ?: ""
         val idMedia = intent.getStringExtra("MEDIA_ID") ?: ""
         val tipoMedia = intent.getStringExtra("MEDIA_TIPO") ?: "filme" 
         val nomeMedia = intent.getStringExtra("MEDIA_NOME") ?: ""
@@ -180,8 +180,9 @@ class DetailsActivity : Activity() {
                                             val intentVod = Intent(this@DetailsActivity, PlayerVodActivity::class.java)
                                             intentVod.putExtra("STREAM_URL", epClicado.streamUrl)
                                             intentVod.putExtra("TIPO", "serie")
-                                            intentVod.putExtra("USERNAME", username) // ENVIA O USER PRO PLAYER
-                                            intentVod.putExtra("MEDIA_ID", epClicado.id) // ENVIA O ID DO EPISÓDIO
+                                            intentVod.putExtra("USERNAME", username)
+                                            // MÁGICA: MANDA O ID DA SÉRIE PARA SER O CHAVEIRO DO FIREBASE
+                                            intentVod.putExtra("MEDIA_ID", idMedia) 
                                             startActivity(intentVod)
                                         }
                                     }
@@ -203,8 +204,8 @@ class DetailsActivity : Activity() {
                 val intentVod = Intent(this, PlayerVodActivity::class.java)
                 intentVod.putExtra("STREAM_URL", streamUrlFilme)
                 intentVod.putExtra("TIPO", "filme")
-                intentVod.putExtra("USERNAME", username) // ENVIA O USER PRO PLAYER
-                intentVod.putExtra("MEDIA_ID", idMedia) // ENVIA O ID DO FILME
+                intentVod.putExtra("USERNAME", username)
+                intentVod.putExtra("MEDIA_ID", idMedia)
                 startActivity(intentVod)
             } else {
                 Toast.makeText(this, "Aguarde o carregamento do link...", Toast.LENGTH_SHORT).show()
