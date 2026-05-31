@@ -35,7 +35,7 @@ class HomeActivity : Activity() {
     private var urlGlobal = ""
     private var userGlobal = ""
     private var passGlobal = ""
-    private var username = "" // Variável global para ser passada adiante
+    private var username = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -75,12 +75,15 @@ class HomeActivity : Activity() {
         menuSeries.onFocusChangeListener = menuFocusListener
         menuConfig.onFocusChangeListener = menuFocusListener
 
+        val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
+        val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
 
+        recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerTopFilmes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -143,27 +146,30 @@ class HomeActivity : Activity() {
                 val client = OkHttpClient()
                 val listaIdsFavoritos = mutableListOf<String>()
                 
-                var historicoMap: Map<String, Map<String, Long>>? = null
+                var historicoMap: Map<String, Any>? = null
                 
-                // MÁGICA: BATE NO BANCO PARA PEGAR OS FAVORITOS E O HISTÓRICO VOD!
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
                         if (!snapshot.isEmpty) {
                             val doc = snapshot.documents[0]
                             val favs = doc.get("favoritos") as? List<*>
                             favs?.forEach { listaIdsFavoritos.add(it.toString()) }
-                            historicoMap = doc.get("historico_vod") as? Map<String, Map<String, Long>>
+                            // Lê como ANY para evitar problemas de tipo do Firebase (Long/Double)
+                            historicoMap = doc.get("historico_vod") as? Map<String, Any>
                         }
                     }
                 
-                withContext(Dispatchers.IO) { Thread.sleep(800) } // Aguarda a busca no banco
+                withContext(Dispatchers.IO) { Thread.sleep(800) }
 
                 fun getProgress(id: String): Int {
-                    val progressoData = historicoMap?.get(id)
-                    if (progressoData != null) {
-                        val pos = progressoData["posicao"] ?: 0L
-                        val dur = progressoData["duracao"] ?: 0L
-                        if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                    if (historicoMap != null) {
+                        val progressoData = historicoMap!![id] as? Map<String, Any>
+                        if (progressoData != null) {
+                            // Converte de forma blindada tudo para Texto e depois para Long
+                            val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
+                            val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
+                            if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                        }
                     }
                     return 0
                 }
@@ -211,7 +217,6 @@ class HomeActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
                         val ext = obj.optString("container_extension", "mp4")
-                        // MÁGICA: INJETA O PROGRESSO AQUI!
                         listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", "", getProgress(id)))
                     }
                 }
@@ -225,8 +230,7 @@ class HomeActivity : Activity() {
                     for (i in 0 until limiteS) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("series_id", "")
-                        // SÉRIES NÃO TÊM PROGRESSO NO PÔSTER GERAL (SÓ NOS EPISÓDIOS), ENTÃO MANDA 0.
-                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", "", 0))
+                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", "", getProgress(id)))
                     }
                 }
                 jsonStr = ""
@@ -235,9 +239,20 @@ class HomeActivity : Activity() {
                 val topFilmes = listFilmes.take(10)
                 val seriesAlta = listSeries.reversed().take(30)
                 val topSeries = listSeries.take(10)
+                
+                val listContinuar = (listFilmes + listSeries).filter { it.progresso > 0 }
 
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                    
+                    if (listContinuar.isNotEmpty()) {
+                        tvContinuarTitulo.visibility = View.VISIBLE
+                        recyclerContinuar.visibility = View.VISIBLE
+                        recyclerContinuar.adapter = CardAdapter(listContinuar) { abrirDetalhes(it) }
+                    } else {
+                        tvContinuarTitulo.visibility = View.GONE
+                        recyclerContinuar.visibility = View.GONE
+                    }
                     
                     recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
                         DataHolder.todasCategorias = liveCats
@@ -304,7 +319,7 @@ class HomeActivity : Activity() {
         intentDet.putExtra("URL", urlGlobal)
         intentDet.putExtra("USER", userGlobal)
         intentDet.putExtra("PASS", passGlobal)
-        intentDet.putExtra("USERNAME", username) // MÁGICA: PASSA O USUÁRIO PRA FRENTE!
+        intentDet.putExtra("USERNAME", username) 
         intentDet.putExtra("MEDIA_ID", itemClicado.id)
         intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
         intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
