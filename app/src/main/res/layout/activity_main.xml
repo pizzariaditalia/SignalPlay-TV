@@ -5,42 +5,33 @@
     android:background="#111114">
 
     <LinearLayout
-        android:layout_width="450dp"
+        android:layout_width="400dp"
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         android:orientation="vertical"
-        android:gravity="center"
-        android:background="@drawable/bg_card_focus"
-        android:padding="48dp">
+        android:gravity="center">
 
         <ImageView
-            android:layout_width="140dp"
-            android:layout_height="140dp"
+            android:id="@+id/logoImagem"
+            android:layout_width="160dp"
+            android:layout_height="160dp"
             android:src="@drawable/logo_oficial"
-            android:layout_marginBottom="24dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Bem-vindo ao SignalPlay"
-            android:textColor="#FFFFFF"
-            android:textSize="24sp"
-            android:textStyle="bold"
+            android:scaleType="fitCenter"
             android:layout_marginBottom="32dp" />
 
         <EditText
             android:id="@+id/edtUsuario"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:hint="Digite seu usuário..."
-            android:textColorHint="#888888"
+            android:hint="Digite seu usuário"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
+            android:textColorHint="#888888"
             android:background="#222222"
-            android:paddingStart="24dp"
-            android:paddingEnd="24dp"
-            android:layout_marginBottom="24dp"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_marginBottom="16dp"
             android:singleLine="true"
+            android:textSize="18sp"
             android:imeOptions="actionDone" />
 
         <Button
@@ -49,8 +40,8 @@
             android:layout_height="60dp"
             android:text="ENTRAR"
             android:textColor="#000000"
-            android:textStyle="bold"
             android:textSize="18sp"
+            android:textStyle="bold"
             android:backgroundTint="#FFC107"
             android:focusable="true"
             android:clickable="true" />
@@ -59,6 +50,7 @@
             android:id="@+id/progressBar"
             android:layout_width="60dp"
             android:layout_height="60dp"
+            android:layout_marginTop="24dp"
             android:indeterminateTint="#FFC107"
             android:visibility="gone" />
 
