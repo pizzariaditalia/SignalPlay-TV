@@ -33,20 +33,19 @@ class MainActivity : Activity() {
         chkLembrar = findViewById(R.id.chkLembrar)
         progressBar = findViewById(R.id.progressBar)
 
-        // Animação no botão ao focar (Padrão de qualidade)
+        // Animação no botão ao focar
         btnEntrar.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
         }
 
-        // 1. VERIFICA O LOGIN AUTOMÁTICO
+        // 1. VERIFICA O LOGIN AUTOMÁTICO NA MEMÓRIA DA TV
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val savedUser = prefs.getString("USERNAME", "")
         val savedPass = prefs.getString("PASSWORD", "")
         val lembrar = prefs.getBoolean("LEMBRAR", false)
 
         if (lembrar && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            // Esconde os campos e já inicia a checagem
             edtUsuario.visibility = View.GONE
             edtSenha.visibility = View.GONE
             btnEntrar.visibility = View.GONE
@@ -54,7 +53,6 @@ class MainActivity : Activity() {
             progressBar.visibility = View.VISIBLE
             fazerLogin(savedUser, savedPass, true)
         } else {
-            // Fica na tela normal e preenche os campos se estiverem salvos
             if (!savedUser.isNullOrEmpty()) edtUsuario.setText(savedUser)
             if (!savedPass.isNullOrEmpty()) edtSenha.setText(savedPass)
         }
@@ -79,36 +77,39 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun fazerLogin(username: String, pass: String, salvarLogin: Boolean) {
+    private fun fazerLogin(username: String, passDigitada: String, salvarLogin: Boolean) {
         db.collection("usuarios")
             .whereEqualTo("usuario", username)
             .get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
                     val doc = snapshot.documents[0]
+                    
+                    // CORREÇÃO: Tenta ler o campo 'senha' (App) ou 'pass' (Xtream) do seu Firestore
+                    val senhaBanco = doc.getString("senha") ?: ""
                     val xtreamPass = doc.getString("pass") ?: ""
                     
-                    // Valida a senha do usuário com a senha gravada no banco
-                    if (pass == xtreamPass) {
+                    // Valida se a senha digitada bate com qualquer uma das duas
+                    if (passDigitada == senhaBanco || passDigitada == xtreamPass) {
                         val xtreamUrl = doc.getString("url") ?: ""
                         val xtreamUser = doc.getString("user") ?: ""
 
-                        // SALVA NA MEMÓRIA DA TV SE O CHECKBOX ESTAVA MARCADO
+                        // SALVA NA MEMÓRIA SE ESTIVER MARCADO
                         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                         if (salvarLogin) {
                             prefs.edit()
                                 .putString("USERNAME", username)
-                                .putString("PASSWORD", pass)
+                                .putString("PASSWORD", passDigitada)
                                 .putBoolean("LEMBRAR", true)
                                 .apply()
                         } else {
-                            prefs.edit().clear().apply() // Limpa se desmarcou
+                            prefs.edit().clear().apply()
                         }
 
                         val intent = Intent(this, HomeActivity::class.java)
                         intent.putExtra("URL", xtreamUrl)
                         intent.putExtra("USER", xtreamUser)
-                        intent.putExtra("PASS", xtreamPass)
+                        intent.putExtra("PASS", xtreamPass) // Manda a senha do Xtream pro Player
                         intent.putExtra("USERNAME", username)
                         startActivity(intent)
                         finish()
@@ -125,7 +126,6 @@ class MainActivity : Activity() {
     }
 
     private fun falhaLogin(mensagem: String) {
-        // Limpa o login automático se deu falha
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         prefs.edit().clear().apply()
         
