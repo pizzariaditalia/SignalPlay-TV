@@ -5,7 +5,9 @@ import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
+import android.view.View
 import android.view.ViewGroup
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
@@ -13,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -48,16 +51,18 @@ class VodActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // FILTRO PARENTAL ATIVADO
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
 
                 val client = OkHttpClient()
 
-                val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_categories").build()
-                val resCat = client.newCall(reqCat).execute()
-                val jsonCat = resCat.body?.string() ?: "[]"
+                // PARALELISMO NA BUSCA DE FILMES
+                val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_categories").build()).execute().body?.string() ?: "[]" }
+                val defVod = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()).execute().body?.string() ?: "[]" }
+
+                val jsonCat = defCat.await()
+                val jsonVod = defVod.await()
                 
                 if (jsonCat.startsWith("[")) {
                     val arr = JSONArray(jsonCat)
@@ -65,17 +70,12 @@ class VodActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         
-                        // Verifica se o nome da pasta tem palavra proibida
                         val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
                         if (!isParentalActive || !isAdult) {
                             todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
                         }
                     }
                 }
-
-                val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
-                val resVod = client.newCall(reqVod).execute()
-                val jsonVod = resVod.body?.string() ?: "[]"
                 
                 if (jsonVod.startsWith("[")) {
                     val arr = JSONArray(jsonVod)
@@ -92,6 +92,8 @@ class VodActivity : Activity() {
                 }
 
                 withContext(Dispatchers.Main) {
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+
                     recyclerCategories.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_category, parent, false)
@@ -102,11 +104,8 @@ class VodActivity : Activity() {
                             val cat = todasCategorias[position]
                             val txt = holder.itemView as TextView
                             txt.text = cat.nome
-                            txt.setOnClickListener {
-                                exibirFilmesDaCategoria(cat.id, cat.nome)
-                            }
+                            txt.setOnClickListener { exibirFilmesDaCategoria(cat.id, cat.nome) }
                         }
-
                         override fun getItemCount(): Int = todasCategorias.size
                     }
 
@@ -117,6 +116,7 @@ class VodActivity : Activity() {
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
                     Toast.makeText(this@VodActivity, "Erro ao carregar filmes.", Toast.LENGTH_SHORT).show()
                 }
             }
