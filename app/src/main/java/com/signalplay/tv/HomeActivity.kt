@@ -36,8 +36,19 @@ class HomeActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
+        
+        // Aplica o fundo do botão criado agora
+        btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
-        // Menu Restaurado
+        // Animação de Foco para o Botão "Assistir Agora"
+        btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            } else {
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            }
+        }
+
         val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
         val menuInicio = findViewById<TextView>(R.id.menuInicio)
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
@@ -45,7 +56,6 @@ class HomeActivity : Activity() {
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
         val menuConfig = findViewById<TextView>(R.id.menuConfig)
 
-        // Efeito de cor na pílula do menu
         val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
             val txt = v as TextView
             if (hasFocus) {
@@ -196,9 +206,9 @@ class HomeActivity : Activity() {
                 }
 
                 val ultimosFilmes = listFilmes.reversed().take(30)
-                val topFilmes = listFilmes.take(15)
+                val topFilmes = listFilmes.take(10)
                 val seriesAlta = listSeries.reversed().take(30)
-                val topSeries = listSeries.take(15)
+                val topSeries = listSeries.take(10)
 
                 withContext(Dispatchers.Main) {
                     
@@ -217,7 +227,6 @@ class HomeActivity : Activity() {
                     recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
 
-                    // A MÁGICA DO BANNER CORRETO: Pega apenas 1 filme aleatório do catálogo na hora que a tela abre
                     if (listFilmes.isNotEmpty()) {
                         atualizarBanner(listFilmes.random())
                     }
