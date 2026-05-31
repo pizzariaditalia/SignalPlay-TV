@@ -35,6 +35,7 @@ class HomeActivity : Activity() {
     private var urlGlobal = ""
     private var userGlobal = ""
     private var passGlobal = ""
+    private var username = "" // Variável global para ser passada adiante
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,13 +91,14 @@ class HomeActivity : Activity() {
         urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
         userGlobal = intent.getStringExtra("USER") ?: ""
         passGlobal = intent.getStringExtra("PASS") ?: ""
-        val username = intent.getStringExtra("USERNAME") ?: ""
+        username = intent.getStringExtra("USERNAME") ?: ""
 
         menuPesquisar.setOnClickListener {
             val intent = Intent(this@HomeActivity, SearchActivity::class.java)
             intent.putExtra("URL", urlGlobal)
             intent.putExtra("USER", userGlobal)
             intent.putExtra("PASS", passGlobal)
+            intent.putExtra("USERNAME", username)
             startActivity(intent)
         }
         menuCanais.setOnClickListener {
@@ -112,6 +114,7 @@ class HomeActivity : Activity() {
             intent.putExtra("URL", urlGlobal)
             intent.putExtra("USER", userGlobal)
             intent.putExtra("PASS", passGlobal)
+            intent.putExtra("USERNAME", username)
             startActivity(intent)
         }
         menuSeries.setOnClickListener {
@@ -119,6 +122,7 @@ class HomeActivity : Activity() {
             intent.putExtra("URL", urlGlobal)
             intent.putExtra("USER", userGlobal)
             intent.putExtra("PASS", passGlobal)
+            intent.putExtra("USERNAME", username)
             startActivity(intent)
         }
         menuConfig.setOnClickListener {
@@ -139,20 +143,31 @@ class HomeActivity : Activity() {
                 val client = OkHttpClient()
                 val listaIdsFavoritos = mutableListOf<String>()
                 
+                var historicoMap: Map<String, Map<String, Long>>? = null
+                
+                // MÁGICA: BATE NO BANCO PARA PEGAR OS FAVORITOS E O HISTÓRICO VOD!
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
                         if (!snapshot.isEmpty) {
-                            val favs = snapshot.documents[0].get("favoritos") as? List<*>
+                            val doc = snapshot.documents[0]
+                            val favs = doc.get("favoritos") as? List<*>
                             favs?.forEach { listaIdsFavoritos.add(it.toString()) }
+                            historicoMap = doc.get("historico_vod") as? Map<String, Map<String, Long>>
                         }
                     }
                 
-                withContext(Dispatchers.IO) { Thread.sleep(500) }
+                withContext(Dispatchers.IO) { Thread.sleep(800) } // Aguarda a busca no banco
 
-                // =======================================================
-                // BLINDAGEM ANTI-CRASH: Download Sequencial Seguro
-                // Recicla as variaveis para a TV não explodir a Memória RAM
-                // =======================================================
+                fun getProgress(id: String): Int {
+                    val progressoData = historicoMap?.get(id)
+                    if (progressoData != null) {
+                        val pos = progressoData["posicao"] ?: 0L
+                        val dur = progressoData["duracao"] ?: 0L
+                        if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                    }
+                    return 0
+                }
+
                 val liveCats = mutableListOf<CategoriaItem>()
                 liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
                 val listTodosCanais = mutableListOf<CanalItem>()
@@ -160,7 +175,6 @@ class HomeActivity : Activity() {
                 val listFilmes = mutableListOf<FilmeItem>()
                 val listSeries = mutableListOf<FilmeItem>()
 
-                // 1. Live Categories
                 var req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
                 var jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
                 if (jsonStr.startsWith("[")) {
@@ -172,9 +186,8 @@ class HomeActivity : Activity() {
                         if (!isParentalActive || !isAdult) liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
                     }
                 }
-                jsonStr = "" // Limpa memória
+                jsonStr = ""
 
-                // 2. Live Streams
                 req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
                 jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
                 if (jsonStr.startsWith("[")) {
@@ -187,9 +200,8 @@ class HomeActivity : Activity() {
                         if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
                     }
                 }
-                jsonStr = "" // Limpa memória
+                jsonStr = ""
 
-                // 3. VOD Streams
                 req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
                 jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
                 if (jsonStr.startsWith("[")) {
@@ -199,12 +211,12 @@ class HomeActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
                         val ext = obj.optString("container_extension", "mp4")
-                        listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", ""))
+                        // MÁGICA: INJETA O PROGRESSO AQUI!
+                        listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", "", getProgress(id)))
                     }
                 }
-                jsonStr = "" // Limpa memória
+                jsonStr = ""
 
-                // 4. Series Streams
                 req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
                 jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
                 if (jsonStr.startsWith("[")) {
@@ -213,10 +225,11 @@ class HomeActivity : Activity() {
                     for (i in 0 until limiteS) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("series_id", "")
-                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", ""))
+                        // SÉRIES NÃO TÊM PROGRESSO NO PÔSTER GERAL (SÓ NOS EPISÓDIOS), ENTÃO MANDA 0.
+                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", "", 0))
                     }
                 }
-                jsonStr = "" // Limpa memória definitiva
+                jsonStr = ""
 
                 val ultimosFilmes = listFilmes.reversed().take(30)
                 val topFilmes = listFilmes.take(10)
@@ -266,7 +279,6 @@ class HomeActivity : Activity() {
         val imageView = findViewById<ImageView>(R.id.heroImage)
         imageView.scaleType = ImageView.ScaleType.MATRIX
         
-        // BLINDAGEM DE IMAGEM: Aguarda a tela desenhar para não dar erro "Division By Zero"
         Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
@@ -292,6 +304,7 @@ class HomeActivity : Activity() {
         intentDet.putExtra("URL", urlGlobal)
         intentDet.putExtra("USER", userGlobal)
         intentDet.putExtra("PASS", passGlobal)
+        intentDet.putExtra("USERNAME", username) // MÁGICA: PASSA O USUÁRIO PRA FRENTE!
         intentDet.putExtra("MEDIA_ID", itemClicado.id)
         intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
         intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
