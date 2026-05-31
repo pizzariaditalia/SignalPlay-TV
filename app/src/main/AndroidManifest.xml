@@ -32,8 +32,8 @@
         <activity android:name=".DetailsActivity" />
         <activity android:name=".PlayerTvActivity" />
         <activity android:name=".PlayerVodActivity" />
-        
         <activity android:name=".SearchActivity" />
+        <activity android:name=".SettingsActivity" />
 
     </application>
 </manifest>
