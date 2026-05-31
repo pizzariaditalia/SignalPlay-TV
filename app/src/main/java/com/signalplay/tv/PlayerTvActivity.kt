@@ -159,7 +159,6 @@ class PlayerTvActivity : Activity() {
                 val user = parts[parts.size - 3]
                 val streamId = canal.id
 
-                // Puxa o limite de 10 programas futuros para montar a grade completa!
                 val apiUrl = "$baseUrl/player_api.php?username=$user&password=$pass&action=get_short_epg&stream_id=$streamId&limit=10"
 
                 val client = OkHttpClient()
@@ -183,8 +182,13 @@ class PlayerTvActivity : Activity() {
                                 try { titleDecoded = String(Base64.decode(titleB64, Base64.DEFAULT)) } catch (e: Exception) {}
                             }
 
-                            val startTs = prog.optLong("start_timestamp", 0)
-                            val stopTs = prog.optLong("stop_timestamp", 0)
+                            // CORREÇÃO EPG: Tenta ler como String e converte para Long. Se falhar, tenta ler como Long direto.
+                            val strStart = prog.optString("start_timestamp", "")
+                            val strStop = prog.optString("stop_timestamp", "")
+                            
+                            val startTs = strStart.toLongOrNull() ?: prog.optLong("start_timestamp", 0)
+                            val stopTs = strStop.toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
+                            
                             var horario = ""
 
                             if (startTs > 0 && stopTs > 0) {
@@ -194,7 +198,6 @@ class PlayerTvActivity : Activity() {
                                 horario = "$hInicio - $hFim"
                             }
                             
-                            // Adiciona na lista. O índice 0 é sempre o que está passando Agora (isAgora = true)
                             listaEpgAtual.add(EpgItem(titleDecoded, horario, i == 0))
                         }
                     }
@@ -207,8 +210,6 @@ class PlayerTvActivity : Activity() {
                     } else {
                         osdEpgText.text = "Sem programação"
                     }
-                    
-                    // Atualiza a lista caso o painel esteja aberto
                     recyclerPainelEpg.adapter = EpgAdapter(listaEpgAtual)
                 }
 
