@@ -126,6 +126,16 @@ class HomeActivity : Activity() {
             intentSeries.putExtra("PASS", passGlobal)
             startActivity(intentSeries)
         }
+        
+        // NOVO CLIQUE: CONFIGURAÇÕES
+        menuConfig.setOnClickListener {
+            val intentConfig = Intent(this@HomeActivity, SettingsActivity::class.java)
+            intentConfig.putExtra("URL", urlGlobal)
+            intentConfig.putExtra("USER", userGlobal)
+            intentConfig.putExtra("PASS", passGlobal)
+            intentConfig.putExtra("USERNAME", username)
+            startActivity(intentConfig)
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
