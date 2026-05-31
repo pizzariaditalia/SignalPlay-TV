@@ -107,22 +107,42 @@ class HomeActivity : Activity() {
                 
                 withContext(Dispatchers.IO) { Thread.sleep(500) }
 
+                // INOVAÇÃO AQUI: Baixar as pastas de TV direto na Home
+                val liveCats = mutableListOf<CategoriaItem>()
+                liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
+                
+                val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()
+                val resCat = client.newCall(reqCat).execute()
+                val jsonCat = resCat.body?.string() ?: "[]"
+                if (jsonCat.startsWith("[")) {
+                    val arr = JSONArray(jsonCat)
+                    for (i in 0 until arr.length()) {
+                        liveCats.add(CategoriaItem(arr.getJSONObject(i).optString("category_id"), arr.getJSONObject(i).optString("category_name")))
+                    }
+                }
+
                 val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
                 val resLive = client.newCall(reqLive).execute()
                 val jsonLive = resLive.body?.string() ?: "[]"
                 
+                val listTodosCanais = mutableListOf<CanalItem>()
                 val listFavoritos = mutableListOf<CanalItem>()
+                
                 if (jsonLive.startsWith("[")) {
                     val liveArray = JSONArray(jsonLive)
                     for (i in 0 until liveArray.length()) {
                         val obj = liveArray.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
+                        val nome = obj.optString("name", "Canal")
+                        val icone = obj.optString("stream_icon", "")
+                        val catId = obj.optString("category_id")
+                        val streamUrl = "$url/live/$user/$pass/$id.ts"
+                        
+                        val canal = CanalItem(id, nome, icone, catId, streamUrl)
+                        listTodosCanais.add(canal)
+                        
                         if (listaIdsFavoritos.contains(id)) {
-                            val nome = obj.optString("name", "Canal")
-                            val icone = obj.optString("stream_icon", "")
-                            val streamUrl = "$url/live/$user/$pass/$id.ts"
-                            // Salvamos os favoritos com uma categoria fantasma chamada FAV
-                            listFavoritos.add(CanalItem(id, nome, icone, "FAV", streamUrl))
+                            listFavoritos.add(canal)
                         }
                     }
                 }
@@ -175,12 +195,12 @@ class HomeActivity : Activity() {
                         listaCanais = listFavoritos,
                         idsFavoritos = listaIdsFavoritos,
                         onClick = { canalClicado ->
-                            
-                            // CORREÇÃO AQUI: Atualizamos para a nova estrutura do DataHolder!
-                            DataHolder.todasCategorias = listOf(CategoriaItem("FAV", "Canais Favoritos"))
-                            DataHolder.todosCanais = listFavoritos
+                            DataHolder.todasCategorias = liveCats
+                            DataHolder.todosCanais = listTodosCanais
+                            DataHolder.favoritosIds = listaIdsFavoritos
                             DataHolder.categoriaAtualId = "FAV"
                             
+                            // Acha o índice do canal clicado, mas dentro da sublista
                             val indice = listFavoritos.indexOf(canalClicado)
                             
                             val intentPlayer = Intent(this@HomeActivity, PlayerTvActivity::class.java)
