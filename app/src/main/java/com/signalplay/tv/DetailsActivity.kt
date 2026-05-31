@@ -28,7 +28,6 @@ class DetailsActivity : Activity() {
     private val episodesMap = mutableMapOf<String, List<EpisodeItem>>()
     private val seasonsList = mutableListOf<String>()
     
-    // Variável para guardar o link final do filme
     private var streamUrlFilme: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -79,7 +78,6 @@ class DetailsActivity : Activity() {
                             val rating = info.optString("rating", "N/A")
                             val backdrop = info.optString("movie_image", capaMedia)
 
-                            // Monta o link do filme com a extensão correta
                             val ext = movieData?.optString("container_extension", "mp4") ?: "mp4"
                             streamUrlFilme = "$url/movie/$user/$pass/$idMedia.$ext"
 
@@ -171,8 +169,11 @@ class DetailsActivity : Activity() {
                                         val epsToDisplay = episodesMap[selectedSeason] ?: emptyList()
                                         
                                         recyclerEpisodes.adapter = EpisodeAdapter(epsToDisplay) { epClicado ->
-                                            // CLIQUE NO EPISÓDIO DA SÉRIE
-                                            VodDataHolder.listaEpisodios = epsToDisplay // Manda a temporada atual para o player
+                                            
+                                            // MÁGICA: Manda TODAS as temporadas e o mapa de episódios para o Player VOD!
+                                            VodDataHolder.seasonsList = seasonsList
+                                            VodDataHolder.episodesMap = episodesMap
+                                            VodDataHolder.seasonAtualIndex = position
                                             
                                             val intentVod = Intent(this@DetailsActivity, PlayerVodActivity::class.java)
                                             intentVod.putExtra("STREAM_URL", epClicado.streamUrl)
@@ -193,7 +194,6 @@ class DetailsActivity : Activity() {
             }
         }
         
-        // CLIQUE NO BOTÃO DE FILME
         btnPlay.setOnClickListener {
             if (streamUrlFilme.isNotEmpty()) {
                 val intentVod = Intent(this, PlayerVodActivity::class.java)
