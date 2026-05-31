@@ -46,12 +46,13 @@ class CanalAdapter(
             holder.imgStar.visibility = View.GONE
         }
 
-        // EFEITO NETFLIX NO CANAL TAMBÉM
+        // SUPER ZOOM E SOMBRA ATIVADOS
         holder.itemView.setOnFocusChangeListener { view, hasFocus ->
             if (hasFocus) {
-                view.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+                view.bringToFront()
+                view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(200).start()
             } else {
-                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).start()
             }
         }
 
