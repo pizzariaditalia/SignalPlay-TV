@@ -21,7 +21,6 @@ import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -150,79 +149,74 @@ class HomeActivity : Activity() {
                 
                 withContext(Dispatchers.IO) { Thread.sleep(500) }
 
-                // 🔥 MÁGICA: PROCESSAMENTO PARALELO DE DADOS! 🔥
-                // Baixa TODAS as tabelas do servidor AO MESMO TEMPO (Async)
-                val defLiveCats = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()).execute().body?.string() ?: "[]" }
-                val defLive = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()).execute().body?.string() ?: "[]" }
-                val defVod = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()).execute().body?.string() ?: "[]" }
-                val defSeries = async { client.newCall(Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()).execute().body?.string() ?: "[]" }
-
-                val jsonCat = defLiveCats.await()
-                val jsonLive = defLive.await()
-                val jsonVod = defVod.await()
-                val jsonSeries = defSeries.await()
-
+                // =======================================================
+                // BLINDAGEM ANTI-CRASH: Download Sequencial Seguro
+                // Recicla as variaveis para a TV não explodir a Memória RAM
+                // =======================================================
                 val liveCats = mutableListOf<CategoriaItem>()
                 liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
-                
-                if (jsonCat.startsWith("[")) {
-                    val arr = JSONArray(jsonCat)
+                val listTodosCanais = mutableListOf<CanalItem>()
+                val listFavoritos = mutableListOf<CanalItem>()
+                val listFilmes = mutableListOf<FilmeItem>()
+                val listSeries = mutableListOf<FilmeItem>()
+
+                // 1. Live Categories
+                var req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
+                var jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                if (jsonStr.startsWith("[")) {
+                    val arr = JSONArray(jsonStr)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) {
-                            liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
-                        }
+                        if (!isParentalActive || !isAdult) liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
                     }
                 }
-                
-                val listTodosCanais = mutableListOf<CanalItem>()
-                val listFavoritos = mutableListOf<CanalItem>()
-                
-                if (jsonLive.startsWith("[")) {
-                    val liveArray = JSONArray(jsonLive)
-                    for (i in 0 until liveArray.length()) {
-                        val obj = liveArray.getJSONObject(i)
+                jsonStr = "" // Limpa memória
+
+                // 2. Live Streams
+                req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
+                jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                if (jsonStr.startsWith("[")) {
+                    val arr = JSONArray(jsonStr)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
-                        val nome = obj.optString("name", "Canal")
-                        val icone = obj.optString("stream_icon", "")
-                        val catId = obj.optString("category_id")
-                        val streamUrl = "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts"
-                        val canal = CanalItem(id, nome, icone, catId, streamUrl)
+                        val canal = CanalItem(id, obj.optString("name", "Canal"), obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts")
                         listTodosCanais.add(canal)
                         if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
                     }
                 }
-                
-                val listFilmes = mutableListOf<FilmeItem>()
-                if (jsonVod.startsWith("[")) {
-                    val vodArray = JSONArray(jsonVod)
-                    val limite = if (vodArray.length() > 150) 150 else vodArray.length()
+                jsonStr = "" // Limpa memória
+
+                // 3. VOD Streams
+                req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
+                jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                if (jsonStr.startsWith("[")) {
+                    val arr = JSONArray(jsonStr)
+                    val limite = if (arr.length() > 150) 150 else arr.length()
                     for (i in 0 until limite) {
-                        val obj = vodArray.getJSONObject(i)
+                        val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
-                        val nome = obj.optString("name", "Sem Nome")
-                        val icone = obj.optString("stream_icon", "")
                         val ext = obj.optString("container_extension", "mp4")
-                        val streamUrl = "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext"
-                        listFilmes.add(FilmeItem(id, nome, icone, streamUrl, "filme", ""))
+                        listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", ""))
                     }
                 }
-                
-                val listSeries = mutableListOf<FilmeItem>()
-                if (jsonSeries.startsWith("[")) {
-                    val seriesArray = JSONArray(jsonSeries)
-                    val limiteS = if (seriesArray.length() > 150) 150 else seriesArray.length()
+                jsonStr = "" // Limpa memória
+
+                // 4. Series Streams
+                req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
+                jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                if (jsonStr.startsWith("[")) {
+                    val arr = JSONArray(jsonStr)
+                    val limiteS = if (arr.length() > 150) 150 else arr.length()
                     for (i in 0 until limiteS) {
-                        val obj = seriesArray.getJSONObject(i)
+                        val obj = arr.getJSONObject(i)
                         val id = obj.optString("series_id", "")
-                        val nome = obj.optString("name", "Sem Nome")
-                        val icone = obj.optString("cover", "")
-                        val streamUrl = "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id"
-                        listSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie", ""))
+                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", ""))
                     }
                 }
+                jsonStr = "" // Limpa memória definitiva
 
                 val ultimosFilmes = listFilmes.reversed().take(30)
                 val topFilmes = listFilmes.take(10)
@@ -230,7 +224,6 @@ class HomeActivity : Activity() {
                 val topSeries = listSeries.take(10)
 
                 withContext(Dispatchers.Main) {
-                    // DESLIGA O CARREGAMENTO
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
                     
                     recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
@@ -271,18 +264,25 @@ class HomeActivity : Activity() {
         btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
         
         val imageView = findViewById<ImageView>(R.id.heroImage)
+        imageView.scaleType = ImageView.ScaleType.MATRIX
         
+        // BLINDAGEM DE IMAGEM: Aguarda a tela desenhar para não dar erro "Division By Zero"
         Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
             override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
-                view.scaleType = ImageView.ScaleType.MATRIX
-                val matrix = Matrix()
-                val scale = view.width.toFloat() / resource.intrinsicWidth.toFloat()
-                matrix.setScale(scale, scale)
-                matrix.postTranslate(0f, 0f)
-                view.imageMatrix = matrix
                 view.setImageDrawable(resource)
+                view.post {
+                    val dWidth = resource.intrinsicWidth
+                    val vWidth = view.width
+                    if (dWidth > 0 && vWidth > 0) {
+                        val matrix = Matrix()
+                        val scale = vWidth.toFloat() / dWidth.toFloat()
+                        matrix.setScale(scale, scale)
+                        matrix.postTranslate(0f, 0f)
+                        view.imageMatrix = matrix
+                    }
+                }
             }
         })
     }
