@@ -17,8 +17,7 @@
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_centerInParent="true"
-        android:indeterminateTint="#FFC107"
-        android:visibility="visible" />
+        android:indeterminateTint="#FFC107" />
 
     <LinearLayout
         android:id="@+id/osdContainer"
@@ -42,7 +41,6 @@
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:layout_gravity="center_vertical">
-
             <TextView
                 android:id="@+id/osdChannelName"
                 android:layout_width="wrap_content"
@@ -50,21 +48,19 @@
                 android:textColor="#FFFFFF"
                 android:textSize="28sp"
                 android:textStyle="bold" />
-
             <TextView
                 android:id="@+id/osdEpgText"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:textColor="#FFC107"
                 android:textSize="18sp"
-                android:layout_marginTop="4dp"
-                android:text="Carregando programação..." />
+                android:text="Programação em breve..." />
         </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
         android:id="@+id/painelCanais"
-        android:layout_width="320dp"
+        android:layout_width="380dp"
         android:layout_height="match_parent"
         android:layout_alignParentStart="true"
         android:background="#F2111114"
@@ -72,20 +68,44 @@
         android:padding="16dp"
         android:visibility="gone">
 
-        <TextView
-            android:id="@+id/tvPainelTitulo"
-            android:layout_width="wrap_content"
+        <LinearLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Lista de Canais"
-            android:textColor="#FFC107"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="16dp" />
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="16dp">
+            
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="◀"
+                android:textColor="#FFC107"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+                
+            <TextView
+                android:id="@+id/tvPainelTitulo"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Categoria"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:gravity="center" />
+                
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="▶"
+                android:textColor="#FFC107"
+                android:textSize="18sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerPainelCanais"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </LinearLayout>
-
 </RelativeLayout>
