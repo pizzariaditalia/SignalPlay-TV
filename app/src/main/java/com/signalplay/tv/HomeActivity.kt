@@ -1,8 +1,11 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.view.View
 import android.widget.Button
@@ -12,6 +15,8 @@ import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.request.target.CustomViewTarget
+import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -36,17 +41,11 @@ class HomeActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
-        
-        // Aplica o fundo do botão criado
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
-        // Animação de Foco para o Botão "Assistir Agora"
         btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) {
-                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
-            } else {
-                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
-            }
+            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
         }
 
         val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
@@ -56,7 +55,6 @@ class HomeActivity : Activity() {
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
         val menuConfig = findViewById<TextView>(R.id.menuConfig)
 
-        // Efeito Pílula: Cor e Zoom no menu
         val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
             val txt = v as TextView
             if (hasFocus) {
@@ -93,52 +91,51 @@ class HomeActivity : Activity() {
         passGlobal = intent.getStringExtra("PASS") ?: ""
         val username = intent.getStringExtra("USERNAME") ?: ""
 
-        // CLIQUES DO MENU SUPERIOR
         menuPesquisar.setOnClickListener {
-            val intentPesquisa = Intent(this@HomeActivity, SearchActivity::class.java)
-            intentPesquisa.putExtra("URL", urlGlobal)
-            intentPesquisa.putExtra("USER", userGlobal)
-            intentPesquisa.putExtra("PASS", passGlobal)
-            startActivity(intentPesquisa)
+            val intent = Intent(this@HomeActivity, SearchActivity::class.java)
+            intent.putExtra("URL", urlGlobal)
+            intent.putExtra("USER", userGlobal)
+            intent.putExtra("PASS", passGlobal)
+            startActivity(intent)
         }
-
         menuCanais.setOnClickListener {
-            val intentTv = Intent(this@HomeActivity, TvActivity::class.java)
-            intentTv.putExtra("URL", urlGlobal)
-            intentTv.putExtra("USER", userGlobal)
-            intentTv.putExtra("PASS", passGlobal)
-            intentTv.putExtra("USERNAME", username)
-            startActivity(intentTv)
+            val intent = Intent(this@HomeActivity, TvActivity::class.java)
+            intent.putExtra("URL", urlGlobal)
+            intent.putExtra("USER", userGlobal)
+            intent.putExtra("PASS", passGlobal)
+            intent.putExtra("USERNAME", username)
+            startActivity(intent)
         }
-
         menuFilmes.setOnClickListener {
-            val intentVod = Intent(this@HomeActivity, VodActivity::class.java)
-            intentVod.putExtra("URL", urlGlobal)
-            intentVod.putExtra("USER", userGlobal)
-            intentVod.putExtra("PASS", passGlobal)
-            startActivity(intentVod)
+            val intent = Intent(this@HomeActivity, VodActivity::class.java)
+            intent.putExtra("URL", urlGlobal)
+            intent.putExtra("USER", userGlobal)
+            intent.putExtra("PASS", passGlobal)
+            startActivity(intent)
         }
-
         menuSeries.setOnClickListener {
-            val intentSeries = Intent(this@HomeActivity, SeriesActivity::class.java)
-            intentSeries.putExtra("URL", urlGlobal)
-            intentSeries.putExtra("USER", userGlobal)
-            intentSeries.putExtra("PASS", passGlobal)
-            startActivity(intentSeries)
+            val intent = Intent(this@HomeActivity, SeriesActivity::class.java)
+            intent.putExtra("URL", urlGlobal)
+            intent.putExtra("USER", userGlobal)
+            intent.putExtra("PASS", passGlobal)
+            startActivity(intent)
         }
-        
-        // NOVO CLIQUE: CONFIGURAÇÕES
         menuConfig.setOnClickListener {
-            val intentConfig = Intent(this@HomeActivity, SettingsActivity::class.java)
-            intentConfig.putExtra("URL", urlGlobal)
-            intentConfig.putExtra("USER", userGlobal)
-            intentConfig.putExtra("PASS", passGlobal)
-            intentConfig.putExtra("USERNAME", username)
-            startActivity(intentConfig)
+            val intent = Intent(this@HomeActivity, SettingsActivity::class.java)
+            intent.putExtra("URL", urlGlobal)
+            intent.putExtra("USER", userGlobal)
+            intent.putExtra("PASS", passGlobal)
+            intent.putExtra("USERNAME", username)
+            startActivity(intent)
         }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // LÊ O CONTROLE PARENTAL DA MEMÓRIA
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+
                 val client = OkHttpClient()
                 val listaIdsFavoritos = mutableListOf<String>()
                 
@@ -161,7 +158,13 @@ class HomeActivity : Activity() {
                 if (jsonCat.startsWith("[")) {
                     val arr = JSONArray(jsonCat)
                     for (i in 0 until arr.length()) {
-                        liveCats.add(CategoriaItem(arr.getJSONObject(i).optString("category_id"), arr.getJSONObject(i).optString("category_name")))
+                        val obj = arr.getJSONObject(i)
+                        val catName = obj.optString("category_name", "")
+                        // FILTRO PARENTAL
+                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
+                        if (!isParentalActive || !isAdult) {
+                            liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
+                        }
                     }
                 }
 
@@ -231,7 +234,6 @@ class HomeActivity : Activity() {
                 val topSeries = listSeries.take(10)
 
                 withContext(Dispatchers.Main) {
-                    
                     recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
                         DataHolder.todasCategorias = liveCats
                         DataHolder.todosCanais = listTodosCanais
@@ -247,16 +249,13 @@ class HomeActivity : Activity() {
                     recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
 
-                    // Sorteia um filme aleatório do catálogo para o Banner
                     if (listFilmes.isNotEmpty()) {
                         atualizarBanner(listFilmes.random())
                     }
                 }
 
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) {
-                    Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show()
-                }
+                withContext(Dispatchers.Main) { Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show() }
             }
         }
     }
@@ -267,11 +266,24 @@ class HomeActivity : Activity() {
         findViewById<TextView>(R.id.heroDesc).text = "Disponível agora no catálogo"
         
         btnAssistirDestaque.visibility = View.VISIBLE
-        btnAssistirDestaque.setOnClickListener {
-            abrirDetalhes(filme)
-        }
+        btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
         
-        Glide.with(this).load(filme.urlImagem).into(findViewById(R.id.heroImage))
+        val imageView = findViewById<ImageView>(R.id.heroImage)
+        
+        // MATRIZ TOPCROP: Essa magia garante que o topo do pôster sempre apareça na TV!
+        Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
+            override fun onLoadFailed(errorDrawable: Drawable?) {}
+            override fun onResourceCleared(placeholder: Drawable?) {}
+            override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
+                view.scaleType = ImageView.ScaleType.MATRIX
+                val matrix = Matrix()
+                val scale = view.width.toFloat() / resource.intrinsicWidth.toFloat()
+                matrix.setScale(scale, scale)
+                matrix.postTranslate(0f, 0f) // Alinha exato no TOPO!
+                view.imageMatrix = matrix
+                view.setImageDrawable(resource)
+            }
+        })
     }
 
     private fun abrirDetalhes(itemClicado: FilmeItem) {
