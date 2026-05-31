@@ -111,7 +111,6 @@ class HomeActivity : Activity() {
                 val resLive = client.newCall(reqLive).execute()
                 val jsonLive = resLive.body?.string() ?: "[]"
                 
-                // CORREÇÃO: Usar a classe CanalItem para a prateleira de favoritos!
                 val listFavoritos = mutableListOf<CanalItem>()
                 if (jsonLive.startsWith("[")) {
                     val liveArray = JSONArray(jsonLive)
@@ -122,7 +121,8 @@ class HomeActivity : Activity() {
                             val nome = obj.optString("name", "Canal")
                             val icone = obj.optString("stream_icon", "")
                             val streamUrl = "$url/live/$user/$pass/$id.ts"
-                            listFavoritos.add(CanalItem(id, nome, icone, "Favoritos", streamUrl))
+                            // Salvamos os favoritos com uma categoria fantasma chamada FAV
+                            listFavoritos.add(CanalItem(id, nome, icone, "FAV", streamUrl))
                         }
                     }
                 }
@@ -171,13 +171,16 @@ class HomeActivity : Activity() {
 
                 withContext(Dispatchers.Main) {
                     
-                    // CORREÇÃO: Povoar a prateleira com o CanalAdapter
                     recyclerFavoritos.adapter = CanalAdapter(
                         listaCanais = listFavoritos,
                         idsFavoritos = listaIdsFavoritos,
                         onClick = { canalClicado ->
-                            DataHolder.canaisZapping = listFavoritos
-                            DataHolder.categoriaAtualNome = "Canais Favoritos"
+                            
+                            // CORREÇÃO AQUI: Atualizamos para a nova estrutura do DataHolder!
+                            DataHolder.todasCategorias = listOf(CategoriaItem("FAV", "Canais Favoritos"))
+                            DataHolder.todosCanais = listFavoritos
+                            DataHolder.categoriaAtualId = "FAV"
+                            
                             val indice = listFavoritos.indexOf(canalClicado)
                             
                             val intentPlayer = Intent(this@HomeActivity, PlayerTvActivity::class.java)
