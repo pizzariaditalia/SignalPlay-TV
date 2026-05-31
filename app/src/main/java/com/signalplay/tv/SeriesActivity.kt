@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -47,6 +48,11 @@ class SeriesActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // FILTRO PARENTAL ATIVADO
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+
                 val client = OkHttpClient()
 
                 val reqCat = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series_categories").build()
@@ -57,7 +63,13 @@ class SeriesActivity : Activity() {
                     val arr = JSONArray(jsonCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        todasCategorias.add(CategoriaItem(obj.optString("category_id"), obj.optString("category_name")))
+                        val catName = obj.optString("category_name", "")
+                        
+                        // Verifica se o nome da pasta tem palavra proibida
+                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
+                        if (!isParentalActive || !isAdult) {
+                            todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
+                        }
                     }
                 }
 
