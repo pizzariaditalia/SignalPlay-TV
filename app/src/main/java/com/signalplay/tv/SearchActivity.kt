@@ -12,6 +12,7 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -56,7 +57,6 @@ class SearchActivity : Activity() {
         
         adapter = SearchAdapter(filteredList) { itemClicado ->
             if (itemClicado.tipo == "TV") {
-                // Monta uma lista temporária só de TV para o Zapping funcionar na tela do player
                 val canaisTv = masterList.filter { it.tipo == "TV" }.map { CanalItem(it.id, it.nome, it.icone, "PESQUISA", it.urlStreamOrInfo) }
                 DataHolder.todasCategorias = listOf(CategoriaItem("PESQUISA", "Resultado da Pesquisa"))
                 DataHolder.todosCanais = canaisTv
@@ -67,7 +67,6 @@ class SearchActivity : Activity() {
                 startActivity(intentTv)
                 
             } else {
-                // Filmes e Séries vão para a Tela de Detalhes
                 val intentDet = Intent(this, DetailsActivity::class.java)
                 intentDet.putExtra("URL", url)
                 intentDet.putExtra("USER", user)
@@ -81,53 +80,68 @@ class SearchActivity : Activity() {
         }
         recycler.adapter = adapter
 
-        // BAIXA TUDO SIMULTANEAMENTE (SUPER RÁPIDO)
         CoroutineScope(Dispatchers.IO).launch {
-            val client = OkHttpClient()
-
-            val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
-            val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
-            val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
-
-            val defLive = async { client.newCall(reqLive).execute().body?.string() ?: "[]" }
-            val defVod = async { client.newCall(reqVod).execute().body?.string() ?: "[]" }
-            val defSeries = async { client.newCall(reqSeries).execute().body?.string() ?: "[]" }
-
-            val jsonLive = defLive.await()
-            val jsonVod = defVod.await()
-            val jsonSeries = defSeries.await()
-
-            if (jsonLive.startsWith("[")) {
-                val arr = JSONArray(jsonLive)
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    masterList.add(SearchItem(obj.optString("stream_id"), obj.optString("name"), obj.optString("stream_icon"), "TV", "$url/live/$user/$pass/${obj.optString("stream_id")}.ts"))
+            // TRAVA DE SEGURANÇA QUE EVITA O CRASH!
+            if (url.isEmpty() || !url.startsWith("http")) {
+                withContext(Dispatchers.Main) {
+                    progress.visibility = View.GONE
+                    tvStatus.text = "Erro: URL do servidor inválida."
+                    Toast.makeText(this@SearchActivity, "Falha na conexão.", Toast.LENGTH_SHORT).show()
                 }
-            }
-            if (jsonVod.startsWith("[")) {
-                val arr = JSONArray(jsonVod)
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    val ext = obj.optString("container_extension", "mp4")
-                    masterList.add(SearchItem(obj.optString("stream_id"), obj.optString("name"), obj.optString("stream_icon"), "FILME", "$url/movie/$user/$pass/${obj.optString("stream_id")}.$ext"))
-                }
-            }
-            if (jsonSeries.startsWith("[")) {
-                val arr = JSONArray(jsonSeries)
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    masterList.add(SearchItem(obj.optString("series_id"), obj.optString("name"), obj.optString("cover"), "SÉRIE", "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=${obj.optString("series_id")}"))
-                }
+                return@launch // Interrompe o processo antes do OkHttp tentar rodar e quebrar o app
             }
 
-            withContext(Dispatchers.Main) {
-                progress.visibility = View.GONE
-                tvStatus.text = "Busque em nosso acervo de ${masterList.size} conteúdos!"
-                edtSearch.requestFocus()
+            try {
+                val client = OkHttpClient()
+
+                val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
+                val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
+                val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
+
+                val defLive = async { client.newCall(reqLive).execute().body?.string() ?: "[]" }
+                val defVod = async { client.newCall(reqVod).execute().body?.string() ?: "[]" }
+                val defSeries = async { client.newCall(reqSeries).execute().body?.string() ?: "[]" }
+
+                val jsonLive = defLive.await()
+                val jsonVod = defVod.await()
+                val jsonSeries = defSeries.await()
+
+                if (jsonLive.startsWith("[")) {
+                    val arr = JSONArray(jsonLive)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        masterList.add(SearchItem(obj.optString("stream_id"), obj.optString("name"), obj.optString("stream_icon"), "TV", "$url/live/$user/$pass/${obj.optString("stream_id")}.ts"))
+                    }
+                }
+                if (jsonVod.startsWith("[")) {
+                    val arr = JSONArray(jsonVod)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val ext = obj.optString("container_extension", "mp4")
+                        masterList.add(SearchItem(obj.optString("stream_id"), obj.optString("name"), obj.optString("stream_icon"), "FILME", "$url/movie/$user/$pass/${obj.optString("stream_id")}.$ext"))
+                    }
+                }
+                if (jsonSeries.startsWith("[")) {
+                    val arr = JSONArray(jsonSeries)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        masterList.add(SearchItem(obj.optString("series_id"), obj.optString("name"), obj.optString("cover"), "SÉRIE", "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=${obj.optString("series_id")}"))
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    progress.visibility = View.GONE
+                    tvStatus.text = "Busque em nosso acervo de ${masterList.size} conteúdos!"
+                    edtSearch.requestFocus()
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progress.visibility = View.GONE
+                    tvStatus.text = "Erro ao carregar catálogo."
+                }
             }
         }
 
-        // MOTOR DE FILTRO EM TEMPO REAL
         edtSearch.addTextChangedListener(object : TextWatcher {
             override fun afterTextChanged(s: Editable?) {}
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) {}
@@ -136,7 +150,7 @@ class SearchActivity : Activity() {
                 filteredList.clear()
                 
                 if (query.length >= 2) {
-                    filteredList.addAll(masterList.filter { it.nome.lowercase().contains(query) }.take(60)) // Limita a 60 resultados para a TV não engasgar
+                    filteredList.addAll(masterList.filter { it.nome.lowercase().contains(query) }.take(60))
                 }
                 
                 adapter.notifyDataSetChanged()
@@ -150,7 +164,6 @@ class SearchActivity : Activity() {
         })
     }
 
-    // O OPERÁRIO DA PESQUISA
     inner class SearchAdapter(
         private val list: List<SearchItem>,
         private val onClick: (SearchItem) -> Unit
@@ -172,10 +185,9 @@ class SearchActivity : Activity() {
             holder.title.text = item.nome
             holder.tag.text = item.tipo
             
-            // Muda a cor da Tag dependendo do tipo!
-            if (item.tipo == "TV") holder.tag.setBackgroundColor(android.graphics.Color.parseColor("#0091EA")) // Azul
-            else if (item.tipo == "FILME") holder.tag.setBackgroundColor(android.graphics.Color.parseColor("#FFC107")) // Amarelo
-            else holder.tag.setBackgroundColor(android.graphics.Color.parseColor("#E50914")) // Vermelho Netflix
+            if (item.tipo == "TV") holder.tag.setBackgroundColor(android.graphics.Color.parseColor("#0091EA"))
+            else if (item.tipo == "FILME") holder.tag.setBackgroundColor(android.graphics.Color.parseColor("#FFC107"))
+            else holder.tag.setBackgroundColor(android.graphics.Color.parseColor("#E50914"))
 
             val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
             Glide.with(holder.itemView.context).load(item.icone).apply(options).into(holder.img)
