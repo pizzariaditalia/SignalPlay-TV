@@ -101,7 +101,12 @@ class PlayerVodActivity : Activity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         val keyCode = event.keyCode
         
+        // =======================================================
+        // MÁGICA 1: O SOLTAR DO BOTÃO (Bloqueando o ExoPlayer)
+        // =======================================================
         if (event.action == KeyEvent.ACTION_UP) {
+            
+            // Finaliza o avanço se estiver avançando
             if (isSeeking && (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_LEFT)) {
                 isSeeking = false
                 exoPlayer?.seekTo(currentSeekPos)
@@ -109,8 +114,20 @@ class PlayerVodActivity : Activity() {
                 tvAvisoAspecto.visibility = View.GONE
                 return true
             }
+
+            // CORREÇÃO DEFINITIVA: Se o menu nativo não está na tela e a barra de episódios tá fechada, 
+            // a gente "engole" a ação de soltar os direcionais para o ExoPlayer não abrir!
+            if (painelEpisodios.visibility == View.GONE && !playerViewVod.isControllerFullyVisible) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN || keyCode == KeyEvent.KEYCODE_DPAD_UP ||
+                    keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    return true 
+                }
+            }
         }
 
+        // =======================================================
+        // MÁGICA 2: O APERTAR DO BOTÃO
+        // =======================================================
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (keyCode) {
                 KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_LEFT -> {
@@ -119,7 +136,10 @@ class PlayerVodActivity : Activity() {
                         return true
                     }
                     
-                    playerViewVod.hideController() 
+                    // Se o menu do ExoPlayer estiver aberto na tela, deixa o usuário navegar por ele!
+                    if (playerViewVod.isControllerFullyVisible) {
+                        return super.dispatchKeyEvent(event)
+                    }
                     
                     if (!isSeeking) {
                         isSeeking = true
@@ -158,6 +178,7 @@ class PlayerVodActivity : Activity() {
                             return true
                         }
                     }
+                    if (playerViewVod.isControllerFullyVisible) return super.dispatchKeyEvent(event)
                 }
                 
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
@@ -168,6 +189,7 @@ class PlayerVodActivity : Activity() {
                         alternarAspectoTela()
                         return true
                     }
+                    if (playerViewVod.isControllerFullyVisible) return super.dispatchKeyEvent(event)
                 }
                 
                 KeyEvent.KEYCODE_BACK -> {
