@@ -2,54 +2,105 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#111114">
+    android:background="#000000">
+
+    <ImageView
+        android:id="@+id/imgFundoLogin"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:src="@drawable/banner_oficial" /> <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_login_gradient" />
+
+    <ImageView
+        android:layout_width="160dp"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"
+        android:src="@drawable/logo_oficial"
+        android:layout_alignParentStart="true"
+        android:layout_alignParentTop="true"
+        android:layout_marginStart="64dp"
+        android:layout_marginTop="48dp" />
 
     <LinearLayout
         android:layout_width="400dp"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:orientation="vertical"
-        android:gravity="center">
+        android:layout_alignParentStart="true"
+        android:layout_centerVertical="true"
+        android:layout_marginStart="64dp"
+        android:orientation="vertical">
 
-        <ImageView
-            android:id="@+id/logoImagem"
-            android:layout_width="160dp"
-            android:layout_height="160dp"
-            android:src="@drawable/logo_oficial"
-            android:scaleType="fitCenter"
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Entrar"
+            android:textColor="#FFFFFF"
+            android:textSize="38sp"
+            android:textStyle="bold"
             android:layout_marginBottom="32dp" />
 
         <EditText
             android:id="@+id/edtUsuario"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:hint="Digite seu usuário"
+            android:hint="Usuário"
             android:textColor="#FFFFFF"
             android:textColorHint="#888888"
-            android:background="#222222"
+            android:background="@drawable/bg_input_dark"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
             android:layout_marginBottom="16dp"
             android:singleLine="true"
-            android:textSize="18sp"
-            android:imeOptions="actionDone" />
+            android:textSize="16sp"
+            android:nextFocusDown="@+id/edtSenha" />
+
+        <EditText
+            android:id="@+id/edtSenha"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:hint="Senha"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#888888"
+            android:background="@drawable/bg_input_dark"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_marginBottom="32dp"
+            android:singleLine="true"
+            android:inputType="textPassword"
+            android:textSize="16sp"
+            android:nextFocusDown="@+id/btnEntrar" />
 
         <Button
             android:id="@+id/btnEntrar"
             android:layout_width="match_parent"
             android:layout_height="60dp"
-            android:text="ENTRAR"
+            android:text="Entrar"
             android:textColor="#000000"
             android:textSize="18sp"
             android:textStyle="bold"
-            android:backgroundTint="#FFC107"
+            android:background="@drawable/bg_btn_yellow"
             android:focusable="true"
-            android:clickable="true" />
+            android:clickable="true"
+            android:layout_marginBottom="16dp"
+            android:nextFocusDown="@+id/chkLembrar" />
+
+        <CheckBox
+            android:id="@+id/chkLembrar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Lembre-se de mim"
+            android:textColor="#B3B3B3"
+            android:textSize="16sp"
+            android:buttonTint="#FFC107"
+            android:focusable="true" />
 
         <ProgressBar
             android:id="@+id/progressBar"
-            android:layout_width="60dp"
-            android:layout_height="60dp"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:layout_gravity="center"
             android:layout_marginTop="24dp"
             android:indeterminateTint="#FFC107"
             android:visibility="gone" />
