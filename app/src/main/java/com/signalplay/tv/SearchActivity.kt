@@ -27,6 +27,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+import java.util.concurrent.TimeUnit
 
 data class SearchItem(val id: String, val nome: String, val icone: String, val tipo: String, val urlStreamOrInfo: String)
 
@@ -73,7 +74,7 @@ class SearchActivity : Activity() {
                 intentDet.putExtra("URL", url)
                 intentDet.putExtra("USER", user)
                 intentDet.putExtra("PASS", pass)
-                intentDet.putExtra("USERNAME", username) // PASSA O USERNAME
+                intentDet.putExtra("USERNAME", username)
                 intentDet.putExtra("MEDIA_ID", itemClicado.id)
                 intentDet.putExtra("MEDIA_TIPO", if (itemClicado.tipo == "FILME") "filme" else "serie")
                 intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
@@ -94,15 +95,21 @@ class SearchActivity : Activity() {
             }
 
             try {
-                val client = OkHttpClient()
+                // AUMENTO DA PACIÊNCIA DO APLICATIVO PARA 30 SEGUNDOS (EVITA O TIMEOUT)
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(30, TimeUnit.SECONDS)
+                    .writeTimeout(30, TimeUnit.SECONDS)
+                    .build()
 
                 val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
                 val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
                 val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
 
-                val defLive = async { client.newCall(reqLive).execute().body?.string() ?: "[]" }
-                val defVod = async { client.newCall(reqVod).execute().body?.string() ?: "[]" }
-                val defSeries = async { client.newCall(reqSeries).execute().body?.string() ?: "[]" }
+                // ESCUDO ANTI-CRASH NAS REQUISIÇÕES (SE FALHAR, DEVOLVE VAZIO E NÃO FECHA O APP)
+                val defLive = async { try { client.newCall(reqLive).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defVod = async { try { client.newCall(reqVod).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defSeries = async { try { client.newCall(reqSeries).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
 
                 val jsonLive = defLive.await()
                 val jsonVod = defVod.await()
