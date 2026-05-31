@@ -6,163 +6,191 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.AspectRatioFrameLayout
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
 
-// NOVO DATAHOLDER COM TODAS AS PASTAS
-object DataHolder {
-    var todasCategorias: List<CategoriaItem> = emptyList()
-    var todosCanais: List<CanalItem> = emptyList()
-    var categoriaAtualId: String = ""
-    var canaisFiltrados: List<CanalItem> = emptyList()
+object VodDataHolder {
+    var seasonsList: List<String> = emptyList()
+    var episodesMap: Map<String, List<EpisodeItem>> = emptyMap()
+    var seasonAtualIndex: Int = 0
 }
 
-class PlayerTvActivity : Activity() {
+class PlayerVodActivity : Activity() {
 
     private var exoPlayer: ExoPlayer? = null
-    private lateinit var playerView: PlayerView
-    private lateinit var progressBar: ProgressBar
-    private lateinit var osdContainer: LinearLayout
-    private lateinit var osdLogo: ImageView
-    private lateinit var osdChannelName: TextView
-    private lateinit var osdEpgText: TextView
-    private lateinit var painelCanais: LinearLayout
-    private lateinit var recyclerPainelCanais: RecyclerView
-    private lateinit var tvPainelTitulo: TextView
+    private lateinit var playerViewVod: PlayerView
+    private lateinit var progressBarVod: ProgressBar
+    private lateinit var tvAvisoAspecto: TextView
+    private lateinit var painelEpisodios: LinearLayout
+    private lateinit var recyclerPainelEpisodios: RecyclerView
+    private lateinit var tvPainelEpTitle: TextView
 
-    private var indiceCanalAtual: Int = 0
-    private var indiceCategoriaAtual: Int = 0
-    private val handlerOSD = Handler(Looper.getMainLooper())
-    private val osdRunnable = Runnable { osdContainer.visibility = View.GONE }
+    private var modoAspectoAtual = 0
+    private var tipoMedia = ""
+    private var streamUrlAtual = ""
+    
+    // Controles do Avanço Contínuo Inteligente
+    private var isSeeking = false
+    private var currentSeekPos = 0L
+
+    private val handlerAviso = Handler(Looper.getMainLooper())
+    private val avisoRunnable = Runnable { tvAvisoAspecto.visibility = View.GONE }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.activity_player_tv)
+        setContentView(R.layout.activity_player_vod)
 
-        playerView = findViewById(R.id.playerView)
-        progressBar = findViewById(R.id.progressBar)
-        osdContainer = findViewById(R.id.osdContainer)
-        osdLogo = findViewById(R.id.osdLogo)
-        osdChannelName = findViewById(R.id.osdChannelName)
-        osdEpgText = findViewById(R.id.osdEpgText)
-        painelCanais = findViewById(R.id.painelCanais)
-        recyclerPainelCanais = findViewById(R.id.recyclerPainelCanais)
-        tvPainelTitulo = findViewById(R.id.tvPainelTitulo)
+        playerViewVod = findViewById(R.id.playerViewVod)
+        progressBarVod = findViewById(R.id.progressBarVod)
+        tvAvisoAspecto = findViewById(R.id.tvAvisoAspecto)
+        painelEpisodios = findViewById(R.id.painelEpisodios)
+        recyclerPainelEpisodios = findViewById(R.id.recyclerPainelEpisodios)
+        tvPainelEpTitle = findViewById(R.id.tvPainelEpTitle)
 
-        recyclerPainelCanais.layoutManager = LinearLayoutManager(this)
-        
-        // Pega a categoria em que o usuário entrou
-        indiceCategoriaAtual = DataHolder.todasCategorias.indexOfFirst { it.id == DataHolder.categoriaAtualId }
-        if (indiceCategoriaAtual == -1) indiceCategoriaAtual = 0
-        
-        carregarCanaisDaCategoria()
-        
-        indiceCanalAtual = intent.getIntExtra("INDICE_CANAL", 0)
+        streamUrlAtual = intent.getStringExtra("STREAM_URL") ?: ""
+        tipoMedia = intent.getStringExtra("TIPO") ?: "filme"
 
-        inicializarPlayer()
-        iniciarCanal()
-    }
-
-    private fun carregarCanaisDaCategoria() {
-        if (DataHolder.todasCategorias.isEmpty()) return
-        
-        val cat = DataHolder.todasCategorias[indiceCategoriaAtual]
-        tvPainelTitulo.text = "Canais | ${cat.nome}"
-        
-        // Se for a categoria especial "Favoritos" que criamos
-        DataHolder.canaisFiltrados = if (cat.id == "FAV") {
-            DataHolder.todosCanais // (Na Home passamos só os favoritos no DataHolder)
-        } else {
-            DataHolder.todosCanais.filter { it.categoryId == cat.id }
+        if (tipoMedia == "serie") {
+            recyclerPainelEpisodios.layoutManager = LinearLayoutManager(this)
+            carregarTemporada()
         }
 
-        recyclerPainelCanais.adapter = CanalAdapter(
-            listaCanais = DataHolder.canaisFiltrados,
-            idsFavoritos = emptyList(),
-            onClick = { canalClicado ->
-                val novoIndice = DataHolder.canaisFiltrados.indexOf(canalClicado)
-                if (novoIndice != -1) {
-                    indiceCanalAtual = novoIndice
-                    painelCanais.visibility = View.GONE
-                    iniciarCanal()
-                }
-            },
-            onLongClick = { }
-        )
+        inicializarPlayer()
+        iniciarVideo()
+    }
+
+    private fun carregarTemporada() {
+        if (VodDataHolder.seasonsList.isEmpty()) return
+        val season = VodDataHolder.seasonsList[VodDataHolder.seasonAtualIndex]
+        tvPainelEpTitle.text = "Temporada $season"
+        val eps = VodDataHolder.episodesMap[season] ?: emptyList()
+
+        recyclerPainelEpisodios.adapter = EpisodeAdapter(eps) { epClicado ->
+            painelEpisodios.visibility = View.GONE
+            streamUrlAtual = epClicado.streamUrl
+            iniciarVideo()
+        }
     }
 
     private fun inicializarPlayer() {
         exoPlayer = ExoPlayer.Builder(this).build()
-        playerView.player = exoPlayer
+        playerViewVod.player = exoPlayer
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_BUFFERING) progressBar.visibility = View.VISIBLE
-                else if (playbackState == Player.STATE_READY) progressBar.visibility = View.GONE
+                if (playbackState == Player.STATE_BUFFERING) progressBarVod.visibility = View.VISIBLE
+                else if (playbackState == Player.STATE_READY) progressBarVod.visibility = View.GONE
             }
         })
     }
 
-    private fun iniciarCanal() {
-        if (DataHolder.canaisFiltrados.isEmpty()) return
-        val canal = DataHolder.canaisFiltrados[indiceCanalAtual]
-        osdChannelName.text = canal.nome
-        osdEpgText.text = "Ao Vivo"
-        Glide.with(this).load(canal.urlImagem).into(osdLogo)
-        osdContainer.visibility = View.VISIBLE
-        handlerOSD.removeCallbacks(osdRunnable)
-        handlerOSD.postDelayed(osdRunnable, 4000)
+    private fun iniciarVideo() {
+        if (streamUrlAtual.isEmpty()) return
         exoPlayer?.stop()
-        exoPlayer?.setMediaItem(MediaItem.fromUri(canal.streamUrl))
+        exoPlayer?.setMediaItem(MediaItem.fromUri(streamUrlAtual))
         exoPlayer?.prepare()
         exoPlayer?.playWhenReady = true
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        val keyCode = event.keyCode
+        
+        // ===============================================
+        // MÁGICA 1: O SOLTAR DO BOTÃO (Fim do Avanço)
+        // ===============================================
+        if (event.action == KeyEvent.ACTION_UP) {
+            if (isSeeking && (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT || keyCode == KeyEvent.KEYCODE_DPAD_LEFT)) {
+                isSeeking = false
+                exoPlayer?.seekTo(currentSeekPos)
+                exoPlayer?.play()
+                tvAvisoAspecto.visibility = View.GONE
+                return true
+            }
+        }
+
+        // ===============================================
+        // MÁGICA 2: O APERTAR DO BOTÃO (Navegação/Avanço)
+        // ===============================================
         if (event.action == KeyEvent.ACTION_DOWN) {
-            when (event.keyCode) {
-                KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    if (painelCanais.visibility == View.VISIBLE) {
-                        mudarCategoria(1) // Muda de pasta e atualiza a lista
-                        return true
-                    } else {
-                        mudarCanal(1) // Faz zapping rápido
+            when (keyCode) {
+                KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_LEFT -> {
+                    if (painelEpisodios.visibility == View.VISIBLE) {
+                        if (event.repeatCount == 0) mudarTemporada(if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) 1 else -1)
                         return true
                     }
-                }
-                KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (painelCanais.visibility == View.VISIBLE) {
-                        mudarCategoria(-1)
-                        return true
-                    } else {
-                        mudarCanal(-1)
-                        return true
+                    
+                    // Lógica Netflix: Pausa, esconde a interface padrão e acelera!
+                    playerViewVod.hideController() 
+                    
+                    if (!isSeeking) {
+                        isSeeking = true
+                        exoPlayer?.pause()
+                        currentSeekPos = exoPlayer?.currentPosition ?: 0L
                     }
+                    
+                    val basePulo = 10000L // 10 segundos iniciais
+                    val multiplicador = if (event.repeatCount > 8) 4 else if (event.repeatCount > 3) 2 else 1
+                    val pulo = basePulo * multiplicador
+                    
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) currentSeekPos += pulo
+                    else currentSeekPos -= pulo
+                    
+                    if (currentSeekPos < 0) currentSeekPos = 0
+                    val duration = exoPlayer?.duration ?: 0L
+                    if (duration > 0 && currentSeekPos > duration) currentSeekPos = duration
+                    
+                    val min = (currentSeekPos / 1000) / 60
+                    val seg = (currentSeekPos / 1000) % 60
+                    val tMin = (duration / 1000) / 60
+                    val tSeg = (duration / 1000) % 60
+                    tvAvisoAspecto.text = String.format("%02d:%02d / %02d:%02d", min, seg, tMin, tSeg)
+                    tvAvisoAspecto.visibility = View.VISIBLE
+                    return true
                 }
+                
                 KeyEvent.KEYCODE_DPAD_UP -> {
-                    if (painelCanais.visibility == View.GONE) {
-                        painelCanais.visibility = View.VISIBLE
-                        recyclerPainelCanais.post {
-                            recyclerPainelCanais.scrollToPosition(indiceCanalAtual)
-                            recyclerPainelCanais.layoutManager?.findViewByPosition(indiceCanalAtual)?.requestFocus()
+                    if (tipoMedia == "serie") {
+                        if (painelEpisodios.visibility == View.VISIBLE) {
+                            // TRAVA O FOCO: Se for o primeiro da lista, impede que o foco fuja e feche o painel
+                            if (!recyclerPainelEpisodios.canScrollVertically(-1)) return true
+                            return super.dispatchKeyEvent(event)
+                        } else if (!playerViewVod.isControllerFullyVisible) {
+                            painelEpisodios.visibility = View.VISIBLE
+                            recyclerPainelEpisodios.requestFocus()
+                            return true
                         }
-                        return true // Intercepta para o Android não fazer besteira
                     }
-                    // SE O PAINEL JÁ ESTÁ ABERTO, RETORNA FALSE PARA O RECYCLERVIEW ROLAR PRA CIMA NORMALMENTE!
-                    return super.dispatchKeyEvent(event)
                 }
-                KeyEvent.KEYCODE_BACK -> {
-                    if (painelCanais.visibility == View.VISIBLE) {
-                        painelCanais.visibility = View.GONE
+                
+                KeyEvent.KEYCODE_DPAD_DOWN -> {
+                    if (painelEpisodios.visibility == View.VISIBLE) {
+                        // TRAVA O FOCO no final da lista
+                        if (!recyclerPainelEpisodios.canScrollVertically(1)) return true
+                        return super.dispatchKeyEvent(event)
+                    } else if (!playerViewVod.isControllerFullyVisible) {
+                        alternarAspectoTela()
                         return true
+                    }
+                }
+                
+                KeyEvent.KEYCODE_BACK -> {
+                    if (painelEpisodios.visibility == View.VISIBLE) {
+                        painelEpisodios.visibility = View.GONE
+                        return true
+                    }
+                }
+                
+                KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
+                    if (painelEpisodios.visibility == View.GONE) {
+                        if (playerViewVod.isControllerFullyVisible) playerViewVod.hideController()
+                        else playerViewVod.showController()
                     }
                 }
             }
@@ -170,20 +198,30 @@ class PlayerTvActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
-    private fun mudarCategoria(direcao: Int) {
-        if (DataHolder.todasCategorias.isEmpty()) return
-        indiceCategoriaAtual += direcao
-        if (indiceCategoriaAtual >= DataHolder.todasCategorias.size) indiceCategoriaAtual = 0
-        else if (indiceCategoriaAtual < 0) indiceCategoriaAtual = DataHolder.todasCategorias.size - 1
-        carregarCanaisDaCategoria()
-        recyclerPainelCanais.requestFocus()
+    private fun mudarTemporada(direcao: Int) {
+        if (VodDataHolder.seasonsList.isEmpty()) return
+        VodDataHolder.seasonAtualIndex += direcao
+        if (VodDataHolder.seasonAtualIndex >= VodDataHolder.seasonsList.size) VodDataHolder.seasonAtualIndex = 0
+        else if (VodDataHolder.seasonAtualIndex < 0) VodDataHolder.seasonAtualIndex = VodDataHolder.seasonsList.size - 1
+        carregarTemporada()
+        recyclerPainelEpisodios.requestFocus()
     }
 
-    private fun mudarCanal(direcao: Int) {
-        indiceCanalAtual += direcao
-        if (indiceCanalAtual >= DataHolder.canaisFiltrados.size) indiceCanalAtual = 0
-        else if (indiceCanalAtual < 0) indiceCanalAtual = DataHolder.canaisFiltrados.size - 1
-        iniciarCanal()
+    private fun alternarAspectoTela() {
+        modoAspectoAtual++
+        if (modoAspectoAtual > 2) modoAspectoAtual = 0
+        when (modoAspectoAtual) {
+            0 -> { playerViewVod.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT; mostrarAviso("Encaixado") }
+            1 -> { playerViewVod.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FILL; mostrarAviso("Esticado") }
+            2 -> { playerViewVod.resizeMode = AspectRatioFrameLayout.RESIZE_MODE_ZOOM; mostrarAviso("Preencher") }
+        }
+    }
+
+    private fun mostrarAviso(texto: String) {
+        tvAvisoAspecto.text = texto
+        tvAvisoAspecto.visibility = View.VISIBLE
+        handlerAviso.removeCallbacks(avisoRunnable)
+        handlerAviso.postDelayed(avisoRunnable, 2000)
     }
 
     override fun onDestroy() {
