@@ -74,37 +74,39 @@
             android:orientation="horizontal"
             android:gravity="center_vertical"
             android:layout_marginBottom="16dp">
-            
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="◀"
-                android:textColor="#FFC107"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
-                
-            <TextView
-                android:id="@+id/tvPainelTitulo"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Categoria"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:gravity="center" />
-                
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="▶"
-                android:textColor="#FFC107"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="◀" android:textColor="#FFC107" android:textSize="18sp" android:textStyle="bold"/>
+            <TextView android:id="@+id/tvPainelTitulo" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="Categoria" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:gravity="center" />
+            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="▶" android:textColor="#FFC107" android:textSize="18sp" android:textStyle="bold"/>
         </LinearLayout>
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerPainelCanais"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:id="@+id/painelEpg"
+        android:layout_width="380dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentEnd="true"
+        android:background="#F2111114"
+        android:orientation="vertical"
+        android:paddingTop="24dp"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Guia de Programação"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:layout_marginBottom="16dp" />
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/recyclerPainelEpg"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </LinearLayout>
