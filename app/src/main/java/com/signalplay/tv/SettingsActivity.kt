@@ -26,6 +26,9 @@ class SettingsActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
     private var isParentalActive = false
+    private var filterSD = false
+    private var filterH265 = false
+    private var filter4K = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,9 +43,19 @@ class SettingsActivity : Activity() {
 
         val tvNomeUsuario = findViewById<TextView>(R.id.tvNomeUsuario)
         val tvVencimento = findViewById<TextView>(R.id.tvVencimento)
-        val tvStatusParental = findViewById<TextView>(R.id.tvStatusParental)
         
         val btnParental = findViewById<LinearLayout>(R.id.btnParental)
+        val tvStatusParental = findViewById<TextView>(R.id.tvStatusParental)
+        
+        val btnFilterSD = findViewById<LinearLayout>(R.id.btnFilterSD)
+        val tvStatusSD = findViewById<TextView>(R.id.tvStatusSD)
+        
+        val btnFilterH265 = findViewById<LinearLayout>(R.id.btnFilterH265)
+        val tvStatusH265 = findViewById<TextView>(R.id.tvStatusH265)
+        
+        val btnFilter4K = findViewById<LinearLayout>(R.id.btnFilter4K)
+        val tvStatus4K = findViewById<TextView>(R.id.tvStatus4K)
+
         val btnLimparFavs = findViewById<LinearLayout>(R.id.btnLimparFavs)
         val btnLimparHist = findViewById<LinearLayout>(R.id.btnLimparHist)
         val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
@@ -50,29 +63,28 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
-        // Animações de foco para o Controle Remoto
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
         }
         btnParental.onFocusChangeListener = focusListener
+        btnFilterSD.onFocusChangeListener = focusListener
+        btnFilterH265.onFocusChangeListener = focusListener
+        btnFilter4K.onFocusChangeListener = focusListener
         btnLimparFavs.onFocusChangeListener = focusListener
         btnLimparHist.onFocusChangeListener = focusListener
         btnAtualizarEPG.onFocusChangeListener = focusListener
         btnSairConta.onFocusChangeListener = focusListener
 
-        // === 1. BUSCAR VENCIMENTO DA ASSINATURA NA API ===
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()
                 val req = Request.Builder().url("$url/player_api.php?username=$user&password=$pass").build()
                 val res = client.newCall(req).execute()
                 val jsonStr = res.body?.string() ?: "{}"
-                
                 if (jsonStr.startsWith("{")) {
                     val json = JSONObject(jsonStr)
                     val userInfo = json.optJSONObject("user_info")
-                    
                     if (userInfo != null) {
                         val expStr = userInfo.optString("exp_date", "")
                         withContext(Dispatchers.Main) {
@@ -80,14 +92,10 @@ class SettingsActivity : Activity() {
                                 val expLong = expStr.toLongOrNull()
                                 if (expLong != null) {
                                     val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                    val date = Date(expLong * 1000) // Multiplica por 1000 porque a API retorna em segundos
+                                    val date = Date(expLong * 1000)
                                     tvVencimento.text = "Vencimento: ${sdf.format(date)}"
-                                } else {
-                                    tvVencimento.text = "Vencimento: Ilimitado"
-                                }
-                            } else {
-                                tvVencimento.text = "Vencimento: Ilimitado"
-                            }
+                                } else tvVencimento.text = "Vencimento: Ilimitado"
+                            } else tvVencimento.text = "Vencimento: Ilimitado"
                         }
                     }
                 }
@@ -96,53 +104,66 @@ class SettingsActivity : Activity() {
             }
         }
 
-        // === 2. CONTROLE PARENTAL ===
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-        atualizarTextoParental(tvStatusParental)
+        filterSD = prefs.getBoolean("FILTER_SD", false)
+        filterH265 = prefs.getBoolean("FILTER_H265", false)
+        filter4K = prefs.getBoolean("FILTER_4K", false)
+
+        atualizarStatus(tvStatusParental, isParentalActive)
+        atualizarStatus(tvStatusSD, filterSD)
+        atualizarStatus(tvStatusH265, filterH265)
+        atualizarStatus(tvStatus4K, filter4K)
 
         btnParental.setOnClickListener {
             isParentalActive = !isParentalActive
             prefs.edit().putBoolean("PARENTAL_CONTROL", isParentalActive).apply()
-            atualizarTextoParental(tvStatusParental)
-            Toast.makeText(this, "Controle Parental atualizado!", Toast.LENGTH_SHORT).show()
+            atualizarStatus(tvStatusParental, isParentalActive)
+        }
+        btnFilterSD.setOnClickListener {
+            filterSD = !filterSD
+            prefs.edit().putBoolean("FILTER_SD", filterSD).apply()
+            atualizarStatus(tvStatusSD, filterSD)
+        }
+        btnFilterH265.setOnClickListener {
+            filterH265 = !filterH265
+            prefs.edit().putBoolean("FILTER_H265", filterH265).apply()
+            atualizarStatus(tvStatusH265, filterH265)
+        }
+        btnFilter4K.setOnClickListener {
+            filter4K = !filter4K
+            prefs.edit().putBoolean("FILTER_4K", filter4K).apply()
+            atualizarStatus(tvStatus4K, filter4K)
         }
 
-        // === 3. LIMPAR FAVORITOS DO FIREBASE ===
         btnLimparFavs.setOnClickListener {
             if (username.isNotEmpty()) {
-                db.collection("usuarios").whereEqualTo("usuario", username).get()
-                    .addOnSuccessListener { snapshot ->
-                        if (!snapshot.isEmpty) {
-                            val docId = snapshot.documents[0].id
-                            db.collection("usuarios").document(docId).update("favoritos", emptyList<String>())
-                            Toast.makeText(this, "Canais Favoritos removidos!", Toast.LENGTH_SHORT).show()
-                        }
+                db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
+                    if (!snapshot.isEmpty) {
+                        val docId = snapshot.documents[0].id
+                        db.collection("usuarios").document(docId).update("favoritos", emptyList<String>())
+                        Toast.makeText(this, "Canais Favoritos removidos!", Toast.LENGTH_SHORT).show()
                     }
+                }
             }
         }
 
-        // === 4. LIMPAR HISTÓRICO LOCAL ===
         btnLimparHist.setOnClickListener {
-            prefs.edit().remove("iptv_continuar_vod").apply()
-            Toast.makeText(this, "Histórico limpo com sucesso!", Toast.LENGTH_SHORT).show()
-        }
-
-        // === 5. ATUALIZAR EPG (CACHE CLEAR) ===
-        btnAtualizarEPG.setOnClickListener {
-            Toast.makeText(this, "Sincronizando...", Toast.LENGTH_SHORT).show()
-            // Como usamos a busca dinâmica por canal (igual ao mobile), este botão atua limpando as conexões antigas.
-            CoroutineScope(Dispatchers.IO).launch {
-                try {
-                    Thread.sleep(1000) 
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@SettingsActivity, "Guia de TV (EPG) Sincronizado!", Toast.LENGTH_SHORT).show()
+            if (username.isNotEmpty()) {
+                db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
+                    if (!snapshot.isEmpty) {
+                        val docId = snapshot.documents[0].id
+                        db.collection("usuarios").document(docId).update("historico_vod", emptyMap<String, Any>())
+                        Toast.makeText(this, "Histórico limpo com sucesso!", Toast.LENGTH_SHORT).show()
                     }
-                } catch (e: Exception) {}
+                }
             }
         }
 
-        // === 6. SAIR DA CONTA ===
+        btnAtualizarEPG.setOnClickListener {
+            Toast.makeText(this, "Guia de TV (EPG) Sincronizado!", Toast.LENGTH_SHORT).show()
+        }
+
         btnSairConta.setOnClickListener {
             prefs.edit().clear().apply()
             val intent = Intent(this, MainActivity::class.java)
@@ -152,8 +173,8 @@ class SettingsActivity : Activity() {
         }
     }
 
-    private fun atualizarTextoParental(tv: TextView) {
-        if (isParentalActive) {
+    private fun atualizarStatus(tv: TextView, isActive: Boolean) {
+        if (isActive) {
             tv.text = "ATIVADO"
             tv.setTextColor(Color.parseColor("#2ED573"))
         } else {
