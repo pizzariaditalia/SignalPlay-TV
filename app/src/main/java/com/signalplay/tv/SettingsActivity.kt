@@ -17,10 +17,15 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
+import java.io.BufferedReader
+import java.io.File
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class SettingsActivity : Activity() {
 
@@ -160,8 +165,103 @@ class SettingsActivity : Activity() {
             }
         }
 
+        // ====================================================================
+        // O MOTOR DE DOWNLOAD XMLTV (PLANO B DE EPG PARA A TV)
+        // ====================================================================
         btnAtualizarEPG.setOnClickListener {
-            Toast.makeText(this, "Guia de TV (EPG) Sincronizado!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Baixando EPG... Isso pode demorar até 1 minuto.", Toast.LENGTH_LONG).show()
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    val client = OkHttpClient.Builder().connectTimeout(120, TimeUnit.SECONDS).readTimeout(120, TimeUnit.SECONDS).build()
+                    val req = Request.Builder().url("$url/xmltv.php?username=$user&password=$pass").build()
+                    val res = client.newCall(req).execute()
+                    val inputStream = res.body?.byteStream()
+
+                    if (inputStream != null) {
+                        val reader = BufferedReader(InputStreamReader(inputStream))
+                        val epgDb = mutableMapOf<String, MutableList<JSONObject>>()
+                        
+                        var line: String?
+                        var currentChannel = ""
+                        var currentStart = 0L
+                        var currentStop = 0L
+                        var currentTitle = ""
+
+                        fun parseXmltvTime(str: String): Long {
+                            if (str.length < 14) return 0L
+                            try {
+                                val y = str.substring(0, 4)
+                                val m = str.substring(4, 6)
+                                val d = str.substring(6, 8)
+                                val h = str.substring(8, 10)
+                                val min = str.substring(10, 12)
+                                val s = str.substring(12, 14)
+                                val tz = if (str.length >= 20) str.substring(15, 20) else "+0000"
+                                val dateStr = "$y-$m-${d}T$h:$min:$s$tz"
+                                val sdf = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", Locale.getDefault())
+                                val date = sdf.parse(dateStr)
+                                return (date?.time ?: 0L) / 1000L
+                            } catch (e: Exception) { return 0L }
+                        }
+
+                        // Leitura blindada linha por linha para não dar Crash de Memória na TV Box
+                        while (reader.readLine().also { line = it } != null) {
+                            val l = line!!
+                            if (l.contains("<programme")) {
+                                val chStart = l.indexOf("channel=\"")
+                                if (chStart != -1) {
+                                    val chEnd = l.indexOf("\"", chStart + 9)
+                                    currentChannel = l.substring(chStart + 9, chEnd)
+                                }
+                                val stStart = l.indexOf("start=\"")
+                                if (stStart != -1) {
+                                    val stEnd = l.indexOf("\"", stStart + 7)
+                                    currentStart = parseXmltvTime(l.substring(stStart + 7, stEnd))
+                                }
+                                val spStart = l.indexOf("stop=\"")
+                                if (spStart != -1) {
+                                    val spEnd = l.indexOf("\"", spStart + 6)
+                                    currentStop = parseXmltvTime(l.substring(spStart + 6, spEnd))
+                                }
+                                currentTitle = "Programa"
+                            } else if (l.contains("<title")) {
+                                val tStart = l.indexOf(">")
+                                val tEnd = l.indexOf("</title>")
+                                if (tStart != -1 && tEnd != -1 && tEnd > tStart) {
+                                    currentTitle = l.substring(tStart + 1, tEnd).replace("<![CDATA[", "").replace("]]>", "")
+                                }
+                            } else if (l.contains("</programme>")) {
+                                if (currentChannel.isNotEmpty() && currentStart > 0L) {
+                                    if (!epgDb.containsKey(currentChannel)) epgDb[currentChannel] = mutableListOf()
+                                    val obj = JSONObject()
+                                    obj.put("title", currentTitle)
+                                    obj.put("start_timestamp", currentStart)
+                                    obj.put("stop_timestamp", currentStop)
+                                    epgDb[currentChannel]?.add(obj)
+                                }
+                            }
+                        }
+
+                        val finalJson = JSONObject()
+                        for ((k, v) in epgDb) {
+                            val arr = JSONArray()
+                            for (item in v) arr.put(item)
+                            finalJson.put(k, arr)
+                        }
+
+                        val file = File(filesDir, "epg_data.json")
+                        file.writeText(finalJson.toString())
+
+                        withContext(Dispatchers.Main) {
+                            Toast.makeText(this@SettingsActivity, "EPG Sincronizado com Sucesso!", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) {
+                        Toast.makeText(this@SettingsActivity, "Erro de Conexão ao Sincronizar EPG.", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
         }
 
         btnSairConta.setOnClickListener {
