@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -82,6 +83,10 @@ class HomeActivity : Activity() {
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
+        
+        // NOVO: Recycler do YouTube
+        val areaYoutube = findViewById<LinearLayout>(R.id.areaYoutube)
+        val recyclerYoutube = findViewById<RecyclerView>(R.id.recyclerYoutube)
 
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -89,6 +94,7 @@ class HomeActivity : Activity() {
         recyclerTopFilmes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerTopSeries.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerYoutube.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
         val urlOriginal = intent.getStringExtra("URL") ?: ""
         urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
@@ -180,6 +186,39 @@ class HomeActivity : Activity() {
                 val listFavoritos = mutableListOf<CanalItem>()
                 val listFilmes = mutableListOf<FilmeItem>()
                 val listSeries = mutableListOf<FilmeItem>()
+                val listYoutube = mutableListOf<FilmeItem>()
+
+                // =========================================================
+                // MÁGICA DO YOUTUBE: Baixa seus vídeos via RSS (Grátis e Rápido)
+                // =========================================================
+                try {
+                    // ATENÇÃO: COLOQUE AQUI O ID DO SEU CANAL!
+                    // Como descobrir: Vá no seu canal do YouTube, clique em "Sobre", depois "Compartilhar" -> "Copiar ID do Canal"
+                    val myYoutubeChannelId = "UCX6OQ3DkcsbYNE6H8uQQuVA" // <-- TROQUE AQUI! (Padrão: MrBeast para testar)
+                    
+                    val ytReq = Request.Builder().url("https://www.youtube.com/feeds/videos.xml?channel_id=$myYoutubeChannelId").build()
+                    val ytXml = client.newCall(ytReq).execute().body?.string() ?: ""
+                    
+                    val entryPattern = "<entry>(.*?)</entry>".toRegex(RegexOption.DOT_MATCHES_ALL)
+                    val idPattern = "<yt:videoId>(.*?)</yt:videoId>".toRegex()
+                    val titlePattern = "<title>(.*?)</title>".toRegex()
+                    val thumbPattern = "<media:thumbnail url=\"(.*?)\"".toRegex()
+
+                    val entries = entryPattern.findAll(ytXml)
+                    for (entry in entries) {
+                        val entryTxt = entry.value
+                        val vId = idPattern.find(entryTxt)?.groupValues?.get(1) ?: ""
+                        val vTitle = titlePattern.find(entryTxt)?.groupValues?.get(1) ?: "Vídeo"
+                        val vThumb = thumbPattern.find(entryTxt)?.groupValues?.get(1) ?: ""
+                        
+                        if (vId.isNotEmpty() && vThumb.isNotEmpty()) {
+                            // Usamos o formato "CardAdapter" de filme para desenhar a capinha bonita!
+                            listYoutube.add(FilmeItem(vId, vTitle, vThumb, "youtube", "youtube", "", 0))
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Se falhar a conexão com o Google, apenas ignora para não quebrar o IPTV
+                }
 
                 var req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
                 var jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
@@ -210,7 +249,6 @@ class HomeActivity : Activity() {
                         val id = obj.optString("stream_id", "")
                         val nome = obj.optString("name", "Canal")
                         
-                        // MÁGICA: GUARDA O EPG_ID DO CANAL PARA O PLAYER LER DO ARQUIVO LOCAL DEPOIS!
                         val epgId = obj.optString("epg_channel_id", "")
                         if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
                         
@@ -273,6 +311,23 @@ class HomeActivity : Activity() {
                     } else {
                         tvContinuarTitulo.visibility = View.GONE
                         recyclerContinuar.visibility = View.GONE
+                    }
+                    
+                    // ALIMENTA A PRATELEIRA DO YOUTUBE
+                    if (listYoutube.isNotEmpty()) {
+                        areaYoutube.visibility = View.VISIBLE
+                        // Reutilizamos o adaptador de filmes horizontais para o YouTube (Fica Lindo!)
+                        recyclerYoutube.adapter = CardAdapter(listYoutube) { videoClicado ->
+                            try {
+                                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("vnd.youtube:${videoClicado.id}"))
+                                intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                                startActivity(intent)
+                            } catch (e: Exception) {
+                                // Se a TV não tiver o App Oficial instalado, abre no navegador da TV
+                                val intent = Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://www.youtube.com/watch?v=${videoClicado.id}"))
+                                startActivity(intent)
+                            }
+                        }
                     }
                     
                     recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
