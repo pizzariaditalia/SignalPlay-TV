@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -95,7 +96,11 @@ class SearchActivity : Activity() {
             }
 
             try {
-                // AUMENTO DA PACIÊNCIA DO APLICATIVO PARA 30 SEGUNDOS (EVITA O TIMEOUT)
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(30, TimeUnit.SECONDS)
@@ -106,7 +111,6 @@ class SearchActivity : Activity() {
                 val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
                 val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
 
-                // ESCUDO ANTI-CRASH NAS REQUISIÇÕES (SE FALHAR, DEVOLVE VAZIO E NÃO FECHA O APP)
                 val defLive = async { try { client.newCall(reqLive).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
                 val defVod = async { try { client.newCall(reqVod).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
                 val defSeries = async { try { client.newCall(reqSeries).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
@@ -119,7 +123,19 @@ class SearchActivity : Activity() {
                     val arr = JSONArray(jsonLive)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        masterList.add(SearchItem(obj.optString("stream_id"), obj.optString("name"), obj.optString("stream_icon"), "TV", "$url/live/$user/$pass/${obj.optString("stream_id")}.ts"))
+                        val nome = obj.optString("name")
+
+                        // MÁGICA: Filtros Agressivos na Pesquisa
+                        val nUp = nome.uppercase()
+                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
+                        
+                        if (filterSD && isSD) continue
+                        if (filterH265 && isH265) continue
+                        if (filter4K && is4K) continue
+
+                        masterList.add(SearchItem(obj.optString("stream_id"), nome, obj.optString("stream_icon"), "TV", "$url/live/$user/$pass/${obj.optString("stream_id")}.ts"))
                     }
                 }
                 if (jsonVod.startsWith("[")) {
