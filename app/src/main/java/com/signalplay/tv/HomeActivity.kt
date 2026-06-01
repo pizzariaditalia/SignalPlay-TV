@@ -194,7 +194,7 @@ class HomeActivity : Activity() {
                 try {
                     // ATENÇÃO: COLOQUE AQUI O ID DO SEU CANAL!
                     // Como descobrir: Vá no seu canal do YouTube, clique em "Sobre", depois "Compartilhar" -> "Copiar ID do Canal"
-                    val myYoutubeChannelId = "DpsgaaYA33CmlzM3" // <-- TROQUE AQUI! (Padrão: MrBeast para testar)
+                    val myYoutubeChannelId = "UCYxMO-Z7nPoJnUBPZRFg2Sw" // <-- TROQUE AQUI! (Padrão: MrBeast para testar)
                     
                     val ytReq = Request.Builder().url("https://www.youtube.com/feeds/videos.xml?channel_id=$myYoutubeChannelId").build()
                     val ytXml = client.newCall(ytReq).execute().body?.string() ?: ""
