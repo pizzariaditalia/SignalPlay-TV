@@ -10,8 +10,6 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         app:use_controller="true"
-        app:auto_show="false"
-        app:show_timeout="3000"
         app:resize_mode="fit" />
 
     <ProgressBar
@@ -21,67 +19,113 @@
         android:layout_centerInParent="true"
         android:indeterminateTint="#FFC107" />
 
-    <!-- AVISO DE AVANÇO GIGANTE E LIMPO -->
     <TextView
         android:id="@+id/tvAvisoAspecto"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:background="#B3000000"
-        android:padding="24dp"
-        android:textColor="#FFC107"
-        android:textSize="38sp"
-        android:textStyle="bold"
+        android:layout_alignParentTop="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="32dp"
+        android:background="#88000000"
+        android:padding="8dp"
+        android:textColor="#FFFFFF"
+        android:textSize="16sp"
         android:visibility="gone" />
 
+    <!-- PAINEL LATERAL DE EPISÓDIOS -->
     <LinearLayout
         android:id="@+id/painelEpisodios"
-        android:layout_width="400dp"
+        android:layout_width="350dp"
         android:layout_height="match_parent"
-        android:layout_alignParentStart="true"
-        android:background="#F2111114"
+        android:layout_alignParentEnd="true"
+        android:background="#EE111114"
         android:orientation="vertical"
         android:padding="16dp"
         android:visibility="gone">
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/tvPainelEpTitle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:layout_marginBottom="16dp">
-            
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="◀"
-                android:textColor="#FFC107"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
-                
-            <TextView
-                android:id="@+id/tvPainelEpTitle"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:text="Temporada 1"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:gravity="center" />
-                
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="▶"
-                android:textColor="#FFC107"
-                android:textSize="18sp"
-                android:textStyle="bold"/>
-        </LinearLayout>
+            android:layout_marginBottom="16dp"
+            android:text="Temporada 1"
+            android:textColor="#FFFFFF"
+            android:textSize="20sp"
+            android:textStyle="bold" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerPainelEpisodios"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />
     </LinearLayout>
+
+    <!-- NOVO: OVERLAY MARATONA (PRÓXIMO EPISÓDIO) -->
+    <RelativeLayout
+        android:id="@+id/overlayNextEpisode"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#D9000000"
+        android:visibility="gone">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:gravity="center"
+            android:orientation="vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="O próximo episódio começa em"
+                android:textColor="#FFFFFF"
+                android:textSize="22sp" />
+
+            <TextView
+                android:id="@+id/tvNextCountdown"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="10"
+                android:textColor="#FFC107"
+                android:textSize="80sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tvNextEpisodeName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp"
+                android:text="Carregando..."
+                android:textColor="#CCCCCC"
+                android:textSize="18sp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btnPlayNext"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginEnd="16dp"
+                    android:backgroundTint="#FFC107"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:text="ASSISTIR AGORA"
+                    android:textColor="#000000"
+                    android:textStyle="bold" />
+
+                <Button
+                    android:id="@+id/btnCancelNext"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:backgroundTint="#333333"
+                    android:paddingStart="24dp"
+                    android:paddingEnd="24dp"
+                    android:text="CANCELAR"
+                    android:textColor="#FFFFFF" />
+            </LinearLayout>
+        </LinearLayout>
+    </RelativeLayout>
 </RelativeLayout>
