@@ -37,13 +37,13 @@ class PlayerVodActivity : Activity() {
     private lateinit var db: FirebaseFirestore
     private var username: String = ""
     private var mediaId: String = ""
+    private var parentSeriesId: String = "" // MÁGICA: Guarda o ID da Capa da Série!
 
     private var streamUrlAtual = ""
     private var tipoMedia = ""
     
     private var hasRestoredPosition = false
 
-    // Salvamento periódico a cada 10 segundos
     private val saveProgressHandler = Handler(Looper.getMainLooper())
     private val saveProgressRunnable = object : Runnable {
         override fun run() {
@@ -68,7 +68,8 @@ class PlayerVodActivity : Activity() {
         streamUrlAtual = intent.getStringExtra("STREAM_URL") ?: ""
         tipoMedia = intent.getStringExtra("TIPO") ?: "filme"
         username = intent.getStringExtra("USERNAME") ?: ""
-        mediaId = intent.getStringExtra("MEDIA_ID") ?: ""
+        parentSeriesId = intent.getStringExtra("MEDIA_ID") ?: ""
+        mediaId = parentSeriesId // Por padrão, começa igual
 
         if (tipoMedia == "serie") {
             recyclerPainelEpisodios.layoutManager = LinearLayoutManager(this)
@@ -88,7 +89,7 @@ class PlayerVodActivity : Activity() {
         recyclerPainelEpisodios.adapter = EpisodeAdapter(eps) { epClicado ->
             painelEpisodios.visibility = View.GONE
             streamUrlAtual = epClicado.streamUrl
-            mediaId = epClicado.id // Atualiza ID para o episódio
+            mediaId = epClicado.id // Atualiza o ID interno pro episódio rodar
             hasRestoredPosition = false
             iniciarVideo()
         }
@@ -104,7 +105,6 @@ class PlayerVodActivity : Activity() {
                 } else if (playbackState == Player.STATE_READY) {
                     progressBarVod.visibility = View.GONE
                     
-                    // Restaura de onde parou na primeira vez que o vídeo carrega
                     if (!hasRestoredPosition) {
                         hasRestoredPosition = true
                         restaurarProgressoDoFirebase()
@@ -124,31 +124,20 @@ class PlayerVodActivity : Activity() {
         saveProgressHandler.postDelayed(saveProgressRunnable, 10000)
     }
 
-    // ==========================================================
-    // MÁGICA CORRIGIDA: SALVA MESMO SE O USUÁRIO FOR NOVO
-    // ==========================================================
     private fun salvarProgressoNoFirebase() {
-        if (username.isEmpty() || mediaId.isEmpty()) return
+        // Se for série, salva na Capa (parentSeriesId). Se for filme, salva normal (mediaId).
+        val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
+        
+        if (username.isEmpty() || idToSave.isEmpty()) return
         val position = exoPlayer?.currentPosition ?: 0L
         val duration = exoPlayer?.duration ?: 0L
 
-        // Só salva se passou de 5 segundos de filme
         if (position > 5000L && duration > 0L) { 
             db.collection("usuarios").whereEqualTo("usuario", username).get()
                 .addOnSuccessListener { snapshot ->
                     if (!snapshot.isEmpty) {
                         val docId = snapshot.documents[0].id
-                        
-                        // SetOptions.merge() vai CRIAR a gaveta "historico_vod" se ela não existir
-                        val dados = mapOf(
-                            "historico_vod" to mapOf(
-                                mediaId to mapOf(
-                                    "posicao" to position,
-                                    "duracao" to duration
-                                )
-                            )
-                        )
-                        
+                        val dados = mapOf("historico_vod" to mapOf(idToSave to mapOf("posicao" to position, "duracao" to duration)))
                         db.collection("usuarios").document(docId).set(dados, SetOptions.merge())
                     }
                 }
@@ -156,7 +145,9 @@ class PlayerVodActivity : Activity() {
     }
 
     private fun restaurarProgressoDoFirebase() {
-        if (username.isEmpty() || mediaId.isEmpty()) return
+        val idToLoad = if (tipoMedia == "serie") parentSeriesId else mediaId
+        if (username.isEmpty() || idToLoad.isEmpty()) return
+        
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
@@ -164,7 +155,7 @@ class PlayerVodActivity : Activity() {
                     val historico = doc.get("historico_vod") as? Map<String, Any>
                     
                     if (historico != null) {
-                        val dadosMedia = historico[mediaId] as? Map<String, Any>
+                        val dadosMedia = historico[idToLoad] as? Map<String, Any>
                         if (dadosMedia != null) {
                             val posicaoSalva = dadosMedia["posicao"]?.toString()?.toLongOrNull() ?: 0L
                             if (posicaoSalva > 0L) {
@@ -195,14 +186,14 @@ class PlayerVodActivity : Activity() {
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (painelEpisodios.visibility == View.GONE) {
                         val atual = exoPlayer?.currentPosition ?: 0L
-                        exoPlayer?.seekTo(atual + 10000L) // Pula 10s
+                        exoPlayer?.seekTo(atual + 10000L)
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (painelEpisodios.visibility == View.GONE) {
                         val atual = exoPlayer?.currentPosition ?: 0L
-                        exoPlayer?.seekTo(if (atual - 10000L > 0) atual - 10000L else 0L) // Volta 10s
+                        exoPlayer?.seekTo(if (atual - 10000L > 0) atual - 10000L else 0L)
                         return true
                     }
                 }
