@@ -221,14 +221,8 @@ class PlayerVodActivity : Activity() {
     private fun showNextEpisodeOverlay() {
         overlayNextEpisode.visibility = View.VISIBLE
         
-        // CORREÇÃO APLICADA AQUI: Busca pela variável correta da classe EpisodeItem
-        try {
-            tvNextEpisodeName.text = nextEpisodeToPlay?.titulo ?: "Próximo Episódio"
-        } catch (e: Exception) {
-            // Se por acaso a sua classe EpisodeItem usar "title" ao invés de "titulo", 
-            // você deve alterar a palavra ".titulo" acima para ".title"
-            tvNextEpisodeName.text = "Próximo Episódio"
-        }
+        // MÁGICA: Variável corrigida para .title
+        tvNextEpisodeName.text = nextEpisodeToPlay?.title ?: "Próximo Episódio"
         
         btnPlayNext.requestFocus() 
 
