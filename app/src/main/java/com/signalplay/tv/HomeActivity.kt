@@ -141,6 +141,10 @@ class HomeActivity : Activity() {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+                
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
 
                 val client = OkHttpClient()
@@ -154,7 +158,6 @@ class HomeActivity : Activity() {
                             val doc = snapshot.documents[0]
                             val favs = doc.get("favoritos") as? List<*>
                             favs?.forEach { listaIdsFavoritos.add(it.toString()) }
-                            // Lê como ANY para evitar problemas de tipo do Firebase (Long/Double)
                             historicoMap = doc.get("historico_vod") as? Map<String, Any>
                         }
                     }
@@ -165,7 +168,6 @@ class HomeActivity : Activity() {
                     if (historicoMap != null) {
                         val progressoData = historicoMap!![id] as? Map<String, Any>
                         if (progressoData != null) {
-                            // Converte de forma blindada tudo para Texto e depois para Long
                             val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                             val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
                             if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
@@ -175,7 +177,6 @@ class HomeActivity : Activity() {
                 }
 
                 val liveCats = mutableListOf<CategoriaItem>()
-                liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
                 val listTodosCanais = mutableListOf<CanalItem>()
                 val listFavoritos = mutableListOf<CanalItem>()
                 val listFilmes = mutableListOf<FilmeItem>()
@@ -192,6 +193,14 @@ class HomeActivity : Activity() {
                         if (!isParentalActive || !isAdult) liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
                     }
                 }
+                
+                // MÁGICA DE REORDENAÇÃO DAS PASTAS
+                liveCats.sortBy { 
+                    val n = it.nome.lowercase()
+                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
+                }
+                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos")) // Garante Favoritos no Topo
+                
                 jsonStr = ""
 
                 req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
@@ -201,7 +210,19 @@ class HomeActivity : Activity() {
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
-                        val canal = CanalItem(id, obj.optString("name", "Canal"), obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts")
+                        val nome = obj.optString("name", "Canal")
+                        
+                        // MÁGICA DOS FILTROS (Corta antes de adicionar)
+                        val nUp = nome.uppercase()
+                        val isSD = nUp.endsWith(" SD") || nUp.contains(" SD ") || nUp == "SD"
+                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC")
+                        val is4K = nUp.endsWith(" 4K") || nUp.contains(" 4K ") || nUp.contains("UHD")
+                        
+                        if (filterSD && isSD) continue
+                        if (filterH265 && isH265) continue
+                        if (filter4K && is4K) continue
+
+                        val canal = CanalItem(id, nome, obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts")
                         listTodosCanais.add(canal)
                         if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
                     }
