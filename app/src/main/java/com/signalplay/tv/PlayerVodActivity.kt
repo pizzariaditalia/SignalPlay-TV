@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.graphics.Color
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
@@ -37,7 +38,6 @@ class PlayerVodActivity : Activity() {
     private lateinit var recyclerPainelEpisodios: RecyclerView
     private lateinit var tvPainelEpTitle: TextView
 
-    // OVERLAY DE MARATONA (PRÓXIMO EPISÓDIO)
     private lateinit var overlayNextEpisode: RelativeLayout
     private lateinit var tvNextCountdown: TextView
     private lateinit var tvNextEpisodeName: TextView
@@ -45,6 +45,9 @@ class PlayerVodActivity : Activity() {
     private lateinit var btnCancelNext: Button
     private var countDownTimer: CountDownTimer? = null
     private var nextEpisodeToPlay: EpisodeItem? = null
+
+    // NOVO: BOTÃO DE PULAR ABERTURA
+    private lateinit var btnSkipIntro: Button
 
     private lateinit var db: FirebaseFirestore
     private var username: String = ""
@@ -64,6 +67,21 @@ class PlayerVodActivity : Activity() {
         }
     }
 
+    // NOVO: RELÓGIO QUE VIGIA O TEMPO PARA EXIBIR O BOTÃO DE ABERTURA
+    private val introHandler = Handler(Looper.getMainLooper())
+    private val introRunnable = object : Runnable {
+        override fun run() {
+            val pos = exoPlayer?.currentPosition ?: 0L
+            // Só exibe se for série e o tempo estiver entre 5s e 90s
+            if (tipoMedia == "serie" && pos in 5000L..90000L) {
+                if (btnSkipIntro.visibility == View.GONE) btnSkipIntro.visibility = View.VISIBLE
+            } else {
+                if (btnSkipIntro.visibility == View.VISIBLE) btnSkipIntro.visibility = View.GONE
+            }
+            introHandler.postDelayed(this, 1000)
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_player_vod)
@@ -77,12 +95,13 @@ class PlayerVodActivity : Activity() {
         recyclerPainelEpisodios = findViewById(R.id.recyclerPainelEpisodios)
         tvPainelEpTitle = findViewById(R.id.tvPainelEpTitle)
 
-        // BINDING DO NOVO OVERLAY
         overlayNextEpisode = findViewById(R.id.overlayNextEpisode)
         tvNextCountdown = findViewById(R.id.tvNextCountdown)
         tvNextEpisodeName = findViewById(R.id.tvNextEpisodeName)
         btnPlayNext = findViewById(R.id.btnPlayNext)
         btnCancelNext = findViewById(R.id.btnCancelNext)
+        
+        btnSkipIntro = findViewById(R.id.btnSkipIntro)
 
         streamUrlAtual = intent.getStringExtra("STREAM_URL") ?: ""
         tipoMedia = intent.getStringExtra("TIPO") ?: "filme"
@@ -98,13 +117,32 @@ class PlayerVodActivity : Activity() {
         btnPlayNext.setOnClickListener { playNextEpisode() }
         btnCancelNext.setOnClickListener { cancelNextEpisode() }
 
-        // Foco visual nos botões
+        // AÇÃO DO BOTÃO: Pula 85 segundos exatos
+        btnSkipIntro.setOnClickListener {
+            val atual = exoPlayer?.currentPosition ?: 0L
+            exoPlayer?.seekTo(atual + 85000L) 
+            btnSkipIntro.visibility = View.GONE
+            playerViewVod.hideController() // Esconde os controles para focar no vídeo
+        }
+
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
         }
         btnPlayNext.onFocusChangeListener = focusListener
         btnCancelNext.onFocusChangeListener = focusListener
+        
+        btnSkipIntro.onFocusChangeListener = View.OnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                v.setBackgroundColor(Color.parseColor("#FFC107"))
+                (v as Button).setTextColor(Color.BLACK)
+                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            } else {
+                v.setBackgroundColor(Color.parseColor("#222222"))
+                (v as Button).setTextColor(Color.WHITE)
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            }
+        }
 
         inicializarPlayer()
         iniciarVideo()
@@ -139,7 +177,6 @@ class PlayerVodActivity : Activity() {
                         restaurarProgressoDoFirebase()
                     }
                 } else if (playbackState == Player.STATE_ENDED) {
-                    // MÁGICA: QUANDO O VÍDEO ACABA, CHECA O PRÓXIMO!
                     checkAndShowNextEpisode()
                 }
             }
@@ -154,14 +191,12 @@ class PlayerVodActivity : Activity() {
         exoPlayer?.playWhenReady = true
         
         saveProgressHandler.postDelayed(saveProgressRunnable, 10000)
+        introHandler.postDelayed(introRunnable, 1000) // Inicia a vigia da Abertura
     }
 
-    // =========================================================================
-    // LÓGICA DO AUTO-PLAY (MARATONA)
-    // =========================================================================
     private fun checkAndShowNextEpisode() {
         if (tipoMedia != "serie" || VodDataHolder.seasonsList.isEmpty()) {
-            finish() // Filmes não têm próximo, apenas fecha.
+            finish() 
             return
         }
 
@@ -170,11 +205,9 @@ class PlayerVodActivity : Activity() {
         val currentIndex = eps.indexOfFirst { it.id == mediaId }
 
         if (currentIndex != -1 && currentIndex < eps.size - 1) {
-            // Tem próximo episódio na mesma temporada
             nextEpisodeToPlay = eps[currentIndex + 1]
             showNextEpisodeOverlay()
         } else if (VodDataHolder.seasonAtualIndex < VodDataHolder.seasonsList.size - 1) {
-            // Acabou a temporada, puxa o primeiro episódio da próxima!
             VodDataHolder.seasonAtualIndex += 1
             val nextSeason = VodDataHolder.seasonsList[VodDataHolder.seasonAtualIndex]
             val nextSeasonEps = VodDataHolder.episodesMap[nextSeason] ?: emptyList()
@@ -185,14 +218,14 @@ class PlayerVodActivity : Activity() {
                 finish()
             }
         } else {
-            finish() // Acabou a série inteira
+            finish() 
         }
     }
 
     private fun showNextEpisodeOverlay() {
         overlayNextEpisode.visibility = View.VISIBLE
         tvNextEpisodeName.text = nextEpisodeToPlay?.nome ?: "Próximo Episódio"
-        btnPlayNext.requestFocus() // Força o controle remoto a focar no botão "Assistir"
+        btnPlayNext.requestFocus() 
 
         countDownTimer?.cancel()
         countDownTimer = object : CountDownTimer(10000, 1000) {
@@ -214,7 +247,6 @@ class PlayerVodActivity : Activity() {
             mediaId = ep.id
             hasRestoredPosition = false
             
-            // Zera o progresso salvo deste novo episódio para ele começar do zero
             val docIdTask = db.collection("usuarios").whereEqualTo("usuario", username).get()
             docIdTask.addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
@@ -231,10 +263,8 @@ class PlayerVodActivity : Activity() {
     private fun cancelNextEpisode() {
         countDownTimer?.cancel()
         overlayNextEpisode.visibility = View.GONE
-        finish() // Fecha o player e volta para os detalhes
+        finish() 
     }
-
-    // =========================================================================
 
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
@@ -280,7 +310,6 @@ class PlayerVodActivity : Activity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             
-            // SE O OVERLAY ESTIVER NA TELA, DESATIVA ATALHOS, EXCETO VOLTAR.
             if (overlayNextEpisode.visibility == View.VISIBLE) {
                 if (event.keyCode == KeyEvent.KEYCODE_BACK) {
                     cancelNextEpisode()
@@ -298,27 +327,32 @@ class PlayerVodActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (tipoMedia == "serie" && painelEpisodios.visibility == View.GONE) {
+                        // Facilita o foco no botão de pular caso esteja na tela
+                        if (btnSkipIntro.visibility == View.VISIBLE && !btnSkipIntro.hasFocus()) {
+                            btnSkipIntro.requestFocus()
+                            return true
+                        }
                         painelEpisodios.visibility = View.VISIBLE
                         recyclerPainelEpisodios.requestFocus()
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
-                    if (painelEpisodios.visibility == View.GONE) {
+                    if (painelEpisodios.visibility == View.GONE && !btnSkipIntro.hasFocus()) {
                         val atual = exoPlayer?.currentPosition ?: 0L
                         exoPlayer?.seekTo(atual + 10000L)
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
-                    if (painelEpisodios.visibility == View.GONE) {
+                    if (painelEpisodios.visibility == View.GONE && !btnSkipIntro.hasFocus()) {
                         val atual = exoPlayer?.currentPosition ?: 0L
                         exoPlayer?.seekTo(if (atual - 10000L > 0) atual - 10000L else 0L)
                         return true
                     }
                 }
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
-                    if (painelEpisodios.visibility == View.GONE) {
+                    if (painelEpisodios.visibility == View.GONE && !btnSkipIntro.hasFocus()) {
                         if (exoPlayer?.isPlaying == true) exoPlayer?.pause() else exoPlayer?.play()
                         return true
                     }
@@ -338,6 +372,7 @@ class PlayerVodActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         saveProgressHandler.removeCallbacks(saveProgressRunnable)
+        introHandler.removeCallbacks(introRunnable)
         salvarProgressoNoFirebase()
         countDownTimer?.cancel()
         exoPlayer?.release()
