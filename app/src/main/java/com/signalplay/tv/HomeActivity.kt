@@ -10,6 +10,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -82,7 +83,7 @@ class HomeActivity : Activity() {
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
-        
+
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -213,10 +214,11 @@ class HomeActivity : Activity() {
                         val epgId = obj.optString("epg_channel_id", "")
                         if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
                         
+                        // MÁGICA: Filtro Agressivo (Caça todas as variações de qualidade)
                         val nUp = nome.uppercase()
-                        val isSD = nUp.endsWith(" SD") || nUp.contains(" SD ") || nUp == "SD"
-                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC")
-                        val is4K = nUp.endsWith(" 4K") || nUp.contains(" 4K ") || nUp.contains("UHD")
+                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
                         
                         if (filterSD && isSD) continue
                         if (filterH265 && isH265) continue
