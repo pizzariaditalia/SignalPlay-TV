@@ -96,7 +96,6 @@ class TvActivity : Activity() {
                     }
                 }
                 
-                // MÁGICA: Joga Jogos e Casa do Patrão pro Final
                 todasCategorias.sortBy { 
                     val n = it.nome.lowercase()
                     if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
@@ -109,7 +108,10 @@ class TvActivity : Activity() {
                         val id = obj.optString("stream_id")
                         val nome = obj.optString("name")
                         
-                        // FILTROS APLICADOS AQUI TAMBÉM
+                        // MÁGICA DE RASTREIO EPG
+                        val epgId = obj.optString("epg_channel_id", "")
+                        if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
+                        
                         val nUp = nome.uppercase()
                         val isSD = nUp.endsWith(" SD") || nUp.contains(" SD ") || nUp == "SD"
                         val isH265 = nUp.contains("H265") || nUp.contains("HEVC")
@@ -134,14 +136,12 @@ class TvActivity : Activity() {
                             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_category, parent, false)
                             return object : RecyclerView.ViewHolder(v) {}
                         }
-
                         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
                             val cat = todasCategorias[position]
                             val txt = holder.itemView as TextView
                             txt.text = cat.nome
                             txt.setOnClickListener { exibirCanaisDaCategoria(cat.id, cat.nome) }
                         }
-
                         override fun getItemCount(): Int = todasCategorias.size
                     }
 
@@ -149,7 +149,6 @@ class TvActivity : Activity() {
                         exibirCanaisDaCategoria(todasCategorias[0].id, todasCategorias[0].nome)
                     }
                 }
-
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
@@ -199,7 +198,6 @@ class TvActivity : Activity() {
                             db.collection("usuarios").document(docId).update("favoritos", favoritosIds)
                         }
                     }
-
                 recyclerCanaisGrid.adapter?.notifyDataSetChanged()
             }
         )
