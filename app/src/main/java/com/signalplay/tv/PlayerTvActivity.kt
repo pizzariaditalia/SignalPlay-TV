@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
@@ -39,7 +38,7 @@ object DataHolder {
     var favoritosIds: List<String> = emptyList()
     var categoriaAtualId: String = ""
     var canaisFiltrados: List<CanalItem> = emptyList()
-    var mapaEpgIds: MutableMap<String, String> = mutableMapOf() // RASTREADOR DO EPG ADICIONADO!
+    var mapaEpgIds: MutableMap<String, String> = mutableMapOf() 
 }
 
 class PlayerTvActivity : Activity() {
@@ -165,8 +164,21 @@ class PlayerTvActivity : Activity() {
     }
 
     // =========================================================================
-    // O NOVO SISTEMA DUPLO DE EPG (ONLINE + ARQUIVO LOCAL XMLTV)
+    // FILTRO ANTI-LIXO (Decodificador Blindado UTF-8)
     // =========================================================================
+    private fun decodificarTexto(raw: String): String {
+        if (raw.isEmpty()) return ""
+        try {
+            val decodedBytes = Base64.decode(raw, Base64.DEFAULT)
+            val txt = String(decodedBytes, Charsets.UTF_8)
+            // Se tiver o símbolo de erro (), ignora e devolve o texto original
+            if (txt.isNotBlank() && !txt.contains("")) {
+                return txt
+            }
+        } catch (e: Exception) {}
+        return raw
+    }
+
     private fun buscarEPGDinamico(canal: CanalItem) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -180,7 +192,6 @@ class PlayerTvActivity : Activity() {
 
                 var listings: JSONArray? = null
 
-                // PLANO A: TENTA CONECTAR VIA API NORMAL
                 try {
                     val apiUrl = "$baseUrl/player_api.php?username=$user&password=$pass&action=get_short_epg&stream_id=$streamId&limit=10"
                     val client = OkHttpClient()
@@ -194,7 +205,6 @@ class PlayerTvActivity : Activity() {
                     }
                 } catch (e: Exception) {}
 
-                // PLANO B: SE O SERVIDOR BLOQUEAR O EPG, PUXA DO ARQUIVO LOCAL QUE FOI SINCRONIZADO!
                 if (listings == null || listings.length() == 0) {
                     try {
                         val epgChannelId = DataHolder.mapaEpgIds[canal.id]
@@ -240,15 +250,8 @@ class PlayerTvActivity : Activity() {
                     for (i in 0 until listings.length()) {
                         val prog = listings.getJSONObject(i)
                         
-                        val rawTitle = prog.optString("title", "Programa")
-                        var titleDecoded = rawTitle 
-                        if (rawTitle.isNotEmpty()) {
-                            try {
-                                val decodedBytes = Base64.decode(rawTitle, Base64.DEFAULT)
-                                val tempString = String(decodedBytes)
-                                if (tempString.isNotBlank() && !tempString.contains("")) titleDecoded = tempString
-                            } catch (e: Exception) {}
-                        }
+                        // USA O NOVO ESCUDO PARA O TÍTULO ATUAL
+                        val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
 
                         val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
                         val stopTs = prog.optString("stop_timestamp").toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
@@ -286,9 +289,8 @@ class PlayerTvActivity : Activity() {
                                 
                                 if (i + 1 < listings.length()) {
                                     val nextProg = listings.getJSONObject(i + 1)
-                                    val nRaw = nextProg.optString("title", "")
-                                    programaSeguinteTitulo = nRaw
-                                    try { programaSeguinteTitulo = String(Base64.decode(nRaw, Base64.DEFAULT)) } catch (e: Exception) {}
+                                    // USA O MESMO ESCUDO PARA O PRÓXIMO PROGRAMA
+                                    programaSeguinteTitulo = decodificarTexto(nextProg.optString("title", ""))
                                 }
                                 
                             } else if (startTs > agoraTs) {
