@@ -7,13 +7,20 @@ import android.view.ViewGroup
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
-data class EpgItem(val titulo: String, val horario: String, val isAgora: Boolean)
+data class EpgItem(
+    val titulo: String, 
+    val horario: String, 
+    val duracao: String, 
+    val isAgora: Boolean, 
+    val textColor: String
+)
 
 class EpgAdapter(private val lista: List<EpgItem>) : RecyclerView.Adapter<EpgAdapter.EpgViewHolder>() {
 
     class EpgViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val tvTitulo: TextView = view.findViewById(R.id.epgTitulo)
         val tvHorario: TextView = view.findViewById(R.id.epgHorario)
+        val tvDuracao: TextView = view.findViewById(R.id.epgDuracao)
         val indAgora: View = view.findViewById(R.id.epgIndAgora)
     }
 
@@ -27,10 +34,15 @@ class EpgAdapter(private val lista: List<EpgItem>) : RecyclerView.Adapter<EpgAda
         holder.tvTitulo.text = item.titulo
         holder.tvHorario.text = item.horario
         
-        // Acende a barrinha verde se for o primeiro programa (Ao Vivo)
+        try {
+            holder.tvHorario.setTextColor(Color.parseColor(item.textColor))
+        } catch (e: Exception) {
+            holder.tvHorario.setTextColor(Color.parseColor("#888888"))
+        }
+        
+        holder.tvDuracao.text = item.duracao
         holder.indAgora.visibility = if (item.isAgora) View.VISIBLE else View.INVISIBLE
 
-        // Muda o fundo para cinza escuro quando o controle passar por cima
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.setBackgroundColor(Color.parseColor("#222222"))
             else v.setBackgroundColor(Color.TRANSPARENT)
