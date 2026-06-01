@@ -57,9 +57,12 @@ class TvActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // FILTRO PARENTAL ATIVADO
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+                
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
 
                 db.collection("usuarios")
@@ -74,9 +77,6 @@ class TvActivity : Activity() {
 
                 val client = OkHttpClient()
 
-                // ==========================================
-                // PARALELISMO NA BUSCA DE CANAIS (MUITO MAIS RÁPIDO)
-                // ==========================================
                 val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()).execute().body?.string() ?: "[]" }
                 val defLive = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()).execute().body?.string() ?: "[]" }
 
@@ -95,6 +95,12 @@ class TvActivity : Activity() {
                         }
                     }
                 }
+                
+                // MÁGICA: Joga Jogos e Casa do Patrão pro Final
+                todasCategorias.sortBy { 
+                    val n = it.nome.lowercase()
+                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
+                }
 
                 if (jsonLive.startsWith("[")) {
                     val arr = JSONArray(jsonLive)
@@ -102,6 +108,17 @@ class TvActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id")
                         val nome = obj.optString("name")
+                        
+                        // FILTROS APLICADOS AQUI TAMBÉM
+                        val nUp = nome.uppercase()
+                        val isSD = nUp.endsWith(" SD") || nUp.contains(" SD ") || nUp == "SD"
+                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC")
+                        val is4K = nUp.endsWith(" 4K") || nUp.contains(" 4K ") || nUp.contains("UHD")
+                        
+                        if (filterSD && isSD) continue
+                        if (filterH265 && isH265) continue
+                        if (filter4K && is4K) continue
+
                         val icone = obj.optString("stream_icon")
                         val catId = obj.optString("category_id")
                         val streamUrl = "$url/live/$user/$pass/$id.ts"
@@ -110,7 +127,6 @@ class TvActivity : Activity() {
                 }
 
                 withContext(Dispatchers.Main) {
-                    // MÁGICA: DESLIGA O SPINNER QUANDO CARREGA TUDO!
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
 
                     recyclerCategories.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
@@ -136,7 +152,6 @@ class TvActivity : Activity() {
 
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    // DESLIGA O SPINNER EM CASO DE ERRO TAMBÉM!
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
                     Toast.makeText(this@TvActivity, "Erro ao conectar com a API de TV.", Toast.LENGTH_SHORT).show()
                 }
