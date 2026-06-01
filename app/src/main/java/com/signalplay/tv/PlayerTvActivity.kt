@@ -53,7 +53,6 @@ class PlayerTvActivity : Activity() {
     private lateinit var recyclerPainelCanais: RecyclerView
     private lateinit var tvPainelTitulo: TextView
     
-    // O Novo Painel EPG
     private lateinit var painelEpg: LinearLayout
     private lateinit var recyclerPainelEpg: RecyclerView
     private var listaEpgAtual: MutableList<EpgItem> = mutableListOf()
@@ -147,6 +146,9 @@ class PlayerTvActivity : Activity() {
         exoPlayer?.playWhenReady = true
     }
 
+    // =========================================================================
+    // MOTOR DE EPG BLINDADO (Base64 + Texto Normal)
+    // =========================================================================
     private fun buscarEPGDinamico(canal: CanalItem) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -175,27 +177,43 @@ class PlayerTvActivity : Activity() {
                     if (listings != null && listings.length() > 0) {
                         for (i in 0 until listings.length()) {
                             val prog = listings.getJSONObject(i)
-                            val titleB64 = prog.optString("title", "")
-                            var titleDecoded = "Programa Local"
-
-                            if (titleB64.isNotEmpty()) {
-                                try { titleDecoded = String(Base64.decode(titleB64, Base64.DEFAULT)) } catch (e: Exception) {}
+                            
+                            // 1. BLINDAGEM DO TÍTULO
+                            val rawTitle = prog.optString("title", "Programa")
+                            var titleDecoded = rawTitle // Começa assumindo que é Texto Normal
+                            
+                            if (rawTitle.isNotEmpty()) {
+                                try {
+                                    // Tenta decodificar. Se for texto puro, vai falhar e o catch ignora.
+                                    val decodedBytes = Base64.decode(rawTitle, Base64.DEFAULT)
+                                    val tempString = String(decodedBytes)
+                                    if (tempString.isNotBlank() && !tempString.contains("")) {
+                                        titleDecoded = tempString // Sucesso, era Base64!
+                                    }
+                                } catch (e: Exception) {
+                                    // Falhou a decodificação? Sem problema, mantém o texto original (rawTitle)
+                                }
                             }
 
-                            // CORREÇÃO EPG: Tenta ler como String e converte para Long. Se falhar, tenta ler como Long direto.
-                            val strStart = prog.optString("start_timestamp", "")
-                            val strStop = prog.optString("stop_timestamp", "")
-                            
-                            val startTs = strStart.toLongOrNull() ?: prog.optLong("start_timestamp", 0)
-                            val stopTs = strStop.toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
-                            
+                            // 2. BLINDAGEM DO HORÁRIO
                             var horario = ""
+                            val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
+                            val stopTs = prog.optString("stop_timestamp").toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
 
                             if (startTs > 0 && stopTs > 0) {
                                 val sdf = SimpleDateFormat("HH:mm", Locale.getDefault())
                                 val hInicio = sdf.format(Date(startTs * 1000))
                                 val hFim = sdf.format(Date(stopTs * 1000))
                                 horario = "$hInicio - $hFim"
+                            } else {
+                                // Se o painel não enviou Timestamp, recorta direto do campo "start" (Ex: "2026-05-31 14:00:00")
+                                val startStr = prog.optString("start", "")
+                                val endStr = prog.optString("end", "")
+                                if (startStr.length > 11 && endStr.length > 11) {
+                                    try {
+                                        horario = "${startStr.substring(11, 16)} - ${endStr.substring(11, 16)}"
+                                    } catch (e: Exception) {}
+                                }
                             }
                             
                             listaEpgAtual.add(EpgItem(titleDecoded, horario, i == 0))
@@ -206,15 +224,16 @@ class PlayerTvActivity : Activity() {
                 withContext(Dispatchers.Main) { 
                     if (listaEpgAtual.isNotEmpty()) {
                         val atual = listaEpgAtual[0]
-                        osdEpgText.text = "${atual.horario} • ${atual.titulo}"
+                        val horaExibicao = if (atual.horario.isNotEmpty()) "${atual.horario} • " else ""
+                        osdEpgText.text = "$horaExibicao${atual.titulo}"
                     } else {
-                        osdEpgText.text = "Sem programação"
+                        osdEpgText.text = "Programação Indisponível"
                     }
                     recyclerPainelEpg.adapter = EpgAdapter(listaEpgAtual)
                 }
 
             } catch (e: Exception) {
-                withContext(Dispatchers.Main) { osdEpgText.text = "Sem programação" }
+                withContext(Dispatchers.Main) { osdEpgText.text = "Programação Indisponível" }
             }
         }
     }
@@ -223,10 +242,9 @@ class PlayerTvActivity : Activity() {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
                 
-                // MUDAR CANAL OU CATEGORIA
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (painelCanais.visibility == View.VISIBLE) { mudarCategoria(1); return true } 
-                    else if (painelEpg.visibility == View.VISIBLE) { return true } // Trava o controle dentro do EPG
+                    else if (painelEpg.visibility == View.VISIBLE) { return true } 
                     else { mudarCanal(1); return true }
                 }
                 
@@ -236,7 +254,6 @@ class PlayerTvActivity : Activity() {
                     else { mudarCanal(-1); return true }
                 }
 
-                // ABRIR LISTA DE CANAIS (CIMA)
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (painelCanais.visibility == View.VISIBLE) {
                         val child = recyclerPainelCanais.focusedChild
@@ -258,7 +275,6 @@ class PlayerTvActivity : Activity() {
                     }
                 }
 
-                // ABRIR GUIA DE PROGRAMAÇÃO EPG (BAIXO)
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (painelCanais.visibility == View.VISIBLE) {
                         val child = recyclerPainelCanais.focusedChild
@@ -271,20 +287,18 @@ class PlayerTvActivity : Activity() {
                         return super.dispatchKeyEvent(event)
                     } 
                     else {
-                        // O BOTÃO INVISÍVEL AQUI: Abre o EPG Modal na direita!
                         painelEpg.visibility = View.VISIBLE
                         if (listaEpgAtual.isNotEmpty()) {
                             recyclerPainelEpg.adapter = EpgAdapter(listaEpgAtual)
                             recyclerPainelEpg.requestFocus()
                         } else {
-                            Toast.makeText(this, "Nenhum guia disponível para este canal.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(this, "Guia indisponível para este canal.", Toast.LENGTH_SHORT).show()
                             painelEpg.visibility = View.GONE
                         }
                         return true
                     }
                 }
 
-                // FECHAR TUDO E VOLTAR
                 KeyEvent.KEYCODE_BACK -> {
                     if (painelCanais.visibility == View.VISIBLE) {
                         painelCanais.visibility = View.GONE
@@ -296,7 +310,6 @@ class PlayerTvActivity : Activity() {
                     }
                 }
                 
-                // MOSTRAR BANNER INFO DO CANAL NA TELA (OK)
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                     if (painelCanais.visibility == View.GONE && painelEpg.visibility == View.GONE) {
                         osdContainer.visibility = View.VISIBLE
