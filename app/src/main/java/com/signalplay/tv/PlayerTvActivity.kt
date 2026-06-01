@@ -26,7 +26,9 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONArray
 import org.json.JSONObject
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -37,6 +39,7 @@ object DataHolder {
     var favoritosIds: List<String> = emptyList()
     var categoriaAtualId: String = ""
     var canaisFiltrados: List<CanalItem> = emptyList()
+    var mapaEpgIds: MutableMap<String, String> = mutableMapOf() // RASTREADOR DO EPG ADICIONADO!
 }
 
 class PlayerTvActivity : Activity() {
@@ -45,7 +48,6 @@ class PlayerTvActivity : Activity() {
     private lateinit var playerView: PlayerView
     private lateinit var progressBar: ProgressBar
     
-    // Elementos do Novo OSD (Banner do Player)
     private lateinit var osdContainer: LinearLayout
     private lateinit var osdLogo: ImageView
     private lateinit var osdChannelName: TextView
@@ -162,24 +164,66 @@ class PlayerTvActivity : Activity() {
         exoPlayer?.playWhenReady = true
     }
 
+    // =========================================================================
+    // O NOVO SISTEMA DUPLO DE EPG (ONLINE + ARQUIVO LOCAL XMLTV)
+    // =========================================================================
     private fun buscarEPGDinamico(canal: CanalItem) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val urlLiveIdx = canal.streamUrl.indexOf("/live/")
                 if (urlLiveIdx == -1) return@launch
-
                 val baseUrl = canal.streamUrl.substring(0, urlLiveIdx)
                 val parts = canal.streamUrl.split("/")
                 val pass = parts[parts.size - 2]
                 val user = parts[parts.size - 3]
                 val streamId = canal.id
 
-                val apiUrl = "$baseUrl/player_api.php?username=$user&password=$pass&action=get_short_epg&stream_id=$streamId&limit=10"
+                var listings: JSONArray? = null
 
-                val client = OkHttpClient()
-                val req = Request.Builder().url(apiUrl).build()
-                val res = client.newCall(req).execute()
-                val jsonStr = res.body?.string() ?: ""
+                // PLANO A: TENTA CONECTAR VIA API NORMAL
+                try {
+                    val apiUrl = "$baseUrl/player_api.php?username=$user&password=$pass&action=get_short_epg&stream_id=$streamId&limit=10"
+                    val client = OkHttpClient()
+                    val req = Request.Builder().url(apiUrl).build()
+                    val res = client.newCall(req).execute()
+                    val jsonStr = res.body?.string() ?: ""
+                    if (jsonStr.startsWith("{")) {
+                        val json = JSONObject(jsonStr)
+                        val l = json.optJSONArray("epg_listings")
+                        if (l != null && l.length() > 0) listings = l
+                    }
+                } catch (e: Exception) {}
+
+                // PLANO B: SE O SERVIDOR BLOQUEAR O EPG, PUXA DO ARQUIVO LOCAL QUE FOI SINCRONIZADO!
+                if (listings == null || listings.length() == 0) {
+                    try {
+                        val epgChannelId = DataHolder.mapaEpgIds[canal.id]
+                        if (epgChannelId != null && epgChannelId.isNotEmpty()) {
+                            val file = File(filesDir, "epg_data.json")
+                            if (file.exists()) {
+                                val dbJson = JSONObject(file.readText())
+                                val localList = dbJson.optJSONArray(epgChannelId)
+                                if (localList != null && localList.length() > 0) {
+                                    val agora = System.currentTimeMillis() / 1000
+                                    val futuros = mutableListOf<JSONObject>()
+                                    
+                                    for (i in 0 until localList.length()) {
+                                        val prog = localList.getJSONObject(i)
+                                        if (prog.optLong("stop_timestamp", 0) > agora) {
+                                            futuros.add(prog)
+                                        }
+                                    }
+                                    
+                                    futuros.sortBy { it.optLong("start_timestamp", 0) }
+                                    
+                                    val newArr = JSONArray()
+                                    for (i in 0 until Math.min(10, futuros.size)) newArr.put(futuros[i])
+                                    if (newArr.length() > 0) listings = newArr
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {}
+                }
 
                 listaEpgAtual.clear()
                 
@@ -190,75 +234,71 @@ class PlayerTvActivity : Activity() {
                 var barraProgressoValor = 0
                 var encontrouAoVivo = false
 
-                if (jsonStr.startsWith("{")) {
-                    val json = JSONObject(jsonStr)
-                    val listings = json.optJSONArray("epg_listings")
+                if (listings != null && listings.length() > 0) {
                     val agoraTs = System.currentTimeMillis() / 1000 
                     
-                    if (listings != null && listings.length() > 0) {
-                        for (i in 0 until listings.length()) {
-                            val prog = listings.getJSONObject(i)
-                            
-                            val rawTitle = prog.optString("title", "Programa")
-                            var titleDecoded = rawTitle 
-                            if (rawTitle.isNotEmpty()) {
-                                try {
-                                    val decodedBytes = Base64.decode(rawTitle, Base64.DEFAULT)
-                                    val tempString = String(decodedBytes)
-                                    if (tempString.isNotBlank() && !tempString.contains("")) titleDecoded = tempString
-                                } catch (e: Exception) {}
-                            }
-
-                            val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
-                            val stopTs = prog.optString("stop_timestamp").toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
-
-                            var horarioLista = ""
-                            var duracaoLista = ""
-                            var isLive = false
-                            var corTextoLista = "#888888" 
-
-                            if (startTs > 0 && stopTs > 0) {
-                                val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-                                val hInicio = sdfHora.format(Date(startTs * 1000))
-                                val hFim = sdfHora.format(Date(stopTs * 1000))
-                                
-                                val duracaoMinutos = (stopTs - startTs) / 60
-                                val h = duracaoMinutos / 60
-                                val m = duracaoMinutos % 60
-                                duracaoLista = if (h > 0 && m > 0) "$h hora e $m minutos" else if (h > 0) "$h horas" else "$m minutos"
-
-                                if (agoraTs in startTs until stopTs) {
-                                    isLive = true
-                                    encontrouAoVivo = true
-                                    horarioLista = "Ao Vivo / $hInicio - $hFim"
-                                    corTextoLista = "#2ED573" 
-                                    
-                                    programaAtualTitulo = titleDecoded
-                                    horaInicioOSD = hInicio
-                                    horaFimOSD = hFim
-                                    
-                                    val totalTempo = stopTs - startTs
-                                    val tempoDecorrido = agoraTs - startTs
-                                    if (totalTempo > 0) {
-                                        barraProgressoValor = ((tempoDecorrido.toDouble() / totalTempo.toDouble()) * 100).toInt()
-                                    }
-                                    
-                                    if (i + 1 < listings.length()) {
-                                        val nextProg = listings.getJSONObject(i + 1)
-                                        val nRaw = nextProg.optString("title", "")
-                                        programaSeguinteTitulo = nRaw
-                                        try { programaSeguinteTitulo = String(Base64.decode(nRaw, Base64.DEFAULT)) } catch (e: Exception) {}
-                                    }
-                                    
-                                } else if (startTs > agoraTs) {
-                                    horarioLista = "Hoje / $hInicio - $hFim"
-                                } else {
-                                    horarioLista = "Encerrado / $hInicio - $hFim"
-                                }
-                            }
-                            
-                            listaEpgAtual.add(EpgItem(titleDecoded, horarioLista, duracaoLista, isLive, corTextoLista))
+                    for (i in 0 until listings.length()) {
+                        val prog = listings.getJSONObject(i)
+                        
+                        val rawTitle = prog.optString("title", "Programa")
+                        var titleDecoded = rawTitle 
+                        if (rawTitle.isNotEmpty()) {
+                            try {
+                                val decodedBytes = Base64.decode(rawTitle, Base64.DEFAULT)
+                                val tempString = String(decodedBytes)
+                                if (tempString.isNotBlank() && !tempString.contains("")) titleDecoded = tempString
+                            } catch (e: Exception) {}
                         }
+
+                        val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
+                        val stopTs = prog.optString("stop_timestamp").toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
+
+                        var horarioLista = ""
+                        var duracaoLista = ""
+                        var isLive = false
+                        var corTextoLista = "#888888" 
+
+                        if (startTs > 0 && stopTs > 0) {
+                            val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+                            val hInicio = sdfHora.format(Date(startTs * 1000))
+                            val hFim = sdfHora.format(Date(stopTs * 1000))
+                            
+                            val duracaoMinutos = (stopTs - startTs) / 60
+                            val h = duracaoMinutos / 60
+                            val m = duracaoMinutos % 60
+                            duracaoLista = if (h > 0 && m > 0) "$h hora e $m minutos" else if (h > 0) "$h horas" else "$m minutos"
+
+                            if (agoraTs in startTs until stopTs) {
+                                isLive = true
+                                encontrouAoVivo = true
+                                horarioLista = "Ao Vivo / $hInicio - $hFim"
+                                corTextoLista = "#2ED573" 
+                                
+                                programaAtualTitulo = titleDecoded
+                                horaInicioOSD = hInicio
+                                horaFimOSD = hFim
+                                
+                                val totalTempo = stopTs - startTs
+                                val tempoDecorrido = agoraTs - startTs
+                                if (totalTempo > 0) {
+                                    barraProgressoValor = ((tempoDecorrido.toDouble() / totalTempo.toDouble()) * 100).toInt()
+                                }
+                                
+                                if (i + 1 < listings.length()) {
+                                    val nextProg = listings.getJSONObject(i + 1)
+                                    val nRaw = nextProg.optString("title", "")
+                                    programaSeguinteTitulo = nRaw
+                                    try { programaSeguinteTitulo = String(Base64.decode(nRaw, Base64.DEFAULT)) } catch (e: Exception) {}
+                                }
+                                
+                            } else if (startTs > agoraTs) {
+                                horarioLista = "Hoje / $hInicio - $hFim"
+                            } else {
+                                horarioLista = "Encerrado / $hInicio - $hFim"
+                            }
+                        }
+                        
+                        listaEpgAtual.add(EpgItem(titleDecoded, horarioLista, duracaoLista, isLive, corTextoLista))
                     }
                 }
 
@@ -292,19 +332,16 @@ class PlayerTvActivity : Activity() {
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
-                
                 KeyEvent.KEYCODE_DPAD_RIGHT -> {
                     if (painelCanais.visibility == View.VISIBLE) { mudarCategoria(1); return true } 
                     else if (painelEpg.visibility == View.VISIBLE) { return true } 
                     else { mudarCanal(1); return true }
                 }
-                
                 KeyEvent.KEYCODE_DPAD_LEFT -> {
                     if (painelCanais.visibility == View.VISIBLE) { mudarCategoria(-1); return true } 
                     else if (painelEpg.visibility == View.VISIBLE) { return true } 
                     else { mudarCanal(-1); return true }
                 }
-
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (painelCanais.visibility == View.VISIBLE) {
                         val child = recyclerPainelCanais.focusedChild
@@ -325,7 +362,6 @@ class PlayerTvActivity : Activity() {
                         return true
                     }
                 }
-
                 KeyEvent.KEYCODE_DPAD_DOWN -> {
                     if (painelCanais.visibility == View.VISIBLE) {
                         val child = recyclerPainelCanais.focusedChild
@@ -349,18 +385,10 @@ class PlayerTvActivity : Activity() {
                         return true
                     }
                 }
-
                 KeyEvent.KEYCODE_BACK -> {
-                    if (painelCanais.visibility == View.VISIBLE) {
-                        painelCanais.visibility = View.GONE
-                        return true
-                    }
-                    if (painelEpg.visibility == View.VISIBLE) {
-                        painelEpg.visibility = View.GONE
-                        return true
-                    }
+                    if (painelCanais.visibility == View.VISIBLE) { painelCanais.visibility = View.GONE; return true }
+                    if (painelEpg.visibility == View.VISIBLE) { painelEpg.visibility = View.GONE; return true }
                 }
-                
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
                     if (painelCanais.visibility == View.GONE && painelEpg.visibility == View.GONE) {
                         osdContainer.visibility = View.VISIBLE
