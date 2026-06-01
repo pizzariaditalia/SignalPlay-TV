@@ -108,14 +108,14 @@ class TvActivity : Activity() {
                         val id = obj.optString("stream_id")
                         val nome = obj.optString("name")
                         
-                        // MÁGICA DE RASTREIO EPG
                         val epgId = obj.optString("epg_channel_id", "")
                         if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
                         
+                        // MÁGICA: Filtro Agressivo também na TV
                         val nUp = nome.uppercase()
-                        val isSD = nUp.endsWith(" SD") || nUp.contains(" SD ") || nUp == "SD"
-                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC")
-                        val is4K = nUp.endsWith(" 4K") || nUp.contains(" 4K ") || nUp.contains("UHD")
+                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
                         
                         if (filterSD && isSD) continue
                         if (filterH265 && isH265) continue
