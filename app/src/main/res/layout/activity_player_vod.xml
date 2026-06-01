@@ -32,7 +32,24 @@
         android:textSize="16sp"
         android:visibility="gone" />
 
-    <!-- PAINEL LATERAL DE EPISÓDIOS -->
+    <Button
+        android:id="@+id/btnSkipIntro"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginBottom="100dp"
+        android:layout_marginEnd="48dp"
+        android:backgroundTint="#222222"
+        android:textColor="#FFFFFF"
+        android:text="Pular Abertura ⏭"
+        android:textStyle="bold"
+        android:paddingStart="20dp"
+        android:paddingEnd="20dp"
+        android:visibility="gone"
+        android:focusable="true"
+        android:clickable="true" />
+
     <LinearLayout
         android:id="@+id/painelEpisodios"
         android:layout_width="350dp"
@@ -59,7 +76,6 @@
             android:layout_height="match_parent" />
     </LinearLayout>
 
-    <!-- NOVO: OVERLAY MARATONA (PRÓXIMO EPISÓDIO) -->
     <RelativeLayout
         android:id="@+id/overlayNextEpisode"
         android:layout_width="match_parent"
