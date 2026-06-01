@@ -46,7 +46,6 @@ class PlayerVodActivity : Activity() {
     private var countDownTimer: CountDownTimer? = null
     private var nextEpisodeToPlay: EpisodeItem? = null
 
-    // NOVO: BOTÃO DE PULAR ABERTURA
     private lateinit var btnSkipIntro: Button
 
     private lateinit var db: FirebaseFirestore
@@ -67,12 +66,10 @@ class PlayerVodActivity : Activity() {
         }
     }
 
-    // NOVO: RELÓGIO QUE VIGIA O TEMPO PARA EXIBIR O BOTÃO DE ABERTURA
     private val introHandler = Handler(Looper.getMainLooper())
     private val introRunnable = object : Runnable {
         override fun run() {
             val pos = exoPlayer?.currentPosition ?: 0L
-            // Só exibe se for série e o tempo estiver entre 5s e 90s
             if (tipoMedia == "serie" && pos in 5000L..90000L) {
                 if (btnSkipIntro.visibility == View.GONE) btnSkipIntro.visibility = View.VISIBLE
             } else {
@@ -117,12 +114,11 @@ class PlayerVodActivity : Activity() {
         btnPlayNext.setOnClickListener { playNextEpisode() }
         btnCancelNext.setOnClickListener { cancelNextEpisode() }
 
-        // AÇÃO DO BOTÃO: Pula 85 segundos exatos
         btnSkipIntro.setOnClickListener {
             val atual = exoPlayer?.currentPosition ?: 0L
             exoPlayer?.seekTo(atual + 85000L) 
             btnSkipIntro.visibility = View.GONE
-            playerViewVod.hideController() // Esconde os controles para focar no vídeo
+            playerViewVod.hideController() 
         }
 
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
@@ -191,7 +187,7 @@ class PlayerVodActivity : Activity() {
         exoPlayer?.playWhenReady = true
         
         saveProgressHandler.postDelayed(saveProgressRunnable, 10000)
-        introHandler.postDelayed(introRunnable, 1000) // Inicia a vigia da Abertura
+        introHandler.postDelayed(introRunnable, 1000) 
     }
 
     private fun checkAndShowNextEpisode() {
@@ -224,7 +220,16 @@ class PlayerVodActivity : Activity() {
 
     private fun showNextEpisodeOverlay() {
         overlayNextEpisode.visibility = View.VISIBLE
-        tvNextEpisodeName.text = nextEpisodeToPlay?.nome ?: "Próximo Episódio"
+        
+        // CORREÇÃO APLICADA AQUI: Busca pela variável correta da classe EpisodeItem
+        try {
+            tvNextEpisodeName.text = nextEpisodeToPlay?.titulo ?: "Próximo Episódio"
+        } catch (e: Exception) {
+            // Se por acaso a sua classe EpisodeItem usar "title" ao invés de "titulo", 
+            // você deve alterar a palavra ".titulo" acima para ".title"
+            tvNextEpisodeName.text = "Próximo Episódio"
+        }
+        
         btnPlayNext.requestFocus() 
 
         countDownTimer?.cancel()
@@ -327,7 +332,6 @@ class PlayerVodActivity : Activity() {
                 }
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (tipoMedia == "serie" && painelEpisodios.visibility == View.GONE) {
-                        // Facilita o foco no botão de pular caso esteja na tela
                         if (btnSkipIntro.visibility == View.VISIBLE && !btnSkipIntro.hasFocus()) {
                             btnSkipIntro.requestFocus()
                             return true
