@@ -7,9 +7,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Base64
 import android.view.KeyEvent
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -40,37 +38,6 @@ object DataHolder {
     var categoriaAtualId: String = ""
     var canaisFiltrados: List<CanalItem> = emptyList()
 }
-
-// ADAPTADOR DO EPG EMBUTIDO AQUI PARA FACILITAR (ATUALIZADO PARA SUPORTAR O NOVO VISUAL)
-data class EpgItem(val titulo: String, val horario: String, val duracao: String, val isAgora: Boolean, val textColor: String)
-
-class EpgAdapter(private val lista: List<EpgItem>) : RecyclerView.Adapter<EpgAdapter.EpgViewHolder>() {
-    class EpgViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvTitulo: TextView = view.findViewById(R.id.epgTitulo)
-        val tvHorario: TextView = view.findViewById(R.id.epgHorario)
-        val tvDuracao: TextView = view.findViewById(R.id.epgDuracao)
-        val indAgora: View = view.findViewById(R.id.epgIndAgora)
-    }
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): EpgViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_epg, parent, false)
-        return EpgViewHolder(view)
-    }
-    override fun onBindViewHolder(holder: EpgViewHolder, position: Int) {
-        val item = lista[position]
-        holder.tvTitulo.text = item.titulo
-        holder.tvHorario.text = item.horario
-        holder.tvHorario.setTextColor(Color.parseColor(item.textColor))
-        holder.tvDuracao.text = item.duracao
-        holder.indAgora.visibility = if (item.isAgora) View.VISIBLE else View.INVISIBLE
-
-        holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) v.setBackgroundColor(Color.parseColor("#222222"))
-            else v.setBackgroundColor(Color.TRANSPARENT)
-        }
-    }
-    override fun getItemCount() = lista.size
-}
-
 
 class PlayerTvActivity : Activity() {
 
@@ -187,7 +154,7 @@ class PlayerTvActivity : Activity() {
 
         osdContainer.visibility = View.VISIBLE
         handlerOSD.removeCallbacks(osdRunnable)
-        handlerOSD.postDelayed(osdRunnable, 6000) // 6 Segundos na tela para dar tempo de ler
+        handlerOSD.postDelayed(osdRunnable, 6000) 
         
         exoPlayer?.stop()
         exoPlayer?.setMediaItem(MediaItem.fromUri(canal.streamUrl))
@@ -195,9 +162,6 @@ class PlayerTvActivity : Activity() {
         exoPlayer?.playWhenReady = true
     }
 
-    // =========================================================================
-    // O VERDADEIRO MOTOR MATEMÁTICO DO EPG (PROGRESSO E PROGRAMA ATUAL)
-    // =========================================================================
     private fun buscarEPGDinamico(canal: CanalItem) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -229,13 +193,12 @@ class PlayerTvActivity : Activity() {
                 if (jsonStr.startsWith("{")) {
                     val json = JSONObject(jsonStr)
                     val listings = json.optJSONArray("epg_listings")
-                    val agoraTs = System.currentTimeMillis() / 1000 // Relógio da TV em Segundos
+                    val agoraTs = System.currentTimeMillis() / 1000 
                     
                     if (listings != null && listings.length() > 0) {
                         for (i in 0 until listings.length()) {
                             val prog = listings.getJSONObject(i)
                             
-                            // 1. Título Blindado
                             val rawTitle = prog.optString("title", "Programa")
                             var titleDecoded = rawTitle 
                             if (rawTitle.isNotEmpty()) {
@@ -246,46 +209,40 @@ class PlayerTvActivity : Activity() {
                                 } catch (e: Exception) {}
                             }
 
-                            // 2. Horários Blindados
                             val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
                             val stopTs = prog.optString("stop_timestamp").toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
 
                             var horarioLista = ""
                             var duracaoLista = ""
                             var isLive = false
-                            var corTextoLista = "#888888" // Cinza
+                            var corTextoLista = "#888888" 
 
                             if (startTs > 0 && stopTs > 0) {
                                 val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
                                 val hInicio = sdfHora.format(Date(startTs * 1000))
                                 val hFim = sdfHora.format(Date(stopTs * 1000))
                                 
-                                // Calcula a Duração
                                 val duracaoMinutos = (stopTs - startTs) / 60
                                 val h = duracaoMinutos / 60
                                 val m = duracaoMinutos % 60
                                 duracaoLista = if (h > 0 && m > 0) "$h hora e $m minutos" else if (h > 0) "$h horas" else "$m minutos"
 
-                                // É O PROGRAMA DE AGORA? (MÁGICA DA MATEMÁTICA)
                                 if (agoraTs in startTs until stopTs) {
                                     isLive = true
                                     encontrouAoVivo = true
                                     horarioLista = "Ao Vivo / $hInicio - $hFim"
-                                    corTextoLista = "#2ED573" // Verde
+                                    corTextoLista = "#2ED573" 
                                     
-                                    // Alimenta as variáveis do OSD (Banner do Player)
                                     programaAtualTitulo = titleDecoded
                                     horaInicioOSD = hInicio
                                     horaFimOSD = hFim
                                     
-                                    // Calcula a porcentagem exata da Barra (0 a 100)
                                     val totalTempo = stopTs - startTs
                                     val tempoDecorrido = agoraTs - startTs
                                     if (totalTempo > 0) {
                                         barraProgressoValor = ((tempoDecorrido.toDouble() / totalTempo.toDouble()) * 100).toInt()
                                     }
                                     
-                                    // Se esse é o Agora, o próximo do Array será o Seguinte!
                                     if (i + 1 < listings.length()) {
                                         val nextProg = listings.getJSONObject(i + 1)
                                         val nRaw = nextProg.optString("title", "")
@@ -294,21 +251,17 @@ class PlayerTvActivity : Activity() {
                                     }
                                     
                                 } else if (startTs > agoraTs) {
-                                    // Programa Futuro
                                     horarioLista = "Hoje / $hInicio - $hFim"
                                 } else {
-                                    // Programa Passado
                                     horarioLista = "Encerrado / $hInicio - $hFim"
                                 }
                             }
                             
-                            // Adiciona na prateleira lateral
                             listaEpgAtual.add(EpgItem(titleDecoded, horarioLista, duracaoLista, isLive, corTextoLista))
                         }
                     }
                 }
 
-                // ATUALIZA A TELA NA MESMA HORA
                 withContext(Dispatchers.Main) { 
                     osdCurrentProgram.text = programaAtualTitulo
                     
@@ -319,7 +272,6 @@ class PlayerTvActivity : Activity() {
                         osdProgressBar.progress = barraProgressoValor
                         osdProgressContainer.visibility = View.VISIBLE
                     } else {
-                        // Se por algum motivo o painel não tiver o programa de agora, esconde a barra
                         osdNextProgram.text = ""
                         osdProgressContainer.visibility = View.GONE
                     }
