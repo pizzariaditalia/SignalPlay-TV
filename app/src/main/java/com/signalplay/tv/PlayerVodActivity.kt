@@ -2,12 +2,15 @@ package com.signalplay.tv
 
 import android.app.Activity
 import android.os.Bundle
+import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
+import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -34,10 +37,19 @@ class PlayerVodActivity : Activity() {
     private lateinit var recyclerPainelEpisodios: RecyclerView
     private lateinit var tvPainelEpTitle: TextView
 
+    // OVERLAY DE MARATONA (PRÓXIMO EPISÓDIO)
+    private lateinit var overlayNextEpisode: RelativeLayout
+    private lateinit var tvNextCountdown: TextView
+    private lateinit var tvNextEpisodeName: TextView
+    private lateinit var btnPlayNext: Button
+    private lateinit var btnCancelNext: Button
+    private var countDownTimer: CountDownTimer? = null
+    private var nextEpisodeToPlay: EpisodeItem? = null
+
     private lateinit var db: FirebaseFirestore
     private var username: String = ""
     private var mediaId: String = ""
-    private var parentSeriesId: String = "" // MÁGICA: Guarda o ID da Capa da Série!
+    private var parentSeriesId: String = ""
 
     private var streamUrlAtual = ""
     private var tipoMedia = ""
@@ -65,16 +77,34 @@ class PlayerVodActivity : Activity() {
         recyclerPainelEpisodios = findViewById(R.id.recyclerPainelEpisodios)
         tvPainelEpTitle = findViewById(R.id.tvPainelEpTitle)
 
+        // BINDING DO NOVO OVERLAY
+        overlayNextEpisode = findViewById(R.id.overlayNextEpisode)
+        tvNextCountdown = findViewById(R.id.tvNextCountdown)
+        tvNextEpisodeName = findViewById(R.id.tvNextEpisodeName)
+        btnPlayNext = findViewById(R.id.btnPlayNext)
+        btnCancelNext = findViewById(R.id.btnCancelNext)
+
         streamUrlAtual = intent.getStringExtra("STREAM_URL") ?: ""
         tipoMedia = intent.getStringExtra("TIPO") ?: "filme"
         username = intent.getStringExtra("USERNAME") ?: ""
         parentSeriesId = intent.getStringExtra("MEDIA_ID") ?: ""
-        mediaId = parentSeriesId // Por padrão, começa igual
+        mediaId = parentSeriesId 
 
         if (tipoMedia == "serie") {
             recyclerPainelEpisodios.layoutManager = LinearLayoutManager(this)
             carregarTemporada()
         }
+
+        btnPlayNext.setOnClickListener { playNextEpisode() }
+        btnCancelNext.setOnClickListener { cancelNextEpisode() }
+
+        // Foco visual nos botões
+        val focusListener = View.OnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
+            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+        }
+        btnPlayNext.onFocusChangeListener = focusListener
+        btnCancelNext.onFocusChangeListener = focusListener
 
         inicializarPlayer()
         iniciarVideo()
@@ -89,7 +119,7 @@ class PlayerVodActivity : Activity() {
         recyclerPainelEpisodios.adapter = EpisodeAdapter(eps) { epClicado ->
             painelEpisodios.visibility = View.GONE
             streamUrlAtual = epClicado.streamUrl
-            mediaId = epClicado.id // Atualiza o ID interno pro episódio rodar
+            mediaId = epClicado.id 
             hasRestoredPosition = false
             iniciarVideo()
         }
@@ -104,11 +134,13 @@ class PlayerVodActivity : Activity() {
                     progressBarVod.visibility = View.VISIBLE
                 } else if (playbackState == Player.STATE_READY) {
                     progressBarVod.visibility = View.GONE
-                    
                     if (!hasRestoredPosition) {
                         hasRestoredPosition = true
                         restaurarProgressoDoFirebase()
                     }
+                } else if (playbackState == Player.STATE_ENDED) {
+                    // MÁGICA: QUANDO O VÍDEO ACABA, CHECA O PRÓXIMO!
+                    checkAndShowNextEpisode()
                 }
             }
         })
@@ -124,10 +156,88 @@ class PlayerVodActivity : Activity() {
         saveProgressHandler.postDelayed(saveProgressRunnable, 10000)
     }
 
-    private fun salvarProgressoNoFirebase() {
-        // Se for série, salva na Capa (parentSeriesId). Se for filme, salva normal (mediaId).
-        val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
+    // =========================================================================
+    // LÓGICA DO AUTO-PLAY (MARATONA)
+    // =========================================================================
+    private fun checkAndShowNextEpisode() {
+        if (tipoMedia != "serie" || VodDataHolder.seasonsList.isEmpty()) {
+            finish() // Filmes não têm próximo, apenas fecha.
+            return
+        }
+
+        val currentSeason = VodDataHolder.seasonsList[VodDataHolder.seasonAtualIndex]
+        val eps = VodDataHolder.episodesMap[currentSeason] ?: emptyList()
+        val currentIndex = eps.indexOfFirst { it.id == mediaId }
+
+        if (currentIndex != -1 && currentIndex < eps.size - 1) {
+            // Tem próximo episódio na mesma temporada
+            nextEpisodeToPlay = eps[currentIndex + 1]
+            showNextEpisodeOverlay()
+        } else if (VodDataHolder.seasonAtualIndex < VodDataHolder.seasonsList.size - 1) {
+            // Acabou a temporada, puxa o primeiro episódio da próxima!
+            VodDataHolder.seasonAtualIndex += 1
+            val nextSeason = VodDataHolder.seasonsList[VodDataHolder.seasonAtualIndex]
+            val nextSeasonEps = VodDataHolder.episodesMap[nextSeason] ?: emptyList()
+            if (nextSeasonEps.isNotEmpty()) {
+                nextEpisodeToPlay = nextSeasonEps[0]
+                showNextEpisodeOverlay()
+            } else {
+                finish()
+            }
+        } else {
+            finish() // Acabou a série inteira
+        }
+    }
+
+    private fun showNextEpisodeOverlay() {
+        overlayNextEpisode.visibility = View.VISIBLE
+        tvNextEpisodeName.text = nextEpisodeToPlay?.nome ?: "Próximo Episódio"
+        btnPlayNext.requestFocus() // Força o controle remoto a focar no botão "Assistir"
+
+        countDownTimer?.cancel()
+        countDownTimer = object : CountDownTimer(10000, 1000) {
+            override fun onTick(millisUntilFinished: Long) {
+                tvNextCountdown.text = (millisUntilFinished / 1000).toString()
+            }
+            override fun onFinish() {
+                playNextEpisode()
+            }
+        }.start()
+    }
+
+    private fun playNextEpisode() {
+        countDownTimer?.cancel()
+        overlayNextEpisode.visibility = View.GONE
         
+        nextEpisodeToPlay?.let { ep ->
+            streamUrlAtual = ep.streamUrl
+            mediaId = ep.id
+            hasRestoredPosition = false
+            
+            // Zera o progresso salvo deste novo episódio para ele começar do zero
+            val docIdTask = db.collection("usuarios").whereEqualTo("usuario", username).get()
+            docIdTask.addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val docId = snapshot.documents[0].id
+                    val dados = mapOf("historico_vod" to mapOf(parentSeriesId to mapOf("posicao" to 0L, "duracao" to 0L)))
+                    db.collection("usuarios").document(docId).set(dados, SetOptions.merge())
+                }
+            }
+
+            iniciarVideo()
+        }
+    }
+
+    private fun cancelNextEpisode() {
+        countDownTimer?.cancel()
+        overlayNextEpisode.visibility = View.GONE
+        finish() // Fecha o player e volta para os detalhes
+    }
+
+    // =========================================================================
+
+    private fun salvarProgressoNoFirebase() {
+        val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
         if (username.isEmpty() || idToSave.isEmpty()) return
         val position = exoPlayer?.currentPosition ?: 0L
         val duration = exoPlayer?.duration ?: 0L
@@ -169,6 +279,16 @@ class PlayerVodActivity : Activity() {
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
+            
+            // SE O OVERLAY ESTIVER NA TELA, DESATIVA ATALHOS, EXCETO VOLTAR.
+            if (overlayNextEpisode.visibility == View.VISIBLE) {
+                if (event.keyCode == KeyEvent.KEYCODE_BACK) {
+                    cancelNextEpisode()
+                    return true
+                }
+                return super.dispatchKeyEvent(event)
+            }
+
             when (event.keyCode) {
                 KeyEvent.KEYCODE_BACK -> {
                     if (painelEpisodios.visibility == View.VISIBLE) {
@@ -212,12 +332,14 @@ class PlayerVodActivity : Activity() {
         super.onPause()
         salvarProgressoNoFirebase()
         exoPlayer?.pause()
+        countDownTimer?.cancel()
     }
 
     override fun onDestroy() {
         super.onDestroy()
         saveProgressHandler.removeCallbacks(saveProgressRunnable)
         salvarProgressoNoFirebase()
+        countDownTimer?.cancel()
         exoPlayer?.release()
     }
 }
