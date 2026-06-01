@@ -149,7 +149,6 @@ class HomeActivity : Activity() {
 
                 val client = OkHttpClient()
                 val listaIdsFavoritos = mutableListOf<String>()
-                
                 var historicoMap: Map<String, Any>? = null
                 
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
@@ -194,12 +193,11 @@ class HomeActivity : Activity() {
                     }
                 }
                 
-                // MÁGICA DE REORDENAÇÃO DAS PASTAS
                 liveCats.sortBy { 
                     val n = it.nome.lowercase()
                     if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
                 }
-                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos")) // Garante Favoritos no Topo
+                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
                 
                 jsonStr = ""
 
@@ -212,7 +210,10 @@ class HomeActivity : Activity() {
                         val id = obj.optString("stream_id", "")
                         val nome = obj.optString("name", "Canal")
                         
-                        // MÁGICA DOS FILTROS (Corta antes de adicionar)
+                        // MÁGICA: GUARDA O EPG_ID DO CANAL PARA O PLAYER LER DO ARQUIVO LOCAL DEPOIS!
+                        val epgId = obj.optString("epg_channel_id", "")
+                        if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
+                        
                         val nUp = nome.uppercase()
                         val isSD = nUp.endsWith(" SD") || nUp.contains(" SD ") || nUp == "SD"
                         val isH265 = nUp.contains("H265") || nUp.contains("HEVC")
@@ -260,7 +261,6 @@ class HomeActivity : Activity() {
                 val topFilmes = listFilmes.take(10)
                 val seriesAlta = listSeries.reversed().take(30)
                 val topSeries = listSeries.take(10)
-                
                 val listContinuar = (listFilmes + listSeries).filter { it.progresso > 0 }
 
                 withContext(Dispatchers.Main) {
@@ -290,9 +290,7 @@ class HomeActivity : Activity() {
                     recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
 
-                    if (listFilmes.isNotEmpty()) {
-                        atualizarBanner(listFilmes.random())
-                    }
+                    if (listFilmes.isNotEmpty()) atualizarBanner(listFilmes.random())
                 }
 
             } catch (e: Exception) {
@@ -308,13 +306,10 @@ class HomeActivity : Activity() {
         findViewById<TextView>(R.id.heroTitle).text = filme.nome
         findViewById<TextView>(R.id.heroBadge).text = "NOVIDADE EM FILMES"
         findViewById<TextView>(R.id.heroDesc).text = "Disponível agora no catálogo"
-        
         btnAssistirDestaque.visibility = View.VISIBLE
         btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
-        
         val imageView = findViewById<ImageView>(R.id.heroImage)
         imageView.scaleType = ImageView.ScaleType.MATRIX
-        
         Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
