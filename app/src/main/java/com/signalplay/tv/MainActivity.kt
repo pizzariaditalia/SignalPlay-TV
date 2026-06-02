@@ -10,10 +10,7 @@ import android.os.Environment
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
-import android.widget.LinearLayout
 import android.widget.ProgressBar
-import android.widget.RelativeLayout
-import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,11 +33,11 @@ class MainActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
 
-        val edtUser = findViewById<EditText>(R.id.edtUser)
-        val edtPass = findViewById<EditText>(R.id.edtPass)
+        // Lendo os IDs exatos do seu activity_main.xml
+        val edtUsuario = findViewById<EditText>(R.id.edtUsuario)
+        val edtSenha = findViewById<EditText>(R.id.edtSenha)
         val btnEntrar = findViewById<Button>(R.id.btnEntrar)
-        val loadingOverlay = findViewById<RelativeLayout>(R.id.loadingOverlay)
-        val tvLoadingMsg = findViewById<TextView>(R.id.tvLoadingMsg)
+        val progressBar = findViewById<ProgressBar>(R.id.progressBar)
 
         // =========================================================================
         // MÁGICA: VERIFICADOR DE ATUALIZAÇÃO EM NUVEM (IN-APP UPDATER)
@@ -65,21 +62,25 @@ class MainActivity : Activity() {
         }
 
         btnEntrar.setOnClickListener {
-            val user = edtUser.text.toString().trim()
-            val pass = edtPass.text.toString().trim()
+            val user = edtUsuario.text.toString().trim()
+            val pass = edtSenha.text.toString().trim()
 
             if (user.isEmpty() || pass.isEmpty()) {
                 Toast.makeText(this, "Preencha usuário e senha!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            loadingOverlay.visibility = View.VISIBLE
-            tvLoadingMsg.text = "Validando Acesso..."
+            // Ativa o carregamento visual usando os elementos que você já tem
+            progressBar.visibility = View.VISIBLE
+            btnEntrar.isEnabled = false
+            btnEntrar.text = "Validando Acesso..."
+            edtUsuario.isEnabled = false
+            edtSenha.isEnabled = false
 
             db.collection("usuarios").whereEqualTo("usuario", user).whereEqualTo("senha", pass).get()
                 .addOnSuccessListener { snapshot ->
                     if (snapshot.isEmpty) {
-                        loadingOverlay.visibility = View.GONE
+                        restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
                         Toast.makeText(this, "Usuário ou senha incorretos!", Toast.LENGTH_LONG).show()
                         return@addOnSuccessListener
                     }
@@ -87,21 +88,21 @@ class MainActivity : Activity() {
                     val dadosUser = snapshot.documents[0]
                     val status = dadosUser.getString("status")
                     if (status != "ativo" && status != "teste") {
-                        loadingOverlay.visibility = View.GONE
+                        restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
                         Toast.makeText(this, "Conta bloqueada ou expirada!", Toast.LENGTH_LONG).show()
                         return@addOnSuccessListener
                     }
 
                     val serverId = dadosUser.getString("servidor_id")
                     if (serverId.isNullOrEmpty()) {
-                        loadingOverlay.visibility = View.GONE
+                        restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
                         Toast.makeText(this, "Nenhum servidor vinculado à sua conta.", Toast.LENGTH_LONG).show()
                         return@addOnSuccessListener
                     }
 
                     db.collection("servidores").document(serverId).get().addOnSuccessListener { serverDoc ->
                         if (!serverDoc.exists()) {
-                            loadingOverlay.visibility = View.GONE
+                            restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
                             Toast.makeText(this, "Servidor offline.", Toast.LENGTH_LONG).show()
                             return@addOnSuccessListener
                         }
@@ -127,10 +128,18 @@ class MainActivity : Activity() {
                     }
                 }
                 .addOnFailureListener {
-                    loadingOverlay.visibility = View.GONE
+                    restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
                     Toast.makeText(this, "Erro ao conectar com o banco de dados.", Toast.LENGTH_SHORT).show()
                 }
         }
+    }
+
+    private fun restaurarBotoes(progress: ProgressBar, btn: Button, edtUser: EditText, edtPass: EditText) {
+        progress.visibility = View.GONE
+        btn.isEnabled = true
+        btn.text = "Entrar"
+        edtUser.isEnabled = true
+        edtPass.isEnabled = true
     }
 
     // =========================================================================
@@ -156,19 +165,22 @@ class MainActivity : Activity() {
     }
 
     private fun mostrarTelaDeAtualizacaoForcada(linkApk: String) {
-        val overlay = findViewById<RelativeLayout>(R.id.loadingOverlay)
-        val tvMsg = findViewById<TextView>(R.id.tvLoadingMsg)
-        val progress = findViewById<ProgressBar>(R.id.progressBarLogin) // Supondo que tenha um ID pra progressBar no seu XML, se não, ignora
+        val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+        val btnEntrar = findViewById<Button>(R.id.btnEntrar)
+        val edtUsuario = findViewById<EditText>(R.id.edtUsuario)
+        val edtSenha = findViewById<EditText>(R.id.edtSenha)
 
-        overlay.visibility = View.VISIBLE
-        tvMsg.text = "Nova Atualização Disponível!"
+        progressBar.visibility = View.VISIBLE
+        btnEntrar.isEnabled = false
+        edtUsuario.isEnabled = false
+        edtSenha.isEnabled = false
         
-        // Esconde tudo e força o download
-        baixarEInstalarApk(linkApk, tvMsg)
+        // Usa o botão principal para mostrar o status do download
+        baixarEInstalarApk(linkApk, btnEntrar)
     }
 
-    private fun baixarEInstalarApk(apkUrl: String, tvStatus: TextView) {
-        tvStatus.text = "Baixando atualização... Por favor, aguarde."
+    private fun baixarEInstalarApk(apkUrl: String, btnStatus: Button) {
+        btnStatus.text = "Baixando atualização..."
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -193,13 +205,13 @@ class MainActivity : Activity() {
                     inputStream.close()
 
                     withContext(Dispatchers.Main) {
-                        tvStatus.text = "Iniciando Instalação..."
+                        btnStatus.text = "Iniciando Instalação..."
                         instalarApk(file)
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    tvStatus.text = "Erro ao baixar atualização. Reinicie o App."
+                    btnStatus.text = "Erro ao atualizar. Reinicie o App."
                 }
             }
         }
@@ -210,7 +222,6 @@ class MainActivity : Activity() {
             val intent = Intent(Intent.ACTION_VIEW)
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
             
-            // O FileProvider usa exatamente aquele XML que nós criamos no Passo 2!
             val apkUri: Uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
             
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
