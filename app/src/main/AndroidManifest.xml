@@ -39,6 +39,22 @@
             </intent-filter>
         </activity>
 
+        <!-- ========================================================= -->
+        <!-- MÁGICA: O FANTASMA QUE TRANSFORMA O APP EM TELA INICIAL -->
+        <!-- Nasce dormindo (enabled="false") -->
+        <!-- ========================================================= -->
+        <activity-alias
+            android:name=".LauncherAlias"
+            android:enabled="false"
+            android:exported="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity-alias>
+
         <activity android:name=".HomeActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".TvActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".VodActivity" android:exported="false" android:screenOrientation="landscape" />
