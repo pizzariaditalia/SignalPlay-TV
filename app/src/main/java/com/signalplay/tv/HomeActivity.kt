@@ -3,6 +3,7 @@ package com.signalplay.tv
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
@@ -32,6 +33,7 @@ import okhttp3.Request
 import org.json.JSONArray
 
 data class LigaItem(val nome: String, val logo: String, val url: String)
+data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
 
 class HomeActivity : Activity() {
 
@@ -43,7 +45,6 @@ class HomeActivity : Activity() {
     private var passGlobal = ""
     private var username = ""
 
-    // Listas Globais salvas em memória para atualizar silenciosamente ao voltar pra tela
     private var listFilmesGlobais = listOf<FilmeItem>()
     private var listSeriesGlobais = listOf<FilmeItem>()
 
@@ -97,8 +98,8 @@ class HomeActivity : Activity() {
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
-        
         val recyclerEsportes = findViewById<RecyclerView>(R.id.recyclerEsportes)
+        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps) // NOVO
         
         recyclerEsportes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -107,6 +108,7 @@ class HomeActivity : Activity() {
         recyclerTopFilmes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerTopSeries.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerApps.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
         val urlOriginal = intent.getStringExtra("URL") ?: ""
         urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
@@ -156,6 +158,9 @@ class HomeActivity : Activity() {
             startActivity(intent)
         }
 
+        // CARREGA A PRATELEIRA DE APLICATIVOS NATIVOS DA TV
+        carregarAplicativosDaTV()
+
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 val listaIdsFavoritos = mutableListOf<String>()
@@ -179,17 +184,15 @@ class HomeActivity : Activity() {
                         val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
                         val client = OkHttpClient()
 
-                        // MÁGICA 1: O Cálculo de Porcentagem Perfeito
                         fun getProgress(id: String): Int {
                             if (historicoMap != null) {
                                 val progressoData = historicoMap!![id] as? Map<String, Any>
                                 if (progressoData != null) {
                                     val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                                     val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
-                                    // Só aparece se passou de 10 seg. Some se faltar menos de 3 min pro final!
                                     if (dur > 0L && pos > 10000L && (dur - pos) > 180000L) {
                                         val perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
-                                        return if (perc == 0) 1 else perc // Garante que 0.8% não suma!
+                                        return if (perc == 0) 1 else perc
                                     }
                                 }
                             }
@@ -276,7 +279,6 @@ class HomeActivity : Activity() {
                             }
                         }
                         
-                        // Salva na memória global para atualizar instantaneamente no botão Voltar
                         listFilmesGlobais = listFilmes
                         listSeriesGlobais = listSeries
 
@@ -336,9 +338,6 @@ class HomeActivity : Activity() {
             }
     }
 
-    // =========================================================================
-    // MÁGICA 2: CICLO DE VIDA! ATUALIZA A PRATELEIRA ASSIM QUE FECHAR O FILME
-    // =========================================================================
     override fun onResume() {
         super.onResume()
         if (listFilmesGlobais.isNotEmpty() || listSeriesGlobais.isNotEmpty()) {
@@ -363,12 +362,9 @@ class HomeActivity : Activity() {
                             val pos = progData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                             val dur = progData["duracao"]?.toString()?.toLongOrNull() ?: 0L
                             
-                            // Se passou de 10 seg e falta mais de 3 min pro final
                             if (dur > 0L && pos > 10000L && (dur - pos) > 180000L) {
                                 var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
                                 if (perc == 0) perc = 1 
-                                
-                                // Recria o item injetando a porcentagem exata lida do Firebase
                                 listContinuar.add(FilmeItem(item.id, item.nome, item.urlImagem, "", item.tipo, "", perc))
                             }
                         }
@@ -390,6 +386,46 @@ class HomeActivity : Activity() {
                     }
                 }
             }
+    }
+
+    // =================================================================================
+    // MÁGICA: FUNÇÃO QUE VASCULHA OS APLICATIVOS INSTALADOS NA TV E MONTA A PRATELEIRA
+    // =================================================================================
+    private fun carregarAplicativosDaTV() {
+        val pm = packageManager
+        val intentTv = Intent(Intent.ACTION_MAIN, null)
+        intentTv.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) // Busca apps otimizados pra TV primeiro
+        var apps = pm.queryIntentActivities(intentTv, 0)
+        
+        if (apps.isEmpty()) {
+            // Se for TV Box normal (Android Mobile), busca os apps normais
+            val intentMobile = Intent(Intent.ACTION_MAIN, null)
+            intentMobile.addCategory(Intent.CATEGORY_LAUNCHER)
+            apps = pm.queryIntentActivities(intentMobile, 0)
+        }
+
+        val installedApps = mutableListOf<AppItem>()
+        for (info in apps) {
+            val packageName = info.activityInfo.packageName
+            // Ignora o nosso próprio aplicativo para ele não aparecer dentro dele mesmo
+            if (packageName != applicationContext.packageName) {
+                val nomeApp = info.loadLabel(pm).toString()
+                val iconeApp = info.loadIcon(pm)
+                installedApps.add(AppItem(nomeApp, iconeApp, packageName))
+            }
+        }
+
+        installedApps.sortBy { it.nome }
+
+        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
+        recyclerApps.adapter = AppAdapter(installedApps) { app ->
+            val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
+            if (launchIntent != null) {
+                startActivity(launchIntent)
+            } else {
+                Toast.makeText(this, "Não foi possível abrir o aplicativo.", Toast.LENGTH_SHORT).show()
+            }
+        }
     }
 
     private fun atualizarBanner(filme: FilmeItem) {
@@ -455,7 +491,6 @@ class HomeActivity : Activity() {
                 setPadding(16, 16, 16, 16)
             }
             val img = ImageView(context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(110, 110) }
-            
             val txt = TextView(context).apply { 
                 id = 1002
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
@@ -465,7 +500,6 @@ class HomeActivity : Activity() {
                 maxLines = 2
                 setLines(2)
             }
-            
             layout.addView(img)
             layout.addView(txt)
             return LigaViewHolder(layout)
@@ -475,6 +509,67 @@ class HomeActivity : Activity() {
             val item = list[position]
             holder.txt.text = item.nome
             Glide.with(holder.itemView.context).load(item.logo).into(holder.img)
+
+            holder.itemView.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    v.bringToFront()
+                    v.animate().scaleX(1.10f).scaleY(1.10f).translationZ(10f).setDuration(150).start()
+                } else {
+                    v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+                }
+            }
+            holder.itemView.setOnClickListener { onClick(item) }
+        }
+
+        override fun getItemCount(): Int = list.size
+    }
+
+    // =================================================================================
+    // ADAPTADOR PARA RENDERIZAR OS APLICATIVOS COM ÍCONES REDONDOS IGUAL A FOTO
+    // =================================================================================
+    inner class AppAdapter(
+        private val list: List<AppItem>,
+        private val onClick: (AppItem) -> Unit
+    ) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
+
+        inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val img = view.findViewById<ImageView>(2001)
+            val txt = view.findViewById<TextView>(2002)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
+            val context = parent.context
+            val layout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                layoutParams = ViewGroup.MarginLayoutParams(240, 240).apply { setMargins(16, 16, 16, 16) }
+                background = ContextCompat.getDrawable(context, R.drawable.bg_menu_focus)
+                isFocusable = true
+                isClickable = true
+                setPadding(16, 16, 16, 16)
+            }
+            val img = ImageView(context).apply { 
+                id = 2001
+                layoutParams = LinearLayout.LayoutParams(120, 120) 
+                scaleType = ImageView.ScaleType.FIT_CENTER
+            }
+            val txt = TextView(context).apply { 
+                id = 2002
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }
+                setTextColor(Color.WHITE)
+                textSize = 12f
+                textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1
+            }
+            layout.addView(img)
+            layout.addView(txt)
+            return AppViewHolder(layout)
+        }
+
+        override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
+            val item = list[position]
+            holder.txt.text = item.nome
+            holder.img.setImageDrawable(item.icone) // Puxa o ícone nativo da TV (Netflix, Youtube, etc)
 
             holder.itemView.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
