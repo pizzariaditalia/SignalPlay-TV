@@ -258,10 +258,7 @@ class PlayerVodActivity : Activity() {
                         val dadosMedia = historico[idToLoad] as? Map<String, Any>
                         if (dadosMedia != null) {
                             val posicaoSalva = dadosMedia["posicao"]?.toString()?.toLongOrNull() ?: 0L
-                            
-                            if (posicaoSalva > 0L) {
-                                exoPlayer?.seekTo(posicaoSalva)
-                            }
+                            if (posicaoSalva > 0L) exoPlayer?.seekTo(posicaoSalva)
                         }
                     }
                 }
@@ -323,7 +320,7 @@ class PlayerVodActivity : Activity() {
     }
 
     // =========================================================================
-    // MÁGICA: SALVAMENTO 100% BLINDADO USANDO ESTRUTURA DE MAPA SEGURO
+    // MÁGICA: .UPDATE() COM PLANO B SE A PASTA NÃO EXISTIR
     // =========================================================================
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
@@ -332,24 +329,20 @@ class PlayerVodActivity : Activity() {
         val position = exoPlayer?.currentPosition ?: 0L
         val duration = exoPlayer?.duration ?: 0L
 
-        // Se assistiu mais de 5 segundos, salva imediatamente! Sem frescuras.
         if (position > 5000L && duration > 0L) { 
             db.collection("usuarios").whereEqualTo("usuario", username).get()
                 .addOnSuccessListener { snapshot ->
                     if (!snapshot.isEmpty) {
                         val docId = snapshot.documents[0].id
+                        val docRef = db.collection("usuarios").document(docId)
                         
-                        // Cria a estrutura exata exigida pelo Firestore para atualizar dados aninhados
-                        val updateData = hashMapOf(
-                            "historico_vod" to hashMapOf(
-                                idToSave to hashMapOf(
-                                    "posicao" to position,
-                                    "duracao" to duration
-                                )
-                            )
-                        )
-                        // O SetOptions.merge() garante a atualização mesmo se a pasta não existir
-                        db.collection("usuarios").document(docId).set(updateData, SetOptions.merge())
+                        val mapToSave = mapOf("posicao" to position, "duracao" to duration)
+                        
+                        docRef.update("historico_vod.$idToSave", mapToSave)
+                            .addOnFailureListener {
+                                // PLANO B: Cria o campo se ele ainda não existir no banco
+                                docRef.set(mapOf("historico_vod" to mapOf(idToSave to mapToSave)), SetOptions.merge())
+                            }
                     }
                 }
         }
