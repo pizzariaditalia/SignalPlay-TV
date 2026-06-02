@@ -116,36 +116,36 @@ class HomeActivity : Activity() {
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
 
         // =================================================================================
-        // LISTA GIGANTE DE ESPORTES (27 Ligas em Ordem Alfabética + Link Direto do App)
+        // DADOS DO CARROSSEL DE ESPORTES - 27 LIGAS ORDEM ALFABÉTICA (Logos Direto da API)
         // =================================================================================
         val listaLigas = listOf(
-            LigaItem("Brasileirão A", "https://a.espncdn.com/i/leaguelogos/soccer/500/85.png", "https://m.flashscore.com.br/futebol/brasil/serie-a/classificacao/"),
-            LigaItem("Brasileirão B", "https://upload.wikimedia.org/wikipedia/pt/f/f4/Campeonato_Brasileiro_S%C3%A9rie_B_logo.png", "https://m.flashscore.com.br/futebol/brasil/serie-b/classificacao/"),
-            LigaItem("Bundesliga", "https://a.espncdn.com/i/leaguelogos/soccer/500/10.png", "https://m.flashscore.com.br/futebol/alemanha/bundesliga/classificacao/"),
-            LigaItem("Camp. Argentino", "https://a.espncdn.com/i/leaguelogos/soccer/500/1.png", "https://m.flashscore.com.br/futebol/argentina/liga-profissional/classificacao/"),
-            LigaItem("Camp. Carioca", "https://upload.wikimedia.org/wikipedia/pt/1/13/Campeonato_Carioca_de_Futebol_-_Logotipo.png", "https://m.flashscore.com.br/futebol/brasil/campeonato-carioca/classificacao/"),
-            LigaItem("Camp. Paulista", "https://upload.wikimedia.org/wikipedia/pt/7/77/Campeonato_Paulista.png", "https://m.flashscore.com.br/futebol/brasil/campeonato-paulista/classificacao/"),
-            LigaItem("Camp. Saudita", "https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/Saudi_Pro_League_logo.svg/512px-Saudi_Pro_League_logo.svg.png", "https://m.flashscore.com.br/futebol/arabia-saudita/liga-profissional-saudita/classificacao/"),
-            LigaItem("Champions League", "https://a.espncdn.com/i/leaguelogos/soccer/500/2.png", "https://m.flashscore.com.br/futebol/europa/liga-dos-campeoes/classificacao/"),
-            LigaItem("Copa América", "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/2024_Copa_Am%C3%A9rica_logo.svg/512px-2024_Copa_Am%C3%A9rica_logo.svg.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-america/classificacao/"),
-            LigaItem("Copa da Inglaterra", "https://upload.wikimedia.org/wikipedia/en/thumb/0/05/FA_Cup_logo.svg/512px-FA_Cup_logo.svg.png", "https://m.flashscore.com.br/futebol/inglaterra/copa-da-inglaterra/resultados/"),
-            LigaItem("Copa do Brasil", "https://a.espncdn.com/i/leaguelogos/soccer/500/90.png", "https://m.flashscore.com.br/futebol/brasil/copa-do-brasil/resultados/"),
-            LigaItem("Copa do Mundo", "https://upload.wikimedia.org/wikipedia/en/thumb/e/e3/2026_FIFA_World_Cup_logo.svg/512px-2026_FIFA_World_Cup_logo.svg.png", "https://m.flashscore.com.br/futebol/mundo/copa-do-mundo/classificacao/"),
-            LigaItem("Copa do Nordeste", "https://upload.wikimedia.org/wikipedia/pt/thumb/a/a2/Copa_do_Nordeste.svg/512px-Copa_do_Nordeste.svg.png", "https://m.flashscore.com.br/futebol/brasil/copa-do-nordeste/classificacao/"),
-            LigaItem("Copa do Rei", "https://upload.wikimedia.org/wikipedia/en/thumb/1/13/Copa_del_Rey_logo.svg/512px-Copa_del_Rey_logo.svg.png", "https://m.flashscore.com.br/futebol/espanha/copa-do-rei/resultados/"),
-            LigaItem("Eredivisie", "https://a.espncdn.com/i/leaguelogos/soccer/500/11.png", "https://m.flashscore.com.br/futebol/holanda/eredivisie/classificacao/"),
-            LigaItem("Eurocopa", "https://upload.wikimedia.org/wikipedia/en/thumb/7/74/UEFA_Euro_2024_logo.svg/512px-UEFA_Euro_2024_logo.svg.png", "https://m.flashscore.com.br/futebol/europa/eurocopa/classificacao/"),
-            LigaItem("Europa League", "https://a.espncdn.com/i/leaguelogos/soccer/500/2310.png", "https://m.flashscore.com.br/futebol/europa/liga-europa/classificacao/"),
-            LigaItem("La Liga", "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png", "https://m.flashscore.com.br/futebol/espanha/laliga/classificacao/"),
-            LigaItem("Libertadores", "https://a.espncdn.com/i/leaguelogos/soccer/500/14.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-libertadores/classificacao/"),
-            LigaItem("Ligue 1", "https://a.espncdn.com/i/leaguelogos/soccer/500/9.png", "https://m.flashscore.com.br/futebol/franca/ligue-1/classificacao/"),
-            LigaItem("MLS", "https://a.espncdn.com/i/leaguelogos/soccer/500/19.png", "https://m.flashscore.com.br/futebol/eua/mls/classificacao/"),
-            LigaItem("Mundial de Clubes", "https://a.espncdn.com/i/leaguelogos/soccer/500/125.png", "https://m.flashscore.com.br/futebol/mundo/mundial-de-clubes/resultados/"),
-            LigaItem("Nations League", "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/UEFA_Nations_League_logo.svg/512px-UEFA_Nations_League_logo.svg.png", "https://m.flashscore.com.br/futebol/europa/liga-das-nacoes/classificacao/"),
-            LigaItem("Premier League", "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png", "https://m.flashscore.com.br/futebol/inglaterra/premier-league/classificacao/"),
-            LigaItem("Primeira Liga", "https://a.espncdn.com/i/leaguelogos/soccer/500/12.png", "https://m.flashscore.com.br/futebol/portugal/liga-portugal/classificacao/"),
-            LigaItem("Série A (Itália)", "https://a.espncdn.com/i/leaguelogos/soccer/500/13.png", "https://m.flashscore.com.br/futebol/italia/serie-a/classificacao/"),
-            LigaItem("Sul-Americana", "https://a.espncdn.com/i/leaguelogos/soccer/500/16.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-sul-americana/classificacao/")
+            LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
+            LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
+            LigaItem("Bundesliga", "https://api.sofascore.app/api/v1/unique-tournament/35/image/dark", "https://m.sofascore.com/pt/torneio/futebol/germany/bundesliga/35"),
+            LigaItem("Camp. Argentino", "https://api.sofascore.app/api/v1/unique-tournament/155/image/dark", "https://m.sofascore.com/pt/torneio/futebol/argentina/liga-profesional/155"),
+            LigaItem("Camp. Carioca", "https://api.sofascore.app/api/v1/unique-tournament/376/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/carioca/376"),
+            LigaItem("Camp. Paulista", "https://api.sofascore.app/api/v1/unique-tournament/374/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/paulista-serie-a1/374"),
+            LigaItem("Camp. Saudita", "https://api.sofascore.app/api/v1/unique-tournament/2939/image/dark", "https://m.sofascore.com/pt/torneio/futebol/saudi-arabia/saudi-pro-league/2939"),
+            LigaItem("Champions League", "https://api.sofascore.app/api/v1/unique-tournament/7/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-champions-league/7"),
+            LigaItem("Copa América", "https://api.sofascore.app/api/v1/unique-tournament/133/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-america/133"),
+            LigaItem("Copa da Inglaterra", "https://api.sofascore.app/api/v1/unique-tournament/19/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/fa-cup/19"),
+            LigaItem("Copa do Brasil", "https://api.sofascore.app/api/v1/unique-tournament/373/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-brasil/373"),
+            LigaItem("Copa do Mundo", "https://api.sofascore.app/api/v1/unique-tournament/16/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/world-cup/16"),
+            LigaItem("Copa do Nordeste", "https://api.sofascore.app/api/v1/unique-tournament/2841/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-nordeste/2841"),
+            LigaItem("Copa do Rei", "https://api.sofascore.app/api/v1/unique-tournament/116/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/copa-del-rey/116"),
+            LigaItem("Eredivisie", "https://api.sofascore.app/api/v1/unique-tournament/37/image/dark", "https://m.sofascore.com/pt/torneio/futebol/netherlands/eredivisie/37"),
+            LigaItem("Eurocopa", "https://api.sofascore.app/api/v1/unique-tournament/1/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/european-championship/1"),
+            LigaItem("Europa League", "https://api.sofascore.app/api/v1/unique-tournament/679/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-europa-league/679"),
+            LigaItem("La Liga", "https://api.sofascore.app/api/v1/unique-tournament/8/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/laliga/8"),
+            LigaItem("Libertadores", "https://api.sofascore.app/api/v1/unique-tournament/384/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-libertadores/384"),
+            LigaItem("Ligue 1", "https://api.sofascore.app/api/v1/unique-tournament/34/image/dark", "https://m.sofascore.com/pt/torneio/futebol/france/ligue-1/34"),
+            LigaItem("MLS", "https://api.sofascore.app/api/v1/unique-tournament/242/image/dark", "https://m.sofascore.com/pt/torneio/futebol/usa/mls/242"),
+            LigaItem("Mundial de Clubes", "https://api.sofascore.app/api/v1/unique-tournament/569/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/club-world-cup/569"),
+            LigaItem("Nations League", "https://api.sofascore.app/api/v1/unique-tournament/10469/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-nations-league/10469"),
+            LigaItem("Premier League", "https://api.sofascore.app/api/v1/unique-tournament/17/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/premier-league/17"),
+            LigaItem("Primeira Liga", "https://api.sofascore.app/api/v1/unique-tournament/238/image/dark", "https://m.sofascore.com/pt/torneio/futebol/portugal/liga-portugal/238"),
+            LigaItem("Série A (Itália)", "https://api.sofascore.app/api/v1/unique-tournament/23/image/dark", "https://m.sofascore.com/pt/torneio/futebol/italy/serie-a/23"),
+            LigaItem("Sul-Americana", "https://api.sofascore.app/api/v1/unique-tournament/383/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-sudamericana/383")
         )
 
         recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
@@ -359,7 +359,9 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    // ADAPTADOR INTERNO QUE CRIA OS QUADRADINHOS DE CADA LIGA NO CARROSSEL
+    // =================================================================================
+    // MÁGICA: O ADAPTADOR DA PRATELEIRA AGORA PERMITE QUEBRAS DE LINHA!
+    // =================================================================================
     inner class LigaAdapter(
         private val list: List<LigaItem>,
         private val onClick: (LigaItem) -> Unit
@@ -381,15 +383,19 @@ class HomeActivity : Activity() {
                 isClickable = true
                 setPadding(16, 16, 16, 16)
             }
-            val img = ImageView(context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(130, 130) }
+            val img = ImageView(context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(110, 110) }
+            
+            // CONFIGURAÇÃO DO TEXTO PARA NÃO CORTAR! (2 linhas)
             val txt = TextView(context).apply { 
                 id = 1002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
                 setTextColor(Color.WHITE)
-                textSize = 14f
+                textSize = 12f
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 1
+                maxLines = 2
+                setLines(2) // Força o espaço para 2 linhas para as caixas ficarem da mesma altura
             }
+            
             layout.addView(img)
             layout.addView(txt)
             return LigaViewHolder(layout)
