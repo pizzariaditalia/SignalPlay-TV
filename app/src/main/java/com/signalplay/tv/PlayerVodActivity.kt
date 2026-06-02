@@ -58,7 +58,6 @@ class PlayerVodActivity : Activity() {
     
     private var hasRestoredPosition = false
 
-    // Função que checa e mostra o botão "Pular Abertura"
     private val introHandler = Handler(Looper.getMainLooper())
     private val introRunnable = object : Runnable {
         override fun run() {
@@ -235,16 +234,6 @@ class PlayerVodActivity : Activity() {
             streamUrlAtual = ep.streamUrl
             mediaId = ep.id
             hasRestoredPosition = false
-            
-            val docIdTask = db.collection("usuarios").whereEqualTo("usuario", username).get()
-            docIdTask.addOnSuccessListener { snapshot ->
-                if (!snapshot.isEmpty) {
-                    val docId = snapshot.documents[0].id
-                    val dados = mapOf("historico_vod" to mapOf(parentSeriesId to mapOf("posicao" to 0L, "duracao" to 0L)))
-                    db.collection("usuarios").document(docId).set(dados, SetOptions.merge())
-                }
-            }
-
             iniciarVideo()
         }
     }
@@ -269,10 +258,8 @@ class PlayerVodActivity : Activity() {
                         val dadosMedia = historico[idToLoad] as? Map<String, Any>
                         if (dadosMedia != null) {
                             val posicaoSalva = dadosMedia["posicao"]?.toString()?.toLongOrNull() ?: 0L
-                            val duracaoSalva = dadosMedia["duracao"]?.toString()?.toLongOrNull() ?: 0L
                             
-                            // Só restaura a posição se não estiver nos últimos 3 minutos de filme
-                            if (posicaoSalva > 0L && (duracaoSalva - posicaoSalva) > 180000) {
+                            if (posicaoSalva > 0L) {
                                 exoPlayer?.seekTo(posicaoSalva)
                             }
                         }
@@ -336,7 +323,7 @@ class PlayerVodActivity : Activity() {
     }
 
     // =========================================================================
-    // MÁGICA: SALVAMENTO BLINDADO NO FIREBASE (À PROVA DE FALHAS)
+    // MÁGICA: SALVAMENTO 100% BLINDADO USANDO ESTRUTURA DE MAPA SEGURO
     // =========================================================================
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
@@ -345,21 +332,24 @@ class PlayerVodActivity : Activity() {
         val position = exoPlayer?.currentPosition ?: 0L
         val duration = exoPlayer?.duration ?: 0L
 
-        // Só salva se passou de 10 segundos
-        if (position > 10000L && duration > 0L) { 
+        // Se assistiu mais de 5 segundos, salva imediatamente! Sem frescuras.
+        if (position > 5000L && duration > 0L) { 
             db.collection("usuarios").whereEqualTo("usuario", username).get()
                 .addOnSuccessListener { snapshot ->
                     if (!snapshot.isEmpty) {
                         val docId = snapshot.documents[0].id
-                        val docRef = db.collection("usuarios").document(docId)
                         
-                        // Tenta ATUALIZAR o filme específico
-                        docRef.update("historico_vod.$idToSave", mapOf("posicao" to position, "duracao" to duration))
-                            .addOnFailureListener {
-                                // PLANO B: Se falhar porque a pasta 'historico_vod' nunca foi criada, ele cria agora!
-                                val dadosIniciais = mapOf("historico_vod" to mapOf(idToSave to mapOf("posicao" to position, "duracao" to duration)))
-                                docRef.set(dadosIniciais, SetOptions.merge())
-                            }
+                        // Cria a estrutura exata exigida pelo Firestore para atualizar dados aninhados
+                        val updateData = hashMapOf(
+                            "historico_vod" to hashMapOf(
+                                idToSave to hashMapOf(
+                                    "posicao" to position,
+                                    "duracao" to duration
+                                )
+                            )
+                        )
+                        // O SetOptions.merge() garante a atualização mesmo se a pasta não existir
+                        db.collection("usuarios").document(docId).set(updateData, SetOptions.merge())
                     }
                 }
         }
@@ -372,7 +362,6 @@ class PlayerVodActivity : Activity() {
         countDownTimer?.cancel()
     }
 
-    // Se o cliente apertar o botão Home da TV e o app for minimizado
     override fun onStop() {
         super.onStop()
         salvarProgressoNoFirebase()
