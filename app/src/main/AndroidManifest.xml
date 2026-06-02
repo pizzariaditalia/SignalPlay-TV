@@ -1,13 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
+    <!-- PERMISSÕES DE INTERNET E REDE -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
+    <!-- PERMISSÕES PARA O SISTEMA DE ATUALIZAÇÃO EM NUVEM E INSTALAÇÃO DE APK -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
 
+    <!-- RECURSOS PARA ANDROID TV E TV BOX -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
@@ -17,10 +20,12 @@
         android:roundIcon="@drawable/logo_oficial"
         android:banner="@drawable/banner_oficial"
         android:label="SignalPlay TV"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar" 
         android:supportsRtl="true"
         android:usesCleartextTraffic="true"
         android:requestLegacyExternalStorage="true"> 
 
+        <!-- TELA INICIAL / TELA DE LOGIN -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -32,58 +37,69 @@
             </intent-filter>
         </activity>
 
+        <!-- DASHBOARD / TELA PRINCIPAL (Home) -->
         <activity
             android:name=".HomeActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- TELA DE CANAIS DE TV -->
         <activity
             android:name=".TvActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- TELA DE FILMES -->
         <activity
             android:name=".VodActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- TELA DE SÉRIES -->
         <activity
             android:name=".SeriesActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- TELA DE PESQUISA -->
         <activity
             android:name=".SearchActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- TELA DE CONFIGURAÇÕES -->
         <activity
             android:name=".SettingsActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- TELA DE DETALHES (Sinopse, Capa, etc) -->
         <activity
             android:name=".DetailsActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- PLAYER DE TV AO VIVO COM EPG -->
         <activity
             android:name=".PlayerTvActivity"
             android:exported="false"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="landscape" />
 
+        <!-- PLAYER DE VOD (Filmes e Séries) COM MARATONA -->
         <activity
             android:name=".PlayerVodActivity"
             android:exported="false"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:screenOrientation="landscape" />
 
+        <!-- NAVEGADOR NATIVO DE ESPORTES -->
         <activity
             android:name=".SportsActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
+        <!-- PROVEDOR DE ARQUIVOS (NECESSÁRIO PARA A INSTALAÇÃO DO APK DA NUVEM) -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.provider"
