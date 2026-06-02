@@ -6,18 +6,17 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
-import android.net.Uri
 import android.os.Bundle
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
-import android.webkit.JavascriptInterface
-import android.webkit.WebSettings
-import android.webkit.WebView
 import android.widget.Button
 import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -31,6 +30,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
+
+// Objeto para a lista de campeonatos
+data class LigaItem(val nome: String, val logo: String, val url: String)
 
 class HomeActivity : Activity() {
 
@@ -92,6 +94,10 @@ class HomeActivity : Activity() {
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
         
+        // NOVO: Recycler de Esportes 100% Nativo
+        val recyclerEsportes = findViewById<RecyclerView>(R.id.recyclerEsportes)
+        
+        recyclerEsportes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -147,85 +153,25 @@ class HomeActivity : Activity() {
         }
 
         // =================================================================================
-        // SUPER MOTOR DE ESPORTES EM NUVEM (ILIMITADO + SUL-AMERICANO + FÍSICA CORRIGIDA)
+        // DADOS DO CARROSSEL DE ESPORTES (URLs de alta definição da ESPN e Links Diretos)
         // =================================================================================
-        val webViewFutebol = findViewById<WebView>(R.id.webViewFutebol)
-        webViewFutebol.setBackgroundColor(Color.TRANSPARENT)
-        val settings: WebSettings = webViewFutebol.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        
-        // Conecta o JavaScript interno com as funções nativas do Android
-        webViewFutebol.addJavascriptInterface(object {
-            @JavascriptInterface
-            fun abrirLiga(busca: String) {
-                runOnUiThread {
-                    val intentEsporte = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + busca))
-                    startActivity(intentEsporte)
-                }
-            }
-        }, "AndroidApp")
+        val listaLigas = listOf(
+            LigaItem("Brasileirão A", "https://a.espncdn.com/i/leaguelogos/soccer/500/85.png", "https://m.flashscore.com.br/futebol/brasil/serie-a/classificacao/"),
+            LigaItem("Copa do Brasil", "https://a.espncdn.com/i/leaguelogos/soccer/500/90.png", "https://m.flashscore.com.br/futebol/brasil/copa-do-brasil/resultados/"),
+            LigaItem("Libertadores", "https://a.espncdn.com/i/leaguelogos/soccer/500/14.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-libertadores/classificacao/"),
+            LigaItem("Sul-Americana", "https://a.espncdn.com/i/leaguelogos/soccer/500/16.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-sul-americana/classificacao/"),
+            LigaItem("Brasileirão B", "https://upload.wikimedia.org/wikipedia/pt/f/f4/Campeonato_Brasileiro_S%C3%A9rie_B_logo.png", "https://m.flashscore.com.br/futebol/brasil/serie-b/classificacao/"),
+            LigaItem("Champions League", "https://a.espncdn.com/i/leaguelogos/soccer/500/2.png", "https://m.flashscore.com.br/futebol/europa/liga-dos-campeoes/classificacao/"),
+            LigaItem("Premier League", "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png", "https://m.flashscore.com.br/futebol/inglaterra/premier-league/classificacao/"),
+            LigaItem("La Liga", "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png", "https://m.flashscore.com.br/futebol/espanha/laliga/classificacao/"),
+            LigaItem("Mundial de Clubes", "https://a.espncdn.com/i/leaguelogos/soccer/500/125.png", "https://m.flashscore.com.br/futebol/mundo/mundial-de-clubes/resultados/")
+        )
 
-        val htmlFutebol = """
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <script src="https://cdn.jsdelivr.net/npm/spatial-navigation-js@1.0.4/spatial_navigation.min.js"></script>
-            <style>
-                :root { --bg-color: transparent; --card-bg: #22222a; --accent-color: #00ff88; --text-color: #ffffff; }
-                body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; overflow: hidden; }
-                h1 { color: #fff; margin-bottom: 5px; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;}
-                .carousel { display: flex; overflow-x: auto; gap: 15px; padding: 10px 20px; scrollbar-width: none; }
-                .carousel::-webkit-scrollbar { display: none; }
-                .league-card { background-color: var(--card-bg); border-radius: 12px; min-width: 125px; padding: 12px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.2s; outline: none; }
-                .league-card:focus, .league-card:hover { border-color: var(--accent-color); transform: scale(1.05); background-color: #2a2a35; }
-                .league-name { margin: 0; font-size: 12px; font-weight: bold; color: #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
-            </style>
-        </head>
-        <body>
-            <h1>⚽ Campeonatos em Destaque</h1>
-            <div class="carousel" id="league-carousel"></div>
-
-            <script>
-                window.addEventListener('load', function() {
-                    SpatialNavigation.init();
-                    SpatialNavigation.add({ selector: '.sn-focusable' });
-                    SpatialNavigation.makeFocusable();
-                    SpatialNavigation.focus();
-                });
-
-                // BANCO DE DADOS COMPLETO SEM LIMITES (INCLUINDO COPA DO BRASIL, SÉRIE B E LIBERTADORES)
-                const leagues = [
-                    { name: 'Brasileirão A', logo: 'https://crests.football-data.org/BSA.png', search: 'tabela+brasileirao+serie+a' },
-                    { name: 'Brasileirão B', logo: 'https://upload.wikimedia.org/wikipedia/pt/f/f4/Campeonato_Brasileiro_S%C3%A9rie_B_logo.png', search: 'tabela+brasileirao+serie+b' },
-                    { name: 'Copa do Brasil', logo: 'https://upload.wikimedia.org/wikipedia/pt/e/e2/Copa_do_Brasil_logo.png', search: 'jogos+copa+do+brasil' },
-                    { name: 'Libertadores', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Copa_Libertadores_logo.png', search: 'tabela+copa+libertadores' },
-                    { name: 'La Liga', logo: 'https://crests.football-data.org/PD.png', search: 'tabela+la+liga+espanha' },
-                    { name: 'Premier League', logo: 'https://crests.football-data.org/PL.png', search: 'tabela+premier+league' },
-                    { name: 'Champions League', logo: 'https://crests.football-data.org/CL.png', search: 'tabela+champions+league' },
-                    { name: 'Serie A Itália', logo: 'https://crests.football-data.org/SA.png', search: 'tabela+serie+a+italia' }
-                ];
-
-                const carousel = document.getElementById('league-carousel');
-                leagues.forEach(league => {
-                    const card = document.createElement('div');
-                    card.className = 'league-card sn-focusable'; 
-                    card.innerHTML = '<img src="' + league.logo + '" style="width: 40px; height: 40px; object-fit: contain; margin-bottom: 6px;"><br><span class="league-name">' + league.name + '</span>';
-                    
-                    // Dispara a função nativa do Android ao clicar
-                    card.onclick = () => AndroidApp.abrirLiga(league.search);
-                    card.addEventListener('keydown', (e) => { if (e.key === 'Enter') AndroidApp.abrirLiga(league.search); });
-                    carousel.appendChild(card);
-                });
-            </script>
-        </body>
-        </html>
-        """
-        
-        webViewFutebol.loadDataWithBaseURL(null, htmlFutebol, "text/html", "UTF-8", null)
-        // =================================================================================
+        recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
+            val intent = Intent(this@HomeActivity, SportsActivity::class.java)
+            intent.putExtra("URL_LIGA", liga.url)
+            startActivity(intent)
+        }
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -430,5 +376,60 @@ class HomeActivity : Activity() {
         intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
         intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
         startActivity(intentDet)
+    }
+
+    // ADAPTADOR INTERNO QUE CRIA OS QUADRADINHOS DE CADA LIGA NO CARROSSEL
+    inner class LigaAdapter(
+        private val list: List<LigaItem>,
+        private val onClick: (LigaItem) -> Unit
+    ) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
+
+        inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val img = view.findViewById<ImageView>(1001)
+            val txt = view.findViewById<TextView>(1002)
+        }
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LigaViewHolder {
+            val context = parent.context
+            val layout = LinearLayout(context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                layoutParams = ViewGroup.MarginLayoutParams(280, 280).apply { setMargins(16, 16, 16, 16) }
+                background = ContextCompat.getDrawable(context, R.drawable.bg_menu_focus)
+                isFocusable = true
+                isClickable = true
+                setPadding(16, 16, 16, 16)
+            }
+            val img = ImageView(context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(130, 130) }
+            val txt = TextView(context).apply { 
+                id = 1002
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
+                setTextColor(Color.WHITE)
+                textSize = 14f
+                textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1
+            }
+            layout.addView(img)
+            layout.addView(txt)
+            return LigaViewHolder(layout)
+        }
+
+        override fun onBindViewHolder(holder: LigaViewHolder, position: Int) {
+            val item = list[position]
+            holder.txt.text = item.nome
+            Glide.with(holder.itemView.context).load(item.logo).into(holder.img)
+
+            holder.itemView.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    v.bringToFront()
+                    v.animate().scaleX(1.10f).scaleY(1.10f).translationZ(10f).setDuration(150).start()
+                } else {
+                    v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+                }
+            }
+            holder.itemView.setOnClickListener { onClick(item) }
+        }
+
+        override fun getItemCount(): Int = list.size
     }
 }
