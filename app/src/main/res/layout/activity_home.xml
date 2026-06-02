@@ -4,6 +4,7 @@
     android:layout_height="match_parent"
     android:background="#111114">
 
+    <!-- CONTEÚDO PRINCIPAL ROLÁVEL -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -15,6 +16,7 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
+            <!-- HERO SECTION -->
             <RelativeLayout
                 android:id="@+id/heroSection"
                 android:layout_width="match_parent"
@@ -37,6 +39,7 @@
                     android:layout_height="match_parent"
                     android:background="@drawable/bg_hero_gradient" />
 
+                <!-- MENU SUPERIOR -->
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -71,6 +74,7 @@
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
+                <!-- TEXTOS DO DESTAQUE -->
                 <LinearLayout
                     android:layout_width="600dp"
                     android:layout_height="wrap_content"
@@ -87,6 +91,7 @@
                 </LinearLayout>
             </RelativeLayout>
 
+            <!-- LISTAS (PRATELEIRAS) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -96,14 +101,13 @@
                 android:paddingTop="24dp"
                 android:paddingBottom="48dp"
                 android:clipChildren="false"
-                android:clipToPadding="false">
-
+                <!-- MÁGICA: Ajustado para 160dp. Vira uma prateleira perfeita, sem espaços pretos vazios -->
                 <WebView
                     android:id="@+id/webViewFutebol"
                     android:layout_width="match_parent"
-                    android:layout_height="550dp"
+                    android:layout_height="160dp"
                     android:layout_marginEnd="48dp"
-                    android:layout_marginBottom="32dp"
+                    android:layout_marginBottom="24dp"
                     android:background="#00000000"
                     android:focusable="true"
                     android:focusableInTouchMode="true" />
@@ -129,6 +133,7 @@
         </RelativeLayout>
     </androidx.core.widget.NestedScrollView>
 
+    <!-- OVERLAY DE SPINNER PREMIUM -->
     <RelativeLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
