@@ -3,172 +3,221 @@ package com.signalplay.tv
 import android.app.Activity
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.view.View
 import android.widget.Button
-import android.widget.CheckBox
 import android.widget.EditText
+import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.RelativeLayout
+import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import java.io.File
+import java.io.FileOutputStream
 
 class MainActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
-    private lateinit var progressBar: ProgressBar
-    private lateinit var btnEntrar: Button
-    private lateinit var edtUsuario: EditText
-    private lateinit var edtSenha: EditText
-    private lateinit var chkLembrar: CheckBox
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         db = FirebaseFirestore.getInstance()
-        
-        edtUsuario = findViewById(R.id.edtUsuario)
-        edtSenha = findViewById(R.id.edtSenha)
-        btnEntrar = findViewById(R.id.btnEntrar)
-        chkLembrar = findViewById(R.id.chkLembrar)
-        progressBar = findViewById(R.id.progressBar)
 
-        // Animação de botão
-        btnEntrar.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
-            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
-        }
+        val edtUser = findViewById<EditText>(R.id.edtUser)
+        val edtPass = findViewById<EditText>(R.id.edtPass)
+        val btnEntrar = findViewById<Button>(R.id.btnEntrar)
+        val loadingOverlay = findViewById<RelativeLayout>(R.id.loadingOverlay)
+        val tvLoadingMsg = findViewById<TextView>(R.id.tvLoadingMsg)
 
-        // 1. VERIFICA O LOGIN AUTOMÁTICO
+        // =========================================================================
+        // MÁGICA: VERIFICADOR DE ATUALIZAÇÃO EM NUVEM (IN-APP UPDATER)
+        // =========================================================================
+        verificarAtualizacao()
+
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        val savedUser = prefs.getString("USERNAME", "")
-        val savedPass = prefs.getString("PASSWORD", "")
-        val lembrar = prefs.getBoolean("LEMBRAR", false)
+        val savedUrl = prefs.getString("URL", "")
+        val savedUser = prefs.getString("USER", "")
+        val savedPass = prefs.getString("PASS", "")
+        val savedUsername = prefs.getString("USERNAME", "")
 
-        if (lembrar && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            esconderFormulario()
-            fazerLogin(savedUser, savedPass, true)
-        } else {
-            if (!savedUser.isNullOrEmpty()) edtUsuario.setText(savedUser)
-            if (!savedPass.isNullOrEmpty()) edtSenha.setText(savedPass)
+        if (!savedUrl.isNullOrEmpty() && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
+            val intent = Intent(this, HomeActivity::class.java)
+            intent.putExtra("URL", savedUrl)
+            intent.putExtra("USER", savedUser)
+            intent.putExtra("PASS", savedPass)
+            intent.putExtra("USERNAME", savedUsername)
+            startActivity(intent)
+            finish()
+            return
         }
 
-        // 2. BOTÃO ENTRAR MANUAL
         btnEntrar.setOnClickListener {
-            val userDigitado = edtUsuario.text.toString().trim()
-            val passDigitada = edtSenha.text.toString().trim()
-            val querLembrar = chkLembrar.isChecked
+            val user = edtUser.text.toString().trim()
+            val pass = edtPass.text.toString().trim()
 
-            if (userDigitado.isNotEmpty() && passDigitada.isNotEmpty()) {
-                esconderFormulario()
-                fazerLogin(userDigitado, passDigitada, querLembrar)
-            } else {
-                Toast.makeText(this, "Preencha o Usuário e a Senha!", Toast.LENGTH_SHORT).show()
+            if (user.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Preencha usuário e senha!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
             }
+
+            loadingOverlay.visibility = View.VISIBLE
+            tvLoadingMsg.text = "Validando Acesso..."
+
+            db.collection("usuarios").whereEqualTo("usuario", user).whereEqualTo("senha", pass).get()
+                .addOnSuccessListener { snapshot ->
+                    if (snapshot.isEmpty) {
+                        loadingOverlay.visibility = View.GONE
+                        Toast.makeText(this, "Usuário ou senha incorretos!", Toast.LENGTH_LONG).show()
+                        return@addOnSuccessListener
+                    }
+
+                    val dadosUser = snapshot.documents[0]
+                    val status = dadosUser.getString("status")
+                    if (status != "ativo" && status != "teste") {
+                        loadingOverlay.visibility = View.GONE
+                        Toast.makeText(this, "Conta bloqueada ou expirada!", Toast.LENGTH_LONG).show()
+                        return@addOnSuccessListener
+                    }
+
+                    val serverId = dadosUser.getString("servidor_id")
+                    if (serverId.isNullOrEmpty()) {
+                        loadingOverlay.visibility = View.GONE
+                        Toast.makeText(this, "Nenhum servidor vinculado à sua conta.", Toast.LENGTH_LONG).show()
+                        return@addOnSuccessListener
+                    }
+
+                    db.collection("servidores").document(serverId).get().addOnSuccessListener { serverDoc ->
+                        if (!serverDoc.exists()) {
+                            loadingOverlay.visibility = View.GONE
+                            Toast.makeText(this, "Servidor offline.", Toast.LENGTH_LONG).show()
+                            return@addOnSuccessListener
+                        }
+
+                        val sUrl = serverDoc.getString("url") ?: ""
+                        val sUser = serverDoc.getString("xtream_user") ?: ""
+                        val sPass = serverDoc.getString("xtream_pass") ?: ""
+
+                        prefs.edit()
+                            .putString("URL", sUrl)
+                            .putString("USER", sUser)
+                            .putString("PASS", sPass)
+                            .putString("USERNAME", user)
+                            .apply()
+
+                        val intent = Intent(this, HomeActivity::class.java)
+                        intent.putExtra("URL", sUrl)
+                        intent.putExtra("USER", sUser)
+                        intent.putExtra("PASS", sPass)
+                        intent.putExtra("USERNAME", user)
+                        startActivity(intent)
+                        finish()
+                    }
+                }
+                .addOnFailureListener {
+                    loadingOverlay.visibility = View.GONE
+                    Toast.makeText(this, "Erro ao conectar com o banco de dados.", Toast.LENGTH_SHORT).show()
+                }
         }
     }
 
-    private fun esconderFormulario() {
-        edtUsuario.visibility = View.GONE
-        edtSenha.visibility = View.GONE
-        btnEntrar.visibility = View.GONE
-        chkLembrar.visibility = View.GONE
-        progressBar.visibility = View.VISIBLE
-    }
+    // =========================================================================
+    // LÓGICA DO DOWNLOAD E INSTALAÇÃO
+    // =========================================================================
+    private fun verificarAtualizacao() {
+        db.collection("configuracoes").document("app").get().addOnSuccessListener { doc ->
+            if (doc.exists()) {
+                val versaoNuvem = doc.getLong("versao_atual")?.toInt() ?: 1
+                val linkDownload = doc.getString("link_apk") ?: ""
+                
+                // Pega a versão instalada na TV do cliente
+                val versaoApp = try {
+                    packageManager.getPackageInfo(packageName, 0).versionCode
+                } catch (e: Exception) { 1 }
 
-    private fun fazerLogin(username: String, passDigitada: String, salvarLogin: Boolean) {
-        // =========================================================
-        // ETAPA 1: Vai na tabela "usuarios" e valida o acesso
-        // =========================================================
-        db.collection("usuarios")
-            .whereEqualTo("usuario", username)
-            .get()
-            .addOnSuccessListener { snapshot ->
-                if (!snapshot.isEmpty) {
-                    val userDoc = snapshot.documents[0]
-                    val senhaBanco = userDoc.getString("senha") ?: ""
-                    
-                    if (passDigitada == senhaBanco) {
-                        
-                        val servidorId = userDoc.getString("servidor_id") ?: ""
-                        
-                        if (servidorId.isNotEmpty()) {
-                            // =========================================================
-                            // ETAPA 2: Vai na tabela "servidores" buscar URL e Xtream
-                            // =========================================================
-                            db.collection("servidores")
-                                .document(servidorId)
-                                .get()
-                                .addOnSuccessListener { serverDoc ->
-                                    if (serverDoc.exists()) {
-                                        
-                                        val rawUrl = serverDoc.getString("url") ?: ""
-                                        var xtreamUrl = rawUrl.trim()
-                                        
-                                        // Blindagem para não deixar o link dar erro no OkHttp
-                                        if (xtreamUrl.isNotEmpty() && !xtreamUrl.startsWith("http")) {
-                                            xtreamUrl = "http://$xtreamUrl"
-                                        }
-                                        if (xtreamUrl.endsWith("/")) {
-                                            xtreamUrl = xtreamUrl.dropLast(1)
-                                        }
-
-                                        val xtreamUser = serverDoc.getString("xtream_user") ?: ""
-                                        val xtreamPass = serverDoc.getString("xtream_pass") ?: ""
-
-                                        // Salva na memória do Android
-                                        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                                        if (salvarLogin) {
-                                            prefs.edit()
-                                                .putString("USERNAME", username)
-                                                .putString("PASSWORD", passDigitada)
-                                                .putBoolean("LEMBRAR", true)
-                                                .apply()
-                                        } else {
-                                            prefs.edit().clear().apply()
-                                        }
-
-                                        // Inicia a HomeActivity com tudo certinho!
-                                        val intent = Intent(this, HomeActivity::class.java)
-                                        intent.putExtra("URL", xtreamUrl)
-                                        intent.putExtra("USER", xtreamUser)
-                                        intent.putExtra("PASS", xtreamPass)
-                                        intent.putExtra("USERNAME", username)
-                                        startActivity(intent)
-                                        finish()
-
-                                    } else {
-                                        falhaLogin("O Servidor vinculado não foi encontrado.")
-                                    }
-                                }
-                                .addOnFailureListener {
-                                    falhaLogin("Erro ao buscar dados do Servidor.")
-                                }
-                        } else {
-                            falhaLogin("Nenhum servidor vinculado a este usuário.")
-                        }
-                    } else {
-                        falhaLogin("Senha incorreta.")
-                    }
-                } else {
-                    falhaLogin("Usuário não encontrado.")
+                // Se a versão da Nuvem for maior, BLOQUEIA O APP E EXIGE ATUALIZAÇÃO!
+                if (versaoNuvem > versaoApp && linkDownload.isNotEmpty()) {
+                    mostrarTelaDeAtualizacaoForcada(linkDownload)
                 }
             }
-            .addOnFailureListener {
-                falhaLogin("Erro ao conectar no banco de dados.")
-            }
+        }
     }
 
-    private fun falhaLogin(mensagem: String) {
-        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        prefs.edit().clear().apply()
+    private fun mostrarTelaDeAtualizacaoForcada(linkApk: String) {
+        val overlay = findViewById<RelativeLayout>(R.id.loadingOverlay)
+        val tvMsg = findViewById<TextView>(R.id.tvLoadingMsg)
+        val progress = findViewById<ProgressBar>(R.id.progressBarLogin) // Supondo que tenha um ID pra progressBar no seu XML, se não, ignora
+
+        overlay.visibility = View.VISIBLE
+        tvMsg.text = "Nova Atualização Disponível!"
         
-        progressBar.visibility = View.GONE
-        edtUsuario.visibility = View.VISIBLE
-        edtSenha.visibility = View.VISIBLE
-        btnEntrar.visibility = View.VISIBLE
-        chkLembrar.visibility = View.VISIBLE
+        // Esconde tudo e força o download
+        baixarEInstalarApk(linkApk, tvMsg)
+    }
+
+    private fun baixarEInstalarApk(apkUrl: String, tvStatus: TextView) {
+        tvStatus.text = "Baixando atualização... Por favor, aguarde."
         
-        Toast.makeText(this, mensagem, Toast.LENGTH_LONG).show()
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val client = OkHttpClient()
+                val request = Request.Builder().url(apkUrl).build()
+                val response = client.newCall(request).execute()
+                val body = response.body
+                
+                if (body != null) {
+                    val file = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
+                    val inputStream = body.byteStream()
+                    val outputStream = FileOutputStream(file)
+                    val buffer = ByteArray(4096)
+                    var bytesRead: Int
+                    
+                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                        outputStream.write(buffer, 0, bytesRead)
+                    }
+                    
+                    outputStream.flush()
+                    outputStream.close()
+                    inputStream.close()
+
+                    withContext(Dispatchers.Main) {
+                        tvStatus.text = "Iniciando Instalação..."
+                        instalarApk(file)
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    tvStatus.text = "Erro ao baixar atualização. Reinicie o App."
+                }
+            }
+        }
+    }
+
+    private fun instalarApk(file: File) {
+        try {
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            
+            // O FileProvider usa exatamente aquele XML que nós criamos no Passo 2!
+            val apkUri: Uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
+            
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
+            startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao tentar abrir o instalador.", Toast.LENGTH_LONG).show()
+        }
     }
 }
