@@ -99,7 +99,7 @@ class HomeActivity : Activity() {
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
         val recyclerEsportes = findViewById<RecyclerView>(R.id.recyclerEsportes)
-        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps) // NOVO
+        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
         
         recyclerEsportes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -158,7 +158,6 @@ class HomeActivity : Activity() {
             startActivity(intent)
         }
 
-        // CARREGA A PRATELEIRA DE APLICATIVOS NATIVOS DA TV
         carregarAplicativosDaTV()
 
         db.collection("usuarios").whereEqualTo("usuario", username).get()
@@ -190,9 +189,13 @@ class HomeActivity : Activity() {
                                 if (progressoData != null) {
                                     val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                                     val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
-                                    if (dur > 0L && pos > 10000L && (dur - pos) > 180000L) {
-                                        val perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
-                                        return if (perc == 0) 1 else perc
+                                    
+                                    // Liberado! Assistiu 5 segundos, já vai mostrar a porcentagem no card
+                                    if (dur > 0L && pos > 5000L) {
+                                        var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                                        if (perc == 0) perc = 1
+                                        if (perc > 99) perc = 99
+                                        return perc
                                     }
                                 }
                             }
@@ -362,9 +365,11 @@ class HomeActivity : Activity() {
                             val pos = progData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                             val dur = progData["duracao"]?.toString()?.toLongOrNull() ?: 0L
                             
-                            if (dur > 0L && pos > 10000L && (dur - pos) > 180000L) {
+                            // Sem matemática restritiva! Se tem mais de 5s, mostra na tela.
+                            if (dur > 0L && pos > 5000L) {
                                 var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
                                 if (perc == 0) perc = 1 
+                                if (perc > 99) perc = 99
                                 listContinuar.add(FilmeItem(item.id, item.nome, item.urlImagem, "", item.tipo, "", perc))
                             }
                         }
@@ -389,36 +394,37 @@ class HomeActivity : Activity() {
     }
 
     // =================================================================================
-    // MÁGICA: FUNÇÃO QUE VASCULHA OS APLICATIVOS INSTALADOS NA TV E MONTA A PRATELEIRA
+    // MÁGICA ATUALIZADA: RADAR DUPLO PARA PEGAR TODOS OS APLICATIVOS (TV + CELULAR)
     // =================================================================================
     private fun carregarAplicativosDaTV() {
         val pm = packageManager
-        val intentTv = Intent(Intent.ACTION_MAIN, null)
-        intentTv.addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) // Busca apps otimizados pra TV primeiro
-        var apps = pm.queryIntentActivities(intentTv, 0)
-        
-        if (apps.isEmpty()) {
-            // Se for TV Box normal (Android Mobile), busca os apps normais
-            val intentMobile = Intent(Intent.ACTION_MAIN, null)
-            intentMobile.addCategory(Intent.CATEGORY_LAUNCHER)
-            apps = pm.queryIntentActivities(intentMobile, 0)
-        }
+        val installedApps = mutableMapOf<String, AppItem>()
 
-        val installedApps = mutableListOf<AppItem>()
-        for (info in apps) {
-            val packageName = info.activityInfo.packageName
-            // Ignora o nosso próprio aplicativo para ele não aparecer dentro dele mesmo
-            if (packageName != applicationContext.packageName) {
-                val nomeApp = info.loadLabel(pm).toString()
-                val iconeApp = info.loadIcon(pm)
-                installedApps.add(AppItem(nomeApp, iconeApp, packageName))
+        // 1. Puxa os aplicativos otimizados para Android TV (Ex: Netflix)
+        val intentTv = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) }
+        pm.queryIntentActivities(intentTv, 0).forEach { info ->
+            val pkg = info.activityInfo.packageName
+            if (pkg != applicationContext.packageName) {
+                installedApps[pkg] = AppItem(info.loadLabel(pm).toString(), info.loadIcon(pm), pkg)
             }
         }
 
-        installedApps.sortBy { it.nome }
+        // 2. Puxa os aplicativos comuns (Ex: Google Chrome, Gerenciador de Arquivos, etc)
+        val intentMobile = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+        pm.queryIntentActivities(intentMobile, 0).forEach { info ->
+            val pkg = info.activityInfo.packageName
+            // Se o app já não estiver na lista e não for o nosso próprio aplicativo, adiciona
+            if (pkg != applicationContext.packageName && !installedApps.containsKey(pkg)) {
+                installedApps[pkg] = AppItem(info.loadLabel(pm).toString(), info.loadIcon(pm), pkg)
+            }
+        }
+
+        // Transforma o mapa em lista e organiza em ordem alfabética
+        val listaFinal = installedApps.values.toMutableList()
+        listaFinal.sortBy { it.nome }
 
         val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
-        recyclerApps.adapter = AppAdapter(installedApps) { app ->
+        recyclerApps.adapter = AppAdapter(listaFinal) { app ->
             val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
             if (launchIntent != null) {
                 startActivity(launchIntent)
@@ -524,9 +530,6 @@ class HomeActivity : Activity() {
         override fun getItemCount(): Int = list.size
     }
 
-    // =================================================================================
-    // ADAPTADOR PARA RENDERIZAR OS APLICATIVOS COM ÍCONES REDONDOS IGUAL A FOTO
-    // =================================================================================
     inner class AppAdapter(
         private val list: List<AppItem>,
         private val onClick: (AppItem) -> Unit
@@ -569,7 +572,7 @@ class HomeActivity : Activity() {
         override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
             val item = list[position]
             holder.txt.text = item.nome
-            holder.img.setImageDrawable(item.icone) // Puxa o ícone nativo da TV (Netflix, Youtube, etc)
+            holder.img.setImageDrawable(item.icone)
 
             holder.itemView.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
