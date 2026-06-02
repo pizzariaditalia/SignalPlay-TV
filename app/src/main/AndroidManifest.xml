@@ -80,7 +80,7 @@
             android:screenOrientation="landscape" />
 
         <activity
-            android:name=".FootballActivity"
+            android:name=".SportsActivity"
             android:exported="false"
             android:screenOrientation="landscape" />
 
