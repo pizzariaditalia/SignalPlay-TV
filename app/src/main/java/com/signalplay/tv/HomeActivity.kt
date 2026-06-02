@@ -6,9 +6,11 @@ import android.content.Intent
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
+import android.net.Uri
 import android.os.Bundle
 import android.view.View
 import android.view.Window
+import android.webkit.JavascriptInterface
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.widget.Button
@@ -43,7 +45,6 @@ class HomeActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
-        // MÁGICA PARA ESCONDER A BARRA DO "SIGNALPLAY TV" DE FORMA FORÇADA
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         actionBar?.hide()
         
@@ -146,13 +147,24 @@ class HomeActivity : Activity() {
         }
 
         // =================================================================================
-        // MÁGICA DO CARROSSEL DE FUTEBOL INJETADO (CÓDIGO LIMPO DO '$')
+        // SUPER MOTOR DE ESPORTES EM NUVEM (ILIMITADO + SUL-AMERICANO + FÍSICA CORRIGIDA)
         // =================================================================================
         val webViewFutebol = findViewById<WebView>(R.id.webViewFutebol)
         webViewFutebol.setBackgroundColor(Color.TRANSPARENT)
         val settings: WebSettings = webViewFutebol.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
+        
+        // Conecta o JavaScript interno com as funções nativas do Android
+        webViewFutebol.addJavascriptInterface(object {
+            @JavascriptInterface
+            fun abrirLiga(busca: String) {
+                runOnUiThread {
+                    val intentEsporte = Intent(Intent.ACTION_VIEW, Uri.parse("https://www.google.com/search?q=" + busca))
+                    startActivity(intentEsporte)
+                }
+            }
+        }, "AndroidApp")
 
         val htmlFutebol = """
         <!DOCTYPE html>
@@ -162,49 +174,19 @@ class HomeActivity : Activity() {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <script src="https://cdn.jsdelivr.net/npm/spatial-navigation-js@1.0.4/spatial_navigation.min.js"></script>
             <style>
-                :root { --bg-color: transparent; --card-bg: #22222a; --accent-color: #00ff88; --text-color: #ffffff; --text-muted: #888888; }
-                body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; overflow-x: hidden; }
-                h1 { color: #fff; margin-bottom: 5px; font-size: 20px; text-transform: uppercase; letter-spacing: 1px;}
-                .carousel { display: flex; overflow-x: auto; gap: 15px; padding: 10px 0; scrollbar-width: none; }
+                :root { --bg-color: transparent; --card-bg: #22222a; --accent-color: #00ff88; --text-color: #ffffff; }
+                body { font-family: sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 0; overflow: hidden; }
+                h1 { color: #fff; margin-bottom: 5px; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; font-weight: bold;}
+                .carousel { display: flex; overflow-x: auto; gap: 15px; padding: 10px 20px; scrollbar-width: none; }
                 .carousel::-webkit-scrollbar { display: none; }
-                .league-card { background-color: var(--card-bg); border-radius: 12px; min-width: 130px; padding: 15px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.2s; outline: none; }
+                .league-card { background-color: var(--card-bg); border-radius: 12px; min-width: 125px; padding: 12px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.2s; outline: none; }
                 .league-card:focus, .league-card:hover { border-color: var(--accent-color); transform: scale(1.05); background-color: #2a2a35; }
-                .league-name { margin: 0; font-size: 13px; font-weight: bold; }
-                .content-area { margin-top: 15px; display: none; background-color: rgba(34, 34, 42, 0.8); padding: 20px; border-radius: 12px; border: 1px solid #333; }
-                .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
-                .tab-btn { background: transparent; color: var(--text-muted); border: 2px solid transparent; padding: 8px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; outline: none; }
-                .tab-btn:focus, .tab-btn:hover { border-color: var(--text-color); color: var(--text-color); }
-                .tab-btn.active { background-color: var(--accent-color); color: #000; font-weight: bold; }
-                table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-                th, td { padding: 10px; border-bottom: 1px solid #333; }
-                th { color: var(--accent-color); font-weight: bold; text-transform: uppercase; font-size: 12px; }
-                .loader { padding: 20px; font-size: 14px; color: var(--accent-color); display: none; }
-                .panel { display: none; } .panel.active { display: block; }
+                .league-name { margin: 0; font-size: 12px; font-weight: bold; color: #eee; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
             </style>
         </head>
         <body>
-            <h1>🏆 Esportes em Destaque</h1>
+            <h1>⚽ Campeonatos em Destaque</h1>
             <div class="carousel" id="league-carousel"></div>
-            <div class="loader" id="loader">Buscando dados na Europa... ⏳</div>
-            <div class="content-area" id="content-area">
-                <h2 id="league-title" style="margin-top: 0; font-size: 18px;">Campeonato</h2>
-                <div class="tabs">
-                    <button class="tab-btn sn-focusable active" onclick="switchTab('standings', this)">Classificação</button>
-                    <button class="tab-btn sn-focusable" onclick="switchTab('fixtures', this)">Próximos Jogos</button>
-                </div>
-                <div id="standings" class="panel active">
-                    <table>
-                        <thead><tr><th>Pos</th><th>Equipe</th><th>Pts</th><th>J</th><th>V</th><th>E</th><th>D</th><th>SG</th></tr></thead>
-                        <tbody id="standings-body"></tbody>
-                    </table>
-                </div>
-                <div id="fixtures" class="panel">
-                    <table>
-                        <thead><tr><th>Data</th><th style="text-align: right;">Mandante</th><th style="text-align: center;">X</th><th>Visitante</th><th>Status</th></tr></thead>
-                        <tbody id="fixtures-body"></tbody>
-                    </table>
-                </div>
-            </div>
 
             <script>
                 window.addEventListener('load', function() {
@@ -214,86 +196,29 @@ class HomeActivity : Activity() {
                     SpatialNavigation.focus();
                 });
 
-                // SUA CHAVE INSERIDA AQUI:
-                const API_KEY = '16b1f41884eb47bcaa3f299f97ca680c'; 
-                
-                const BASE_URL = 'https://api.football-data.org/v4/competitions/';
+                // BANCO DE DADOS COMPLETO SEM LIMITES (INCLUINDO COPA DO BRASIL, SÉRIE B E LIBERTADORES)
                 const leagues = [
-                    { id: 'PL', name: 'Premier League', logo: 'https://crests.football-data.org/PL.png' },
-                    { id: 'PD', name: 'La Liga', logo: 'https://crests.football-data.org/PD.png' },
-                    { id: 'SA', name: 'Serie A', logo: 'https://crests.football-data.org/SA.png' },
-                    { id: 'BL1', name: 'Bundesliga', logo: 'https://crests.football-data.org/BL1.png' },
-                    { id: 'CL', name: 'Champions League', logo: 'https://crests.football-data.org/CL.png' },
-                    { id: 'BSA', name: 'Brasileirão', logo: 'https://crests.football-data.org/BSA.png' }
+                    { name: 'Brasileirão A', logo: 'https://crests.football-data.org/BSA.png', search: 'tabela+brasileirao+serie+a' },
+                    { name: 'Brasileirão B', logo: 'https://upload.wikimedia.org/wikipedia/pt/f/f4/Campeonato_Brasileiro_S%C3%A9rie_B_logo.png', search: 'tabela+brasileirao+serie+b' },
+                    { name: 'Copa do Brasil', logo: 'https://upload.wikimedia.org/wikipedia/pt/e/e2/Copa_do_Brasil_logo.png', search: 'jogos+copa+do+brasil' },
+                    { name: 'Libertadores', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/e3/Copa_Libertadores_logo.png', search: 'tabela+copa+libertadores' },
+                    { name: 'La Liga', logo: 'https://crests.football-data.org/PD.png', search: 'tabela+la+liga+espanha' },
+                    { name: 'Premier League', logo: 'https://crests.football-data.org/PL.png', search: 'tabela+premier+league' },
+                    { name: 'Champions League', logo: 'https://crests.football-data.org/CL.png', search: 'tabela+champions+league' },
+                    { name: 'Serie A Itália', logo: 'https://crests.football-data.org/SA.png', search: 'tabela+serie+a+italia' }
                 ];
 
                 const carousel = document.getElementById('league-carousel');
                 leagues.forEach(league => {
                     const card = document.createElement('div');
                     card.className = 'league-card sn-focusable'; 
-                    card.innerHTML = '<img src="' + league.logo + '" style="width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px;"><br><span class="league-name">' + league.name + '</span>';
-                    card.onclick = () => fetchLeagueData(league.id, league.name);
-                    card.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchLeagueData(league.id, league.name); });
+                    card.innerHTML = '<img src="' + league.logo + '" style="width: 40px; height: 40px; object-fit: contain; margin-bottom: 6px;"><br><span class="league-name">' + league.name + '</span>';
+                    
+                    // Dispara a função nativa do Android ao clicar
+                    card.onclick = () => AndroidApp.abrirLiga(league.search);
+                    card.addEventListener('keydown', (e) => { if (e.key === 'Enter') AndroidApp.abrirLiga(league.search); });
                     carousel.appendChild(card);
                 });
-
-                async function fetchLeagueData(leagueId, leagueName) {
-                    document.getElementById('content-area').style.display = 'none';
-                    document.getElementById('loader').style.display = 'block';
-                    document.getElementById('league-title').innerText = leagueName;
-
-                    try {
-                        const config = { headers: { 'X-Auth-Token': API_KEY } };
-                        const [standingsRes, fixturesRes] = await Promise.all([
-                            fetch(BASE_URL + leagueId + '/standings', config),
-                            fetch(BASE_URL + leagueId + '/matches?status=SCHEDULED', config)
-                        ]);
-
-                        if (!standingsRes.ok) throw new Error("API Falhou");
-
-                        const standingsData = await standingsRes.json();
-                        const fixturesData = await fixturesRes.json();
-
-                        renderStandings(standingsData);
-                        renderFixtures(fixturesData);
-
-                        document.getElementById('loader').style.display = 'none';
-                        document.getElementById('content-area').style.display = 'block';
-                        switchTab('standings', document.querySelector('.tab-btn'));
-                        SpatialNavigation.makeFocusable(); 
-                    } catch (error) {
-                        document.getElementById('loader').innerText = '❌ Erro de Conexão ou Limite da API atingido.';
-                    }
-                }
-
-                function renderStandings(data) {
-                    const tbody = document.getElementById('standings-body');
-                    tbody.innerHTML = '';
-                    if (!data.standings || data.standings.length === 0) return tbody.innerHTML = '<tr><td colspan="8">Sem dados.</td></tr>';
-                    data.standings[0].table.forEach(row => {
-                        tbody.innerHTML += '<tr><td>' + row.position + 'º</td>' +
-                        '<td style="display:flex; align-items:center; gap:8px;"><img src="' + row.team.crest + '" width="20" height="20" style="object-fit:contain;"> ' + row.team.shortName + '</td>' +
-                        '<td style="color:#00ff88; font-weight:bold;">' + row.points + '</td><td>' + row.playedGames + '</td><td>' + row.won + '</td><td>' + row.draw + '</td><td>' + row.lost + '</td><td>' + row.goalDifference + '</td></tr>';
-                    });
-                }
-
-                function renderFixtures(data) {
-                    const tbody = document.getElementById('fixtures-body');
-                    tbody.innerHTML = '';
-                    if (!data.matches || data.matches.length === 0) return tbody.innerHTML = '<tr><td colspan="5">Sem jogos agendados.</td></tr>';
-                    data.matches.slice(0, 15).forEach(m => {
-                        const d = new Date(m.utcDate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' });
-                        tbody.innerHTML += '<tr><td>' + d + '</td><td style="text-align:right;">' + m.homeTeam.shortName + ' <img src="' + m.homeTeam.crest + '" width="20" height="20" style="vertical-align:middle; margin-left:5px;"></td>' +
-                        '<td style="text-align:center;">X</td><td><img src="' + m.awayTeam.crest + '" width="20" height="20" style="vertical-align:middle; margin-right:5px;"> ' + m.awayTeam.shortName + '</td><td style="color:#00ff88;">Agendado</td></tr>';
-                    });
-                }
-
-                function switchTab(tabId, btnElement) {
-                    document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
-                    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-                    document.getElementById(tabId).classList.add('active');
-                    btnElement.classList.add('active');
-                }
             </script>
         </body>
         </html>
