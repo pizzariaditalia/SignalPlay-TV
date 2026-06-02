@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     android:background="#111114">
 
-    <!-- CONTEÚDO PRINCIPAL ROLÁVEL -->
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -16,7 +15,6 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
-            <!-- HERO SECTION -->
             <RelativeLayout
                 android:id="@+id/heroSection"
                 android:layout_width="match_parent"
@@ -39,7 +37,6 @@
                     android:layout_height="match_parent"
                     android:background="@drawable/bg_hero_gradient" />
 
-                <!-- MENU SUPERIOR -->
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -74,7 +71,6 @@
                         android:layout_alignParentEnd="true"/>
                 </RelativeLayout>
 
-                <!-- TEXTOS DO DESTAQUE -->
                 <LinearLayout
                     android:layout_width="600dp"
                     android:layout_height="wrap_content"
@@ -91,7 +87,6 @@
                 </LinearLayout>
             </RelativeLayout>
 
-            <!-- LISTAS (PRATELEIRAS) -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -103,16 +98,24 @@
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
-                <!-- MÁGICA: Ajustado para 160dp. Vira uma prateleira perfeita, sem espaços pretos vazios -->
-                <WebView
-                    android:id="@+id/webViewFutebol"
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="160dp"
-                    android:layout_marginEnd="48dp"
-                    android:layout_marginBottom="24dp"
-                    android:background="#00000000"
-                    android:focusable="true"
-                    android:focusableInTouchMode="true" />
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical"
+                    android:layout_marginBottom="12dp">
+                    
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="⚽ Campeonatos em Destaque" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                </LinearLayout>
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/recyclerEsportes"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="32dp"
+                    android:clipChildren="false"
+                    android:clipToPadding="false"
+                    android:paddingEnd="80dp" />
 
                 <TextView android:id="@+id/tvContinuarTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Continuar Assistindo" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" android:visibility="gone" />
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerContinuar" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" android:visibility="gone" />
@@ -135,7 +138,6 @@
         </RelativeLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- OVERLAY DE SPINNER PREMIUM -->
     <RelativeLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
