@@ -31,7 +31,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 
-// Objeto para a lista de campeonatos
 data class LigaItem(val nome: String, val logo: String, val url: String)
 
 class HomeActivity : Activity() {
@@ -94,7 +93,6 @@ class HomeActivity : Activity() {
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
         
-        // NOVO: Recycler de Esportes 100% Nativo
         val recyclerEsportes = findViewById<RecyclerView>(R.id.recyclerEsportes)
         
         recyclerEsportes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -111,60 +109,43 @@ class HomeActivity : Activity() {
         passGlobal = intent.getStringExtra("PASS") ?: ""
         username = intent.getStringExtra("USERNAME") ?: ""
 
-        menuPesquisar.setOnClickListener {
-            val intent = Intent(this@HomeActivity, SearchActivity::class.java)
-            intent.putExtra("URL", urlGlobal)
-            intent.putExtra("USER", userGlobal)
-            intent.putExtra("PASS", passGlobal)
-            intent.putExtra("USERNAME", username)
-            startActivity(intent)
-        }
-        menuCanais.setOnClickListener {
-            val intent = Intent(this@HomeActivity, TvActivity::class.java)
-            intent.putExtra("URL", urlGlobal)
-            intent.putExtra("USER", userGlobal)
-            intent.putExtra("PASS", passGlobal)
-            intent.putExtra("USERNAME", username)
-            startActivity(intent)
-        }
-        menuFilmes.setOnClickListener {
-            val intent = Intent(this@HomeActivity, VodActivity::class.java)
-            intent.putExtra("URL", urlGlobal)
-            intent.putExtra("USER", userGlobal)
-            intent.putExtra("PASS", passGlobal)
-            intent.putExtra("USERNAME", username)
-            startActivity(intent)
-        }
-        menuSeries.setOnClickListener {
-            val intent = Intent(this@HomeActivity, SeriesActivity::class.java)
-            intent.putExtra("URL", urlGlobal)
-            intent.putExtra("USER", userGlobal)
-            intent.putExtra("PASS", passGlobal)
-            intent.putExtra("USERNAME", username)
-            startActivity(intent)
-        }
-        menuConfig.setOnClickListener {
-            val intent = Intent(this@HomeActivity, SettingsActivity::class.java)
-            intent.putExtra("URL", urlGlobal)
-            intent.putExtra("USER", userGlobal)
-            intent.putExtra("PASS", passGlobal)
-            intent.putExtra("USERNAME", username)
-            startActivity(intent)
-        }
+        menuPesquisar.setOnClickListener { startActivity(Intent(this, SearchActivity::class.java).apply { putExtras(intent) }) }
+        menuCanais.setOnClickListener { startActivity(Intent(this, TvActivity::class.java).apply { putExtras(intent) }) }
+        menuFilmes.setOnClickListener { startActivity(Intent(this, VodActivity::class.java).apply { putExtras(intent) }) }
+        menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
+        menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
 
         // =================================================================================
-        // DADOS DO CARROSSEL DE ESPORTES (URLs de alta definição da ESPN e Links Diretos)
+        // LISTA GIGANTE DE ESPORTES (27 Ligas em Ordem Alfabética + Link Direto do App)
         // =================================================================================
         val listaLigas = listOf(
             LigaItem("Brasileirão A", "https://a.espncdn.com/i/leaguelogos/soccer/500/85.png", "https://m.flashscore.com.br/futebol/brasil/serie-a/classificacao/"),
-            LigaItem("Copa do Brasil", "https://a.espncdn.com/i/leaguelogos/soccer/500/90.png", "https://m.flashscore.com.br/futebol/brasil/copa-do-brasil/resultados/"),
-            LigaItem("Libertadores", "https://a.espncdn.com/i/leaguelogos/soccer/500/14.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-libertadores/classificacao/"),
-            LigaItem("Sul-Americana", "https://a.espncdn.com/i/leaguelogos/soccer/500/16.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-sul-americana/classificacao/"),
             LigaItem("Brasileirão B", "https://upload.wikimedia.org/wikipedia/pt/f/f4/Campeonato_Brasileiro_S%C3%A9rie_B_logo.png", "https://m.flashscore.com.br/futebol/brasil/serie-b/classificacao/"),
+            LigaItem("Bundesliga", "https://a.espncdn.com/i/leaguelogos/soccer/500/10.png", "https://m.flashscore.com.br/futebol/alemanha/bundesliga/classificacao/"),
+            LigaItem("Camp. Argentino", "https://a.espncdn.com/i/leaguelogos/soccer/500/1.png", "https://m.flashscore.com.br/futebol/argentina/liga-profissional/classificacao/"),
+            LigaItem("Camp. Carioca", "https://upload.wikimedia.org/wikipedia/pt/1/13/Campeonato_Carioca_de_Futebol_-_Logotipo.png", "https://m.flashscore.com.br/futebol/brasil/campeonato-carioca/classificacao/"),
+            LigaItem("Camp. Paulista", "https://upload.wikimedia.org/wikipedia/pt/7/77/Campeonato_Paulista.png", "https://m.flashscore.com.br/futebol/brasil/campeonato-paulista/classificacao/"),
+            LigaItem("Camp. Saudita", "https://upload.wikimedia.org/wikipedia/en/thumb/e/e0/Saudi_Pro_League_logo.svg/512px-Saudi_Pro_League_logo.svg.png", "https://m.flashscore.com.br/futebol/arabia-saudita/liga-profissional-saudita/classificacao/"),
             LigaItem("Champions League", "https://a.espncdn.com/i/leaguelogos/soccer/500/2.png", "https://m.flashscore.com.br/futebol/europa/liga-dos-campeoes/classificacao/"),
-            LigaItem("Premier League", "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png", "https://m.flashscore.com.br/futebol/inglaterra/premier-league/classificacao/"),
+            LigaItem("Copa América", "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/2024_Copa_Am%C3%A9rica_logo.svg/512px-2024_Copa_Am%C3%A9rica_logo.svg.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-america/classificacao/"),
+            LigaItem("Copa da Inglaterra", "https://upload.wikimedia.org/wikipedia/en/thumb/0/05/FA_Cup_logo.svg/512px-FA_Cup_logo.svg.png", "https://m.flashscore.com.br/futebol/inglaterra/copa-da-inglaterra/resultados/"),
+            LigaItem("Copa do Brasil", "https://a.espncdn.com/i/leaguelogos/soccer/500/90.png", "https://m.flashscore.com.br/futebol/brasil/copa-do-brasil/resultados/"),
+            LigaItem("Copa do Mundo", "https://upload.wikimedia.org/wikipedia/en/thumb/e/e3/2026_FIFA_World_Cup_logo.svg/512px-2026_FIFA_World_Cup_logo.svg.png", "https://m.flashscore.com.br/futebol/mundo/copa-do-mundo/classificacao/"),
+            LigaItem("Copa do Nordeste", "https://upload.wikimedia.org/wikipedia/pt/thumb/a/a2/Copa_do_Nordeste.svg/512px-Copa_do_Nordeste.svg.png", "https://m.flashscore.com.br/futebol/brasil/copa-do-nordeste/classificacao/"),
+            LigaItem("Copa do Rei", "https://upload.wikimedia.org/wikipedia/en/thumb/1/13/Copa_del_Rey_logo.svg/512px-Copa_del_Rey_logo.svg.png", "https://m.flashscore.com.br/futebol/espanha/copa-do-rei/resultados/"),
+            LigaItem("Eredivisie", "https://a.espncdn.com/i/leaguelogos/soccer/500/11.png", "https://m.flashscore.com.br/futebol/holanda/eredivisie/classificacao/"),
+            LigaItem("Eurocopa", "https://upload.wikimedia.org/wikipedia/en/thumb/7/74/UEFA_Euro_2024_logo.svg/512px-UEFA_Euro_2024_logo.svg.png", "https://m.flashscore.com.br/futebol/europa/eurocopa/classificacao/"),
+            LigaItem("Europa League", "https://a.espncdn.com/i/leaguelogos/soccer/500/2310.png", "https://m.flashscore.com.br/futebol/europa/liga-europa/classificacao/"),
             LigaItem("La Liga", "https://a.espncdn.com/i/leaguelogos/soccer/500/15.png", "https://m.flashscore.com.br/futebol/espanha/laliga/classificacao/"),
-            LigaItem("Mundial de Clubes", "https://a.espncdn.com/i/leaguelogos/soccer/500/125.png", "https://m.flashscore.com.br/futebol/mundo/mundial-de-clubes/resultados/")
+            LigaItem("Libertadores", "https://a.espncdn.com/i/leaguelogos/soccer/500/14.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-libertadores/classificacao/"),
+            LigaItem("Ligue 1", "https://a.espncdn.com/i/leaguelogos/soccer/500/9.png", "https://m.flashscore.com.br/futebol/franca/ligue-1/classificacao/"),
+            LigaItem("MLS", "https://a.espncdn.com/i/leaguelogos/soccer/500/19.png", "https://m.flashscore.com.br/futebol/eua/mls/classificacao/"),
+            LigaItem("Mundial de Clubes", "https://a.espncdn.com/i/leaguelogos/soccer/500/125.png", "https://m.flashscore.com.br/futebol/mundo/mundial-de-clubes/resultados/"),
+            LigaItem("Nations League", "https://upload.wikimedia.org/wikipedia/en/thumb/a/a2/UEFA_Nations_League_logo.svg/512px-UEFA_Nations_League_logo.svg.png", "https://m.flashscore.com.br/futebol/europa/liga-das-nacoes/classificacao/"),
+            LigaItem("Premier League", "https://a.espncdn.com/i/leaguelogos/soccer/500/23.png", "https://m.flashscore.com.br/futebol/inglaterra/premier-league/classificacao/"),
+            LigaItem("Primeira Liga", "https://a.espncdn.com/i/leaguelogos/soccer/500/12.png", "https://m.flashscore.com.br/futebol/portugal/liga-portugal/classificacao/"),
+            LigaItem("Série A (Itália)", "https://a.espncdn.com/i/leaguelogos/soccer/500/13.png", "https://m.flashscore.com.br/futebol/italia/serie-a/classificacao/"),
+            LigaItem("Sul-Americana", "https://a.espncdn.com/i/leaguelogos/soccer/500/16.png", "https://m.flashscore.com.br/futebol/america-do-sul/copa-sul-americana/classificacao/")
         )
 
         recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
