@@ -101,6 +101,8 @@
                 android:paddingTop="24dp"
                 android:paddingBottom="48dp"
                 android:clipChildren="false"
+                android:clipToPadding="false">
+
                 <!-- MÁGICA: Ajustado para 160dp. Vira uma prateleira perfeita, sem espaços pretos vazios -->
                 <WebView
                     android:id="@+id/webViewFutebol"
