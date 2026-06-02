@@ -5,7 +5,6 @@
     android:background="#111114"
     android:padding="48dp">
 
-    <!-- CABEÇALHO DA CONTA (Agora é uma barra elegante no topo) -->
     <LinearLayout
         android:id="@+id/headerSettings"
         android:layout_width="match_parent"
@@ -49,7 +48,6 @@
         </LinearLayout>
     </LinearLayout>
 
-    <!-- ÁREA DAS COLUNAS COM SCROLL EMBUTIDO (Proteção para TVs menores) -->
     <ScrollView
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -62,7 +60,6 @@
             android:baselineAligned="false"
             android:orientation="horizontal">
 
-            <!-- COLUNA ESQUERDA: Privacidade e Filtros -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -217,7 +214,6 @@
                 </LinearLayout>
             </LinearLayout>
 
-            <!-- COLUNA DIREITA: Manutenção e Logoff -->
             <LinearLayout
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
@@ -292,7 +288,7 @@
                     android:id="@+id/btnAtualizarEPG"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
+                    android:layout_marginBottom="12dp"
                     android:background="@drawable/bg_card_focus"
                     android:clickable="true"
                     android:focusable="true"
@@ -313,6 +309,53 @@
                         android:text="Baixa o guia de TV mais recente"
                         android:textColor="#888888"
                         android:textSize="14sp" />
+                </LinearLayout>
+                
+                <!-- ========================================================= -->
+                <!-- BOTÃO MÁGICO: MODO TV BOX (LAUNCHER) -->
+                <!-- ========================================================= -->
+                <LinearLayout
+                    android:id="@+id/btnModoLauncher"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="24dp"
+                    android:background="@drawable/bg_card_focus"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal"
+                    android:padding="16dp">
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Modo TV Box"
+                            android:textColor="#FFFFFF"
+                            android:textSize="18sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Transforma o app na Tela Inicial"
+                            android:textColor="#888888"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tvStatusLauncher"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="DESATIVADO"
+                        android:textColor="#FF4757"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
                 </LinearLayout>
 
                 <Button
