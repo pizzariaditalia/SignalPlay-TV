@@ -53,8 +53,7 @@
                         <TextView android:id="@+id/menuInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
                         <TextView android:id="@+id/menuCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais de TV" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
                         <TextView android:id="@+id/menuFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuEsportes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Esportes" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"/>
+                        <TextView android:id="@+id/menuSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"/>
                     </LinearLayout>
 
                     <TextView
@@ -98,6 +97,16 @@
                 android:paddingBottom="48dp"
                 android:clipChildren="false"
                 android:clipToPadding="false">
+
+                <WebView
+                    android:id="@+id/webViewFutebol"
+                    android:layout_width="match_parent"
+                    android:layout_height="550dp"
+                    android:layout_marginEnd="48dp"
+                    android:layout_marginBottom="32dp"
+                    android:background="#00000000"
+                    android:focusable="true"
+                    android:focusableInTouchMode="true" />
 
                 <TextView android:id="@+id/tvContinuarTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Continuar Assistindo" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" android:visibility="gone" />
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerContinuar" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" android:visibility="gone" />
