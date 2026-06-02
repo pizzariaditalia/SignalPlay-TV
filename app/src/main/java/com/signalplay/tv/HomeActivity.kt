@@ -215,7 +215,7 @@ class HomeActivity : Activity() {
                 });
 
                 // ATENÇÃO: NÃO ESQUEÇA DE COLOCAR SUA API KEY AQUI!
-                const API_KEY = 'COLOQUE_SUA_API_KEY_AQUI'; 
+                const API_KEY = '16b1f41884eb47bcaa3f299f97ca680c'; 
                 
                 const BASE_URL = 'https://api.football-data.org/v4/competitions/';
                 const leagues = [
