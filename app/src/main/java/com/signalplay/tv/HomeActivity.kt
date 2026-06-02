@@ -166,9 +166,7 @@ class HomeActivity : Activity() {
 
         carregarAplicativosDaTV()
 
-        // =================================================================================
-        // OUVINTE EM TEMPO REAL. ATUALIZA A TELA SEM PRECISAR FECHAR O APP
-        // =================================================================================
+        // OUVINTE EM TEMPO REAL
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null && !snapshot.isEmpty) {
@@ -191,9 +189,7 @@ class HomeActivity : Activity() {
                 }
             }
 
-        // =================================================================================
-        // CARREGA A API DO SERVIDOR APENAS UMA VEZ EM SEGUNDO PLANO
-        // =================================================================================
+        // CARREGAMENTO DA API
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -281,10 +277,12 @@ class HomeActivity : Activity() {
                     }
                 }
 
+                // =========================================================
+                // CORREÇÃO: Removida a trava de 150 filmes! Lê tudo agora!
+                // =========================================================
                 if (jsonVod.startsWith("[")) {
                     val arr = JSONArray(jsonVod)
-                    val limite = if (arr.length() > 150) 150 else arr.length()
-                    for (i in 0 until limite) {
+                    for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
                         val ext = obj.optString("container_extension", "mp4")
@@ -294,8 +292,7 @@ class HomeActivity : Activity() {
 
                 if (jsonSeries.startsWith("[")) {
                     val arr = JSONArray(jsonSeries)
-                    val limiteS = if (arr.length() > 150) 150 else arr.length()
-                    for (i in 0 until limiteS) {
+                    for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("series_id", "")
                         listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", obj.optString("category_id"), 0))
@@ -363,7 +360,7 @@ class HomeActivity : Activity() {
         if (listContinuar.isNotEmpty()) {
             tvContinuarTitulo.visibility = View.VISIBLE
             recyclerContinuar.visibility = View.VISIBLE
-            recyclerContinuar.adapter = CardAdapter(listContinuar) { abrirDetalhes(it) }
+            recyclerContinuar.adapter = CardAdapter(listContinuar.sortedByDescending { it.progresso }) { abrirDetalhes(it) }
         } else {
             tvContinuarTitulo.visibility = View.GONE
             recyclerContinuar.visibility = View.GONE
