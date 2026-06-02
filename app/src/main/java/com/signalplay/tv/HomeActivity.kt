@@ -33,6 +33,7 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
 data class LigaItem(val nome: String, val logo: String, val url: String)
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
@@ -132,30 +133,8 @@ class HomeActivity : Activity() {
             LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
             LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
             LigaItem("Bundesliga", "https://api.sofascore.app/api/v1/unique-tournament/35/image/dark", "https://m.sofascore.com/pt/torneio/futebol/germany/bundesliga/35"),
-            LigaItem("Camp. Argentino", "https://api.sofascore.app/api/v1/unique-tournament/155/image/dark", "https://m.sofascore.com/pt/torneio/futebol/argentina/liga-profesional/155"),
-            LigaItem("Camp. Carioca", "https://api.sofascore.app/api/v1/unique-tournament/376/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/carioca/376"),
-            LigaItem("Camp. Paulista", "https://api.sofascore.app/api/v1/unique-tournament/374/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/paulista-serie-a1/374"),
-            LigaItem("Camp. Saudita", "https://api.sofascore.app/api/v1/unique-tournament/2939/image/dark", "https://m.sofascore.com/pt/torneio/futebol/saudi-arabia/saudi-pro-league/2939"),
             LigaItem("Champions League", "https://api.sofascore.app/api/v1/unique-tournament/7/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-champions-league/7"),
-            LigaItem("Copa América", "https://api.sofascore.app/api/v1/unique-tournament/133/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-america/133"),
-            LigaItem("Copa da Inglaterra", "https://api.sofascore.app/api/v1/unique-tournament/19/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/fa-cup/19"),
-            LigaItem("Copa do Brasil", "https://api.sofascore.app/api/v1/unique-tournament/373/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-brasil/373"),
-            LigaItem("Copa do Mundo", "https://api.sofascore.app/api/v1/unique-tournament/16/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/world-cup/16"),
-            LigaItem("Copa do Nordeste", "https://api.sofascore.app/api/v1/unique-tournament/2841/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-nordeste/2841"),
-            LigaItem("Copa do Rei", "https://api.sofascore.app/api/v1/unique-tournament/116/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/copa-del-rey/116"),
-            LigaItem("Eredivisie", "https://api.sofascore.app/api/v1/unique-tournament/37/image/dark", "https://m.sofascore.com/pt/torneio/futebol/netherlands/eredivisie/37"),
-            LigaItem("Eurocopa", "https://api.sofascore.app/api/v1/unique-tournament/1/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/european-championship/1"),
-            LigaItem("Europa League", "https://api.sofascore.app/api/v1/unique-tournament/679/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-europa-league/679"),
-            LigaItem("La Liga", "https://api.sofascore.app/api/v1/unique-tournament/8/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/laliga/8"),
-            LigaItem("Libertadores", "https://api.sofascore.app/api/v1/unique-tournament/384/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-libertadores/384"),
-            LigaItem("Ligue 1", "https://api.sofascore.app/api/v1/unique-tournament/34/image/dark", "https://m.sofascore.com/pt/torneio/futebol/france/ligue-1/34"),
-            LigaItem("MLS", "https://api.sofascore.app/api/v1/unique-tournament/242/image/dark", "https://m.sofascore.com/pt/torneio/futebol/usa/mls/242"),
-            LigaItem("Mundial de Clubes", "https://api.sofascore.app/api/v1/unique-tournament/569/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/club-world-cup/569"),
-            LigaItem("Nations League", "https://api.sofascore.app/api/v1/unique-tournament/10469/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-nations-league/10469"),
-            LigaItem("Premier League", "https://api.sofascore.app/api/v1/unique-tournament/17/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/premier-league/17"),
-            LigaItem("Primeira Liga", "https://api.sofascore.app/api/v1/unique-tournament/238/image/dark", "https://m.sofascore.com/pt/torneio/futebol/portugal/liga-portugal/238"),
-            LigaItem("Série A (Itália)", "https://api.sofascore.app/api/v1/unique-tournament/23/image/dark", "https://m.sofascore.com/pt/torneio/futebol/italy/serie-a/23"),
-            LigaItem("Sul-Americana", "https://api.sofascore.app/api/v1/unique-tournament/383/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-sudamericana/383")
+            LigaItem("Série A (Itália)", "https://api.sofascore.app/api/v1/unique-tournament/23/image/dark", "https://m.sofascore.com/pt/torneio/futebol/italy/serie-a/23")
         )
 
         recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
@@ -189,7 +168,7 @@ class HomeActivity : Activity() {
                 }
             }
 
-        // CARREGAMENTO DA API
+        // CARREGAMENTO DA API COM PROTEÇÃO ANTI-CRASH E TIMEOUT DE 60s
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -199,7 +178,13 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
-                val client = OkHttpClient()
+                
+                // MÁGICA: Aumentando o tempo de espera do servidor para não crashar com catálogos gigantes
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .build()
 
                 val liveCats = mutableListOf<CategoriaItem>()
                 val mapCategorias = mutableMapOf<String, String>() 
@@ -215,12 +200,13 @@ class HomeActivity : Activity() {
                 val reqVod = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
                 val reqSeries = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
 
-                val defLiveCat = async { client.newCall(reqLiveCat).execute().body?.string() ?: "[]" }
-                val defVodCat = async { client.newCall(reqVodCat).execute().body?.string() ?: "[]" }
-                val defSeriesCat = async { client.newCall(reqSeriesCat).execute().body?.string() ?: "[]" }
-                val defLive = async { client.newCall(reqLive).execute().body?.string() ?: "[]" }
-                val defVod = async { client.newCall(reqVod).execute().body?.string() ?: "[]" }
-                val defSeries = async { client.newCall(reqSeries).execute().body?.string() ?: "[]" }
+                // MÁGICA: Colocamos um escudo (try/catch) em cada chamada para o app nunca fechar
+                val defLiveCat = async { try { client.newCall(reqLiveCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defVodCat = async { try { client.newCall(reqVodCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defSeriesCat = async { try { client.newCall(reqSeriesCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defLive = async { try { client.newCall(reqLive).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defVod = async { try { client.newCall(reqVod).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defSeries = async { try { client.newCall(reqSeries).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
 
                 val jsonLiveCat = defLiveCat.await()
                 val jsonVodCat = defVodCat.await()
@@ -277,9 +263,6 @@ class HomeActivity : Activity() {
                     }
                 }
 
-                // =========================================================
-                // CORREÇÃO: Removida a trava de 150 filmes! Lê tudo agora!
-                // =========================================================
                 if (jsonVod.startsWith("[")) {
                     val arr = JSONArray(jsonVod)
                     for (i in 0 until arr.length()) {
@@ -327,7 +310,7 @@ class HomeActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { 
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-                    Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show() 
+                    Toast.makeText(this@HomeActivity, "Erro ao conectar com o servidor.", Toast.LENGTH_SHORT).show() 
                 }
             }
         }
@@ -433,7 +416,7 @@ class HomeActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val client = OkHttpClient()
+                val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
                 val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
                 val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
                 val res = client.newCall(req).execute().body?.string() ?: "{}"
