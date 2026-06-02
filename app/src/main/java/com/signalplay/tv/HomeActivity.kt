@@ -87,6 +87,7 @@ class HomeActivity : Activity() {
 
         val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
         val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
+        val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
@@ -115,9 +116,6 @@ class HomeActivity : Activity() {
         menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
 
-        // =================================================================================
-        // DADOS DO CARROSSEL DE ESPORTES - 27 LIGAS ORDEM ALFABÉTICA (Logos Direto da API)
-        // =================================================================================
         val listaLigas = listOf(
             LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
             LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
@@ -154,168 +152,181 @@ class HomeActivity : Activity() {
             startActivity(intent)
         }
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val filterSD = prefs.getBoolean("FILTER_SD", false)
-                val filterH265 = prefs.getBoolean("FILTER_H265", false)
-                val filter4K = prefs.getBoolean("FILTER_4K", false)
-                
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
-
-                val client = OkHttpClient()
+        // =================================================================================
+        // MÁGICA: OBRIGA O APP A ESPERAR O FIREBASE RESPONDER ANTES DE CARREGAR OS CANAIS
+        // =================================================================================
+        db.collection("usuarios").whereEqualTo("usuario", username).get()
+            .addOnSuccessListener { snapshot ->
                 val listaIdsFavoritos = mutableListOf<String>()
                 var historicoMap: Map<String, Any>? = null
                 
-                db.collection("usuarios").whereEqualTo("usuario", username).get()
-                    .addOnSuccessListener { snapshot ->
-                        if (!snapshot.isEmpty) {
-                            val doc = snapshot.documents[0]
-                            val favs = doc.get("favoritos") as? List<*>
-                            favs?.forEach { listaIdsFavoritos.add(it.toString()) }
-                            historicoMap = doc.get("historico_vod") as? Map<String, Any>
+                if (!snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    val favs = doc.get("favoritos") as? List<*>
+                    favs?.forEach { listaIdsFavoritos.add(it.toString()) }
+                    historicoMap = doc.get("historico_vod") as? Map<String, Any>
+                }
+
+                // Só agora, com os favoritos 100% garantidos em mãos, nós baixamos os canais
+                CoroutineScope(Dispatchers.IO).launch {
+                    try {
+                        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                        val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                        val filterSD = prefs.getBoolean("FILTER_SD", false)
+                        val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                        val filter4K = prefs.getBoolean("FILTER_4K", false)
+                        
+                        val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+                        val client = OkHttpClient()
+
+                        fun getProgress(id: String): Int {
+                            if (historicoMap != null) {
+                                val progressoData = historicoMap!![id] as? Map<String, Any>
+                                if (progressoData != null) {
+                                    val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
+                                    val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
+                                    if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                                }
+                            }
+                            return 0
+                        }
+
+                        val liveCats = mutableListOf<CategoriaItem>()
+                        val listTodosCanais = mutableListOf<CanalItem>()
+                        val listFavoritos = mutableListOf<CanalItem>()
+                        val listFilmes = mutableListOf<FilmeItem>()
+                        val listSeries = mutableListOf<FilmeItem>()
+
+                        var req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
+                        var jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                        if (jsonStr.startsWith("[")) {
+                            val arr = JSONArray(jsonStr)
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val catName = obj.optString("category_name", "")
+                                val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
+                                if (!isParentalActive || !isAdult) liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
+                            }
+                        }
+                        
+                        liveCats.sortBy { 
+                            val n = it.nome.lowercase()
+                            if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
+                        }
+                        liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
+                        
+                        jsonStr = ""
+
+                        req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
+                        jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                        if (jsonStr.startsWith("[")) {
+                            val arr = JSONArray(jsonStr)
+                            for (i in 0 until arr.length()) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.optString("stream_id", "")
+                                val nome = obj.optString("name", "Canal")
+                                
+                                val epgId = obj.optString("epg_channel_id", "")
+                                if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
+                                
+                                val nUp = nome.uppercase()
+                                val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                                val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                                val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
+                                
+                                if (filterSD && isSD) continue
+                                if (filterH265 && isH265) continue
+                                if (filter4K && is4K) continue
+
+                                val canal = CanalItem(id, nome, obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts")
+                                listTodosCanais.add(canal)
+                                // Preenche a lista de favoritos com 100% de precisão agora
+                                if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
+                            }
+                        }
+                        jsonStr = ""
+
+                        req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
+                        jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                        if (jsonStr.startsWith("[")) {
+                            val arr = JSONArray(jsonStr)
+                            val limite = if (arr.length() > 150) 150 else arr.length()
+                            for (i in 0 until limite) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.optString("stream_id", "")
+                                val ext = obj.optString("container_extension", "mp4")
+                                listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", "", getProgress(id)))
+                            }
+                        }
+                        jsonStr = ""
+
+                        req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
+                        jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
+                        if (jsonStr.startsWith("[")) {
+                            val arr = JSONArray(jsonStr)
+                            val limiteS = if (arr.length() > 150) 150 else arr.length()
+                            for (i in 0 until limiteS) {
+                                val obj = arr.getJSONObject(i)
+                                val id = obj.optString("series_id", "")
+                                listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", "", getProgress(id)))
+                            }
+                        }
+                        jsonStr = ""
+
+                        val ultimosFilmes = listFilmes.reversed().take(30)
+                        val topFilmes = listFilmes.take(10)
+                        val seriesAlta = listSeries.reversed().take(30)
+                        val topSeries = listSeries.take(10)
+                        val listContinuar = (listFilmes + listSeries).filter { it.progresso > 0 }
+
+                        withContext(Dispatchers.Main) {
+                            findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                            
+                            if (listContinuar.isNotEmpty()) {
+                                tvContinuarTitulo.visibility = View.VISIBLE
+                                recyclerContinuar.visibility = View.VISIBLE
+                                recyclerContinuar.adapter = CardAdapter(listContinuar) { abrirDetalhes(it) }
+                            } else {
+                                tvContinuarTitulo.visibility = View.GONE
+                                recyclerContinuar.visibility = View.GONE
+                            }
+                            
+                            if (listFavoritos.isNotEmpty()) {
+                                tvFavoritosTitulo.visibility = View.VISIBLE
+                                recyclerFavoritos.visibility = View.VISIBLE
+                                recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
+                                    DataHolder.todasCategorias = liveCats
+                                    DataHolder.todosCanais = listTodosCanais
+                                    DataHolder.favoritosIds = listaIdsFavoritos
+                                    DataHolder.categoriaAtualId = "FAV"
+                                    startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply {
+                                        putExtra("INDICE_CANAL", listFavoritos.indexOf(canalClicado))
+                                    })
+                                }, { })
+                            } else {
+                                tvFavoritosTitulo.visibility = View.GONE
+                                recyclerFavoritos.visibility = View.GONE
+                            }
+                            
+                            recyclerUltimos.adapter = CardAdapter(ultimosFilmes) { abrirDetalhes(it) }
+                            recyclerSeriesAlta.adapter = CardAdapter(seriesAlta) { abrirDetalhes(it) }
+                            recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
+                            recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
+
+                            if (listFilmes.isNotEmpty()) atualizarBanner(listFilmes.random())
+                        }
+
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) { 
+                            findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                            Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show() 
                         }
                     }
-                
-                withContext(Dispatchers.IO) { Thread.sleep(800) }
-
-                fun getProgress(id: String): Int {
-                    if (historicoMap != null) {
-                        val progressoData = historicoMap!![id] as? Map<String, Any>
-                        if (progressoData != null) {
-                            val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
-                            val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
-                            if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
-                        }
-                    }
-                    return 0
-                }
-
-                val liveCats = mutableListOf<CategoriaItem>()
-                val listTodosCanais = mutableListOf<CanalItem>()
-                val listFavoritos = mutableListOf<CanalItem>()
-                val listFilmes = mutableListOf<FilmeItem>()
-                val listSeries = mutableListOf<FilmeItem>()
-
-                var req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
-                var jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
-                if (jsonStr.startsWith("[")) {
-                    val arr = JSONArray(jsonStr)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val catName = obj.optString("category_name", "")
-                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
-                    }
-                }
-                
-                liveCats.sortBy { 
-                    val n = it.nome.lowercase()
-                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
-                }
-                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
-                
-                jsonStr = ""
-
-                req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
-                jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
-                if (jsonStr.startsWith("[")) {
-                    val arr = JSONArray(jsonStr)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val id = obj.optString("stream_id", "")
-                        val nome = obj.optString("name", "Canal")
-                        
-                        val epgId = obj.optString("epg_channel_id", "")
-                        if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
-                        
-                        val nUp = nome.uppercase()
-                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                        
-                        if (filterSD && isSD) continue
-                        if (filterH265 && isH265) continue
-                        if (filter4K && is4K) continue
-
-                        val canal = CanalItem(id, nome, obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts")
-                        listTodosCanais.add(canal)
-                        if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
-                    }
-                }
-                jsonStr = ""
-
-                req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
-                jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
-                if (jsonStr.startsWith("[")) {
-                    val arr = JSONArray(jsonStr)
-                    val limite = if (arr.length() > 150) 150 else arr.length()
-                    for (i in 0 until limite) {
-                        val obj = arr.getJSONObject(i)
-                        val id = obj.optString("stream_id", "")
-                        val ext = obj.optString("container_extension", "mp4")
-                        listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", "", getProgress(id)))
-                    }
-                }
-                jsonStr = ""
-
-                req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
-                jsonStr = client.newCall(req).execute().body?.string() ?: "[]"
-                if (jsonStr.startsWith("[")) {
-                    val arr = JSONArray(jsonStr)
-                    val limiteS = if (arr.length() > 150) 150 else arr.length()
-                    for (i in 0 until limiteS) {
-                        val obj = arr.getJSONObject(i)
-                        val id = obj.optString("series_id", "")
-                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", "", getProgress(id)))
-                    }
-                }
-                jsonStr = ""
-
-                val ultimosFilmes = listFilmes.reversed().take(30)
-                val topFilmes = listFilmes.take(10)
-                val seriesAlta = listSeries.reversed().take(30)
-                val topSeries = listSeries.take(10)
-                val listContinuar = (listFilmes + listSeries).filter { it.progresso > 0 }
-
-                withContext(Dispatchers.Main) {
-                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-                    
-                    if (listContinuar.isNotEmpty()) {
-                        tvContinuarTitulo.visibility = View.VISIBLE
-                        recyclerContinuar.visibility = View.VISIBLE
-                        recyclerContinuar.adapter = CardAdapter(listContinuar) { abrirDetalhes(it) }
-                    } else {
-                        tvContinuarTitulo.visibility = View.GONE
-                        recyclerContinuar.visibility = View.GONE
-                    }
-                    
-                    recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritos, { canalClicado ->
-                        DataHolder.todasCategorias = liveCats
-                        DataHolder.todosCanais = listTodosCanais
-                        DataHolder.favoritosIds = listaIdsFavoritos
-                        DataHolder.categoriaAtualId = "FAV"
-                        startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply {
-                            putExtra("INDICE_CANAL", listFavoritos.indexOf(canalClicado))
-                        })
-                    }, { })
-                    
-                    recyclerUltimos.adapter = CardAdapter(ultimosFilmes) { abrirDetalhes(it) }
-                    recyclerSeriesAlta.adapter = CardAdapter(seriesAlta) { abrirDetalhes(it) }
-                    recyclerTopFilmes.adapter = Top10Adapter(topFilmes) { abrirDetalhes(it) }
-                    recyclerTopSeries.adapter = Top10Adapter(topSeries) { abrirDetalhes(it) }
-
-                    if (listFilmes.isNotEmpty()) atualizarBanner(listFilmes.random())
-                }
-
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { 
-                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-                    Toast.makeText(this@HomeActivity, "Erro ao carregar o catálogo.", Toast.LENGTH_SHORT).show() 
                 }
             }
-        }
+            .addOnFailureListener {
+                Toast.makeText(this, "Erro ao conectar com o banco de dados.", Toast.LENGTH_SHORT).show()
+            }
     }
 
     private fun atualizarBanner(filme: FilmeItem) {
@@ -359,9 +370,6 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    // =================================================================================
-    // MÁGICA: O ADAPTADOR DA PRATELEIRA AGORA PERMITE QUEBRAS DE LINHA!
-    // =================================================================================
     inner class LigaAdapter(
         private val list: List<LigaItem>,
         private val onClick: (LigaItem) -> Unit
@@ -385,7 +393,6 @@ class HomeActivity : Activity() {
             }
             val img = ImageView(context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(110, 110) }
             
-            // CONFIGURAÇÃO DO TEXTO PARA NÃO CORTAR! (2 linhas)
             val txt = TextView(context).apply { 
                 id = 1002
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
@@ -393,7 +400,7 @@ class HomeActivity : Activity() {
                 textSize = 12f
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
                 maxLines = 2
-                setLines(2) // Força o espaço para 2 linhas para as caixas ficarem da mesma altura
+                setLines(2)
             }
             
             layout.addView(img)
