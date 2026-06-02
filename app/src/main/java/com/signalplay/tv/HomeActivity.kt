@@ -43,6 +43,10 @@ class HomeActivity : Activity() {
     private var passGlobal = ""
     private var username = ""
 
+    // Listas Globais salvas em memória para atualizar silenciosamente ao voltar pra tela
+    private var listFilmesGlobais = listOf<FilmeItem>()
+    private var listSeriesGlobais = listOf<FilmeItem>()
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         
@@ -152,9 +156,6 @@ class HomeActivity : Activity() {
             startActivity(intent)
         }
 
-        // =================================================================================
-        // MÁGICA: OBRIGA O APP A ESPERAR O FIREBASE RESPONDER ANTES DE CARREGAR OS CANAIS
-        // =================================================================================
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 val listaIdsFavoritos = mutableListOf<String>()
@@ -167,7 +168,6 @@ class HomeActivity : Activity() {
                     historicoMap = doc.get("historico_vod") as? Map<String, Any>
                 }
 
-                // Só agora, com os favoritos 100% garantidos em mãos, nós baixamos os canais
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
                         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -179,13 +179,18 @@ class HomeActivity : Activity() {
                         val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
                         val client = OkHttpClient()
 
+                        // MÁGICA 1: O Cálculo de Porcentagem Perfeito
                         fun getProgress(id: String): Int {
                             if (historicoMap != null) {
                                 val progressoData = historicoMap!![id] as? Map<String, Any>
                                 if (progressoData != null) {
                                     val pos = progressoData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                                     val dur = progressoData["duracao"]?.toString()?.toLongOrNull() ?: 0L
-                                    if (dur > 0L) return ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                                    // Só aparece se passou de 10 seg. Some se faltar menos de 3 min pro final!
+                                    if (dur > 0L && pos > 10000L && (dur - pos) > 180000L) {
+                                        val perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                                        return if (perc == 0) 1 else perc // Garante que 0.8% não suma!
+                                    }
                                 }
                             }
                             return 0
@@ -240,7 +245,6 @@ class HomeActivity : Activity() {
 
                                 val canal = CanalItem(id, nome, obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts")
                                 listTodosCanais.add(canal)
-                                // Preenche a lista de favoritos com 100% de precisão agora
                                 if (listaIdsFavoritos.contains(id)) listFavoritos.add(canal)
                             }
                         }
@@ -271,7 +275,10 @@ class HomeActivity : Activity() {
                                 listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", "", getProgress(id)))
                             }
                         }
-                        jsonStr = ""
+                        
+                        // Salva na memória global para atualizar instantaneamente no botão Voltar
+                        listFilmesGlobais = listFilmes
+                        listSeriesGlobais = listSeries
 
                         val ultimosFilmes = listFilmes.reversed().take(30)
                         val topFilmes = listFilmes.take(10)
@@ -326,6 +333,62 @@ class HomeActivity : Activity() {
             }
             .addOnFailureListener {
                 Toast.makeText(this, "Erro ao conectar com o banco de dados.", Toast.LENGTH_SHORT).show()
+            }
+    }
+
+    // =========================================================================
+    // MÁGICA 2: CICLO DE VIDA! ATUALIZA A PRATELEIRA ASSIM QUE FECHAR O FILME
+    // =========================================================================
+    override fun onResume() {
+        super.onResume()
+        if (listFilmesGlobais.isNotEmpty() || listSeriesGlobais.isNotEmpty()) {
+            atualizarContinuarAssistindoSilenciosamente()
+        }
+    }
+
+    private fun atualizarContinuarAssistindoSilenciosamente() {
+        if (username.isEmpty()) return
+        
+        db.collection("usuarios").whereEqualTo("usuario", username).get()
+            .addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    val historicoMap = doc.get("historico_vod") as? Map<String, Any> ?: return@addOnSuccessListener
+                    
+                    val listContinuar = mutableListOf<FilmeItem>()
+                    
+                    val processarItem = { item: FilmeItem ->
+                        val progData = historicoMap[item.id] as? Map<String, Any>
+                        if (progData != null) {
+                            val pos = progData["posicao"]?.toString()?.toLongOrNull() ?: 0L
+                            val dur = progData["duracao"]?.toString()?.toLongOrNull() ?: 0L
+                            
+                            // Se passou de 10 seg e falta mais de 3 min pro final
+                            if (dur > 0L && pos > 10000L && (dur - pos) > 180000L) {
+                                var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                                if (perc == 0) perc = 1 
+                                
+                                // Recria o item injetando a porcentagem exata lida do Firebase
+                                listContinuar.add(FilmeItem(item.id, item.nome, item.urlImagem, "", item.tipo, "", perc))
+                            }
+                        }
+                    }
+                    
+                    listFilmesGlobais.forEach(processarItem)
+                    listSeriesGlobais.forEach(processarItem)
+                    
+                    val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
+                    val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
+                    
+                    if (listContinuar.isNotEmpty()) {
+                        tvContinuarTitulo.visibility = View.VISIBLE
+                        recyclerContinuar.visibility = View.VISIBLE
+                        recyclerContinuar.adapter = CardAdapter(listContinuar) { abrirDetalhes(it) }
+                    } else {
+                        tvContinuarTitulo.visibility = View.GONE
+                        recyclerContinuar.visibility = View.GONE
+                    }
+                }
             }
     }
 
