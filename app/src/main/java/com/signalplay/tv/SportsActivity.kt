@@ -23,11 +23,13 @@ class SportsActivity : Activity() {
 
         val url = intent.getStringExtra("URL_LIGA") ?: "https://m.flashscore.com.br/"
 
-        // Configura o navegador para rodar a página do campeonato liso na TV
         val settings: WebSettings = webView.settings
         settings.javaScriptEnabled = true
         settings.domStorageEnabled = true
         settings.mediaPlaybackRequiresUserGesture = false
+        
+        // MÁGICA ANTI-BLOQUEIO: Finge ser um Google Chrome de celular para o Flashscore não travar
+        settings.userAgentString = "Mozilla/5.0 (Linux; Android 13; Pixel 7 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/116.0.0.0 Mobile Safari/537.36"
 
         webView.webViewClient = object : WebViewClient() {
             override fun onPageFinished(view: WebView?, url: String?) {
@@ -42,7 +44,6 @@ class SportsActivity : Activity() {
         webView.requestFocus()
     }
 
-    // Permite usar o botão "Voltar" do controle remoto para voltar páginas dentro do site
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         if (event?.action == KeyEvent.ACTION_DOWN) {
             if (keyCode == KeyEvent.KEYCODE_BACK && webView.canGoBack()) {
