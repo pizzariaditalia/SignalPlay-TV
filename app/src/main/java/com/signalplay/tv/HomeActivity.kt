@@ -146,7 +146,7 @@ class HomeActivity : Activity() {
         }
 
         // =================================================================================
-        // MÁGICA DO CARROSSEL DE FUTEBOL INJETADO (À PROVA DE FALHAS DE LEITURA)
+        // MÁGICA DO CARROSSEL DE FUTEBOL INJETADO (CÓDIGO LIMPO DO '$')
         // =================================================================================
         val webViewFutebol = findViewById<WebView>(R.id.webViewFutebol)
         webViewFutebol.setBackgroundColor(Color.TRANSPARENT)
@@ -214,7 +214,7 @@ class HomeActivity : Activity() {
                     SpatialNavigation.focus();
                 });
 
-                // ATENÇÃO: NÃO ESQUEÇA DE COLOCAR SUA API KEY AQUI!
+                // SUA CHAVE INSERIDA AQUI:
                 const API_KEY = '16b1f41884eb47bcaa3f299f97ca680c'; 
                 
                 const BASE_URL = 'https://api.football-data.org/v4/competitions/';
@@ -231,7 +231,7 @@ class HomeActivity : Activity() {
                 leagues.forEach(league => {
                     const card = document.createElement('div');
                     card.className = 'league-card sn-focusable'; 
-                    card.innerHTML = `<img src="${league.logo}" style="width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px;"><br><span class="league-name">${league.name}</span>`;
+                    card.innerHTML = '<img src="' + league.logo + '" style="width: 45px; height: 45px; object-fit: contain; margin-bottom: 8px;"><br><span class="league-name">' + league.name + '</span>';
                     card.onclick = () => fetchLeagueData(league.id, league.name);
                     card.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchLeagueData(league.id, league.name); });
                     carousel.appendChild(card);
@@ -245,8 +245,8 @@ class HomeActivity : Activity() {
                     try {
                         const config = { headers: { 'X-Auth-Token': API_KEY } };
                         const [standingsRes, fixturesRes] = await Promise.all([
-                            fetch(`${BASE_URL}${leagueId}/standings`, config),
-                            fetch(`${BASE_URL}${leagueId}/matches?status=SCHEDULED`, config)
+                            fetch(BASE_URL + leagueId + '/standings', config),
+                            fetch(BASE_URL + leagueId + '/matches?status=SCHEDULED', config)
                         ]);
 
                         if (!standingsRes.ok) throw new Error("API Falhou");
@@ -262,7 +262,7 @@ class HomeActivity : Activity() {
                         switchTab('standings', document.querySelector('.tab-btn'));
                         SpatialNavigation.makeFocusable(); 
                     } catch (error) {
-                        document.getElementById('loader').innerText = '❌ Erro de Conexão ou API Key inválida.';
+                        document.getElementById('loader').innerText = '❌ Erro de Conexão ou Limite da API atingido.';
                     }
                 }
 
@@ -271,9 +271,9 @@ class HomeActivity : Activity() {
                     tbody.innerHTML = '';
                     if (!data.standings || data.standings.length === 0) return tbody.innerHTML = '<tr><td colspan="8">Sem dados.</td></tr>';
                     data.standings[0].table.forEach(row => {
-                        tbody.innerHTML += `<tr><td>${row.position}º</td>
-                        <td style="display:flex; align-items:center; gap:8px;"><img src="${row.team.crest}" width="20" height="20" style="object-fit:contain;"> ${row.team.shortName}</td>
-                        <td style="color:#00ff88; font-weight:bold;">${row.points}</td><td>${row.playedGames}</td><td>${row.won}</td><td>${row.draw}</td><td>${row.lost}</td><td>${row.goalDifference}</td></tr>`;
+                        tbody.innerHTML += '<tr><td>' + row.position + 'º</td>' +
+                        '<td style="display:flex; align-items:center; gap:8px;"><img src="' + row.team.crest + '" width="20" height="20" style="object-fit:contain;"> ' + row.team.shortName + '</td>' +
+                        '<td style="color:#00ff88; font-weight:bold;">' + row.points + '</td><td>' + row.playedGames + '</td><td>' + row.won + '</td><td>' + row.draw + '</td><td>' + row.lost + '</td><td>' + row.goalDifference + '</td></tr>';
                     });
                 }
 
@@ -283,8 +283,8 @@ class HomeActivity : Activity() {
                     if (!data.matches || data.matches.length === 0) return tbody.innerHTML = '<tr><td colspan="5">Sem jogos agendados.</td></tr>';
                     data.matches.slice(0, 15).forEach(m => {
                         const d = new Date(m.utcDate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' });
-                        tbody.innerHTML += `<tr><td>${d}</td><td style="text-align:right;">${m.homeTeam.shortName} <img src="${m.homeTeam.crest}" width="20" height="20" style="vertical-align:middle; margin-left:5px;"></td>
-                        <td style="text-align:center;">X</td><td><img src="${m.awayTeam.crest}" width="20" height="20" style="vertical-align:middle; margin-right:5px;"> ${m.awayTeam.shortName}</td><td style="color:#00ff88;">Agendado</td></tr>`;
+                        tbody.innerHTML += '<tr><td>' + d + '</td><td style="text-align:right;">' + m.homeTeam.shortName + ' <img src="' + m.homeTeam.crest + '" width="20" height="20" style="vertical-align:middle; margin-left:5px;"></td>' +
+                        '<td style="text-align:center;">X</td><td><img src="' + m.awayTeam.crest + '" width="20" height="20" style="vertical-align:middle; margin-right:5px;"> ' + m.awayTeam.shortName + '</td><td style="color:#00ff88;">Agendado</td></tr>';
                     });
                 }
 
