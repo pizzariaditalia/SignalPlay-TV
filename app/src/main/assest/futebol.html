@@ -14,7 +14,6 @@
         .carousel::-webkit-scrollbar { display: none; }
         .league-card { background-color: var(--card-bg); border-radius: 12px; min-width: 140px; padding: 15px; text-align: center; cursor: pointer; border: 2px solid transparent; transition: 0.2s; outline: none; }
         .league-card:focus, .league-card:hover { border-color: var(--accent-color); transform: scale(1.05); background-color: #2a2a35; }
-        .league-emoji { font-size: 35px; margin-bottom: 8px; }
         .league-name { margin: 0; font-size: 14px; font-weight: bold; }
         .content-area { margin-top: 20px; display: none; background-color: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid #333; }
         .tabs { display: flex; gap: 10px; margin-bottom: 15px; border-bottom: 1px solid #333; padding-bottom: 10px; }
@@ -34,23 +33,46 @@
     <p class="subtitle">Selecione o campeonato para carregar os dados reais</p>
 
     <div class="carousel" id="league-carousel"></div>
+    
     <div class="loader" id="loader">Conectando aos servidores esportivos... ⏳</div>
 
     <div class="content-area" id="content-area">
         <h2 id="league-title" style="margin-top: 0; font-size: 18px;">Campeonato</h2>
+        
         <div class="tabs">
             <button class="tab-btn sn-focusable active" onclick="switchTab('standings', this)">Classificação</button>
             <button class="tab-btn sn-focusable" onclick="switchTab('fixtures', this)">Próximos Jogos</button>
         </div>
+        
         <div id="standings" class="panel active">
             <table>
-                <thead><tr><th>Pos</th><th>Equipe</th><th>Pts</th><th>J</th><th>V</th><th>E</th><th>D</th><th>SG</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Pos</th>
+                        <th>Equipe</th>
+                        <th>Pts</th>
+                        <th>J</th>
+                        <th>V</th>
+                        <th>E</th>
+                        <th>D</th>
+                        <th>SG</th>
+                    </tr>
+                </thead>
                 <tbody id="standings-body"></tbody>
             </table>
         </div>
+        
         <div id="fixtures" class="panel">
             <table>
-                <thead><tr><th>Data</th><th style="text-align: right;">Mandante</th><th style="text-align: center;">X</th><th>Visitante</th><th>Status</th></tr></thead>
+                <thead>
+                    <tr>
+                        <th>Data</th>
+                        <th style="text-align: right;">Mandante</th>
+                        <th style="text-align: center;">X</th>
+                        <th>Visitante</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
                 <tbody id="fixtures-body"></tbody>
             </table>
         </div>
@@ -65,31 +87,44 @@
             SpatialNavigation.focus();
         });
 
-        // COLOQUE SUA CHAVE AQUI!
+        // =========================================================
+        // ATENÇÃO: COLOQUE SUA CHAVE DA API AQUI DENTRO DAS ASPAS!
+        // =========================================================
         const API_KEY = '16b1f41884eb47bcaa3f299f97ca680c'; 
+        
         const BASE_URL = 'https://api.football-data.org/v4/competitions/';
 
+        // ESCUDOS OFICIAIS SUBSTITUINDO OS EMOJIS
         const leagues = [
-            { id: 'PL', name: 'Premier League', logo: '🏴󠁧󠁢󠁥󠁮󠁧󠁿' },
-            { id: 'PD', name: 'La Liga', logo: '🇪🇸' },
-            { id: 'SA', name: 'Serie A', logo: '🇮🇹' },
-            { id: 'BL1', name: 'Bundesliga', logo: '🇩🇪' },
-            { id: 'CL', name: 'Champions League', logo: '⭐' },
-            { id: 'BSA', name: 'Brasileirão', logo: '🇧🇷' }
+            { id: 'PL', name: 'Premier League', logo: 'https://crests.football-data.org/PL.png' },
+            { id: 'PD', name: 'La Liga', logo: 'https://crests.football-data.org/PD.png' },
+            { id: 'SA', name: 'Serie A', logo: 'https://crests.football-data.org/SA.png' },
+            { id: 'BL1', name: 'Bundesliga', logo: 'https://crests.football-data.org/BL1.png' },
+            { id: 'CL', name: 'Champions League', logo: 'https://crests.football-data.org/CL.png' },
+            { id: 'BSA', name: 'Brasileirão', logo: 'https://crests.football-data.org/BSA.png' }
         ];
 
         const carousel = document.getElementById('league-carousel');
+        
+        // CRIA OS CARTÕES DOS CAMPEONATOS
         leagues.forEach(league => {
             const card = document.createElement('div');
             card.className = 'league-card sn-focusable'; // sn-focusable permite selecionar com a TV
-            card.innerHTML = `<div class="league-emoji">${league.logo}</div><h3 class="league-name">${league.name}</h3>`;
+            
+            // Renderiza a imagem e o nome
+            card.innerHTML = `<img src="${league.logo}" style="width: 50px; height: 50px; object-fit: contain; margin-bottom: 8px;"><h3 class="league-name">${league.name}</h3>`;
+            
             card.onclick = () => fetchLeagueData(league.id, league.name);
             
             // Suporte para o botão OK do controle remoto
-            card.addEventListener('keydown', (e) => { if (e.key === 'Enter') fetchLeagueData(league.id, league.name); });
+            card.addEventListener('keydown', (e) => { 
+                if (e.key === 'Enter') fetchLeagueData(league.id, league.name); 
+            });
+            
             carousel.appendChild(card);
         });
 
+        // BUSCA OS DADOS NA API
         async function fetchLeagueData(leagueId, leagueName) {
             document.getElementById('content-area').style.display = 'none';
             document.getElementById('loader').style.display = 'block';
@@ -113,7 +148,9 @@
                 document.getElementById('loader').style.display = 'none';
                 document.getElementById('content-area').style.display = 'block';
                 switchTab('standings', document.querySelector('.tab-btn'));
-                SpatialNavigation.makeFocusable(); // Recalcula o foco da TV
+                
+                // Recalcula o foco da TV para os novos elementos que apareceram
+                SpatialNavigation.makeFocusable(); 
             } catch (error) {
                 document.getElementById('loader').innerText = '❌ Erro de Conexão ou API Key inválida.';
             }
@@ -122,19 +159,51 @@
         function renderStandings(data) {
             const tbody = document.getElementById('standings-body');
             tbody.innerHTML = '';
-            if (!data.standings || data.standings.length === 0) return tbody.innerHTML = '<tr><td colspan="8">Sem dados.</td></tr>';
+            
+            if (!data.standings || data.standings.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8">Sem dados no momento.</td></tr>';
+                return;
+            }
+            
             data.standings[0].table.forEach(row => {
-                tbody.innerHTML += `<tr><td>${row.position}º</td><td>${row.team.shortName}</td><td style="color:#00ff88; font-weight:bold;">${row.points}</td><td>${row.playedGames}</td><td>${row.won}</td><td>${row.draw}</td><td>${row.lost}</td><td>${row.goalDifference}</td></tr>`;
+                tbody.innerHTML += `<tr>
+                    <td>${row.position}º</td>
+                    <td style="display:flex; align-items:center; gap:8px;">
+                        <img src="${row.team.crest}" width="20" height="20" style="object-fit:contain;"> 
+                        ${row.team.shortName}
+                    </td>
+                    <td style="color:#00ff88; font-weight:bold;">${row.points}</td>
+                    <td>${row.playedGames}</td>
+                    <td>${row.won}</td>
+                    <td>${row.draw}</td>
+                    <td>${row.lost}</td>
+                    <td>${row.goalDifference}</td>
+                </tr>`;
             });
         }
 
         function renderFixtures(data) {
             const tbody = document.getElementById('fixtures-body');
             tbody.innerHTML = '';
-            if (!data.matches || data.matches.length === 0) return tbody.innerHTML = '<tr><td colspan="5">Sem jogos.</td></tr>';
+            
+            if (!data.matches || data.matches.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5">Sem jogos agendados.</td></tr>';
+                return;
+            }
+            
             data.matches.slice(0, 15).forEach(m => {
                 const d = new Date(m.utcDate).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute:'2-digit' });
-                tbody.innerHTML += `<tr><td>${d}</td><td style="text-align:right;">${m.homeTeam.shortName}</td><td style="text-align:center;">X</td><td>${m.awayTeam.shortName}</td><td style="color:#00ff88;">Agendado</td></tr>`;
+                tbody.innerHTML += `<tr>
+                    <td>${d}</td>
+                    <td style="text-align:right;">
+                        ${m.homeTeam.shortName} <img src="${m.homeTeam.crest}" width="20" height="20" style="vertical-align:middle; margin-left:5px;">
+                    </td>
+                    <td style="text-align:center;">X</td>
+                    <td>
+                        <img src="${m.awayTeam.crest}" width="20" height="20" style="vertical-align:middle; margin-right:5px;"> ${m.awayTeam.shortName}
+                    </td>
+                    <td style="color:#00ff88;">Agendado</td>
+                </tr>`;
             });
         }
 
