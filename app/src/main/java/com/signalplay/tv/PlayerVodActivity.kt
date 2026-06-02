@@ -58,14 +58,7 @@ class PlayerVodActivity : Activity() {
     
     private var hasRestoredPosition = false
 
-    private val saveProgressHandler = Handler(Looper.getMainLooper())
-    private val saveProgressRunnable = object : Runnable {
-        override fun run() {
-            salvarProgressoNoFirebase()
-            saveProgressHandler.postDelayed(this, 10000)
-        }
-    }
-
+    // Função que checa e mostra o botão "Pular Abertura"
     private val introHandler = Handler(Looper.getMainLooper())
     private val introRunnable = object : Runnable {
         override fun run() {
@@ -162,6 +155,7 @@ class PlayerVodActivity : Activity() {
     private fun inicializarPlayer() {
         exoPlayer = ExoPlayer.Builder(this).build()
         playerViewVod.player = exoPlayer
+        
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
                 if (playbackState == Player.STATE_BUFFERING) {
@@ -186,7 +180,6 @@ class PlayerVodActivity : Activity() {
         exoPlayer?.prepare()
         exoPlayer?.playWhenReady = true
         
-        saveProgressHandler.postDelayed(saveProgressRunnable, 10000)
         introHandler.postDelayed(introRunnable, 1000) 
     }
 
@@ -220,10 +213,7 @@ class PlayerVodActivity : Activity() {
 
     private fun showNextEpisodeOverlay() {
         overlayNextEpisode.visibility = View.VISIBLE
-        
-        // MÁGICA: Variável corrigida para .title
         tvNextEpisodeName.text = nextEpisodeToPlay?.title ?: "Próximo Episódio"
-        
         btnPlayNext.requestFocus() 
 
         countDownTimer?.cancel()
@@ -265,13 +255,18 @@ class PlayerVodActivity : Activity() {
         finish() 
     }
 
+    // =========================================================================
+    // MÁGICA: GARANTE QUE O VÍDEO SERÁ SALVO APENAS NO FINAL OU AO SAIR
+    // =========================================================================
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
         if (username.isEmpty() || idToSave.isEmpty()) return
+        
         val position = exoPlayer?.currentPosition ?: 0L
         val duration = exoPlayer?.duration ?: 0L
 
-        if (position > 5000L && duration > 0L) { 
+        // Só salva se o filme já rodou por 10 segundos, para não sujar o histórico com cliques acidentais
+        if (position > 10000L && duration > 0L) { 
             db.collection("usuarios").whereEqualTo("usuario", username).get()
                 .addOnSuccessListener { snapshot ->
                     if (!snapshot.isEmpty) {
@@ -297,7 +292,10 @@ class PlayerVodActivity : Activity() {
                         val dadosMedia = historico[idToLoad] as? Map<String, Any>
                         if (dadosMedia != null) {
                             val posicaoSalva = dadosMedia["posicao"]?.toString()?.toLongOrNull() ?: 0L
-                            if (posicaoSalva > 0L) {
+                            val duracaoSalva = dadosMedia["duracao"]?.toString()?.toLongOrNull() ?: 0L
+                            
+                            // Só restaura a posição se não estiver nos últimos 3 minutos de filme
+                            if (posicaoSalva > 0L && (duracaoSalva - posicaoSalva) > 180000) {
                                 exoPlayer?.seekTo(posicaoSalva)
                             }
                         }
@@ -360,6 +358,9 @@ class PlayerVodActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
+    // =========================================================================
+    // O Gatilho Perfeito: Dispara o salvamento exatamente quando a tela fecha
+    // =========================================================================
     override fun onPause() {
         super.onPause()
         salvarProgressoNoFirebase()
@@ -369,9 +370,8 @@ class PlayerVodActivity : Activity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        saveProgressHandler.removeCallbacks(saveProgressRunnable)
-        introHandler.removeCallbacks(introRunnable)
         salvarProgressoNoFirebase()
+        introHandler.removeCallbacks(introRunnable)
         countDownTimer?.cancel()
         exoPlayer?.release()
     }
