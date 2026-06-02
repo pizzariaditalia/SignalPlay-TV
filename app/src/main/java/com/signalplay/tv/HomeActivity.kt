@@ -10,7 +10,6 @@ import android.os.Bundle
 import android.view.View
 import android.widget.Button
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -40,6 +39,10 @@ class HomeActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // MÁGICA QUE REMOVE A BARRA "SIGNALPLAY TV" DO TOPO
+        actionBar?.hide()
+        
         setContentView(R.layout.activity_home)
 
         db = FirebaseFirestore.getInstance()
@@ -56,6 +59,7 @@ class HomeActivity : Activity() {
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
         val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
+        val menuEsportes = findViewById<TextView>(R.id.menuEsportes) // NOVO BOTÃO DE ESPORTES
         val menuConfig = findViewById<TextView>(R.id.menuConfig)
 
         val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
@@ -74,6 +78,7 @@ class HomeActivity : Activity() {
         menuCanais.onFocusChangeListener = menuFocusListener
         menuFilmes.onFocusChangeListener = menuFocusListener
         menuSeries.onFocusChangeListener = menuFocusListener
+        menuEsportes.onFocusChangeListener = menuFocusListener
         menuConfig.onFocusChangeListener = menuFocusListener
 
         val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
@@ -83,7 +88,7 @@ class HomeActivity : Activity() {
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
-
+        
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -128,6 +133,10 @@ class HomeActivity : Activity() {
             intent.putExtra("PASS", passGlobal)
             intent.putExtra("USERNAME", username)
             startActivity(intent)
+        }
+        // AÇÃO DO MENU ESPORTES
+        menuEsportes.setOnClickListener {
+            startActivity(Intent(this@HomeActivity, FootballActivity::class.java))
         }
         menuConfig.setOnClickListener {
             val intent = Intent(this@HomeActivity, SettingsActivity::class.java)
@@ -214,7 +223,6 @@ class HomeActivity : Activity() {
                         val epgId = obj.optString("epg_channel_id", "")
                         if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
                         
-                        // MÁGICA: Filtro Agressivo (Caça todas as variações de qualidade)
                         val nUp = nome.uppercase()
                         val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
                         val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
