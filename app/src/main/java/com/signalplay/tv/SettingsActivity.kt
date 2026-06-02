@@ -1,8 +1,10 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
@@ -64,6 +66,11 @@ class SettingsActivity : Activity() {
         val btnLimparFavs = findViewById<LinearLayout>(R.id.btnLimparFavs)
         val btnLimparHist = findViewById<LinearLayout>(R.id.btnLimparHist)
         val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
+        
+        // Mapeando os novos IDs do Botão Mágico
+        val btnModoLauncher = findViewById<LinearLayout>(R.id.btnModoLauncher)
+        val tvStatusLauncher = findViewById<TextView>(R.id.tvStatusLauncher)
+        
         val btnSairConta = findViewById<Button>(R.id.btnSairConta)
 
         tvNomeUsuario.text = "Olá, $username!"
@@ -79,6 +86,7 @@ class SettingsActivity : Activity() {
         btnLimparFavs.onFocusChangeListener = focusListener
         btnLimparHist.onFocusChangeListener = focusListener
         btnAtualizarEPG.onFocusChangeListener = focusListener
+        btnModoLauncher.onFocusChangeListener = focusListener // Botão novo precisa crescer
         btnSairConta.onFocusChangeListener = focusListener
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -119,6 +127,31 @@ class SettingsActivity : Activity() {
         atualizarStatus(tvStatusSD, filterSD)
         atualizarStatus(tvStatusH265, filterH265)
         atualizarStatus(tvStatus4K, filter4K)
+
+        // =========================================================================
+        // MÁGICA DO FANTASMA: Checa com o Android se o Launcher está Ativado
+        // =========================================================================
+        val aliasName = ComponentName(this, "com.signalplay.tv.LauncherAlias")
+        var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
+        atualizarStatus(tvStatusLauncher, isLauncherEnabled)
+
+        // =========================================================================
+        // QUANDO CLICAR NO BOTÃO DE MODO TV BOX:
+        // =========================================================================
+        btnModoLauncher.setOnClickListener {
+            isLauncherEnabled = !isLauncherEnabled
+            val newState = if (isLauncherEnabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
+            
+            // Acorda (ou faz dormir) o Fantasma sem matar o app atual
+            packageManager.setComponentEnabledSetting(aliasName, newState, PackageManager.DONT_KILL_APP)
+            atualizarStatus(tvStatusLauncher, isLauncherEnabled)
+            
+            if(isLauncherEnabled) {
+                Toast.makeText(this, "Modo TV Box ATIVADO! Aperte o botão da Casinha (Home) no controle.", Toast.LENGTH_LONG).show()
+            } else {
+                Toast.makeText(this, "Modo TV Box DESATIVADO!", Toast.LENGTH_SHORT).show()
+            }
+        }
 
         btnParental.setOnClickListener {
             isParentalActive = !isParentalActive
@@ -165,9 +198,6 @@ class SettingsActivity : Activity() {
             }
         }
 
-        // ====================================================================
-        // O MOTOR DE DOWNLOAD XMLTV (PLANO B DE EPG PARA A TV)
-        // ====================================================================
         btnAtualizarEPG.setOnClickListener {
             Toast.makeText(this, "Baixando EPG... Isso pode demorar até 1 minuto.", Toast.LENGTH_LONG).show()
             CoroutineScope(Dispatchers.IO).launch {
@@ -204,7 +234,6 @@ class SettingsActivity : Activity() {
                             } catch (e: Exception) { return 0L }
                         }
 
-                        // Leitura blindada linha por linha para não dar Crash de Memória na TV Box
                         while (reader.readLine().also { line = it } != null) {
                             val l = line!!
                             if (l.contains("<programme")) {
