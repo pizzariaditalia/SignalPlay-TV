@@ -4,7 +4,6 @@
     android:layout_height="match_parent"
     android:background="#111114">
 
-    <!-- CONTEÚDO PRINCIPAL (Canais/Pastas) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent"
@@ -30,7 +29,7 @@
                 android:id="@+id/recyclerCategories"
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:scrollbars="vertical" />
+                android:scrollbars="none" />
         </LinearLayout>
 
         <LinearLayout
@@ -55,11 +54,10 @@
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
                 android:paddingEnd="40dp"
-                android:scrollbars="vertical" />
+                android:scrollbars="none" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- NOVO: OVERLAY DE SPINNER PREMIUM -->
     <RelativeLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
