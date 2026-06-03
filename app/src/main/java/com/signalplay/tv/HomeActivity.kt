@@ -48,7 +48,6 @@ class HomeActivity : Activity() {
     private var passGlobal = ""
     private var username = ""
 
-    // Bancos de Memória para atualização instantânea
     private var listFilmesGlobais = listOf<FilmeItem>()
     private var listSeriesGlobais = listOf<FilmeItem>()
     private var listCanaisGlobais = listOf<CanalItem>()
@@ -167,7 +166,6 @@ class HomeActivity : Activity() {
 
         carregarAplicativosDaTV()
 
-        // OUVINTE EM TEMPO REAL
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null && !snapshot.isEmpty) {
@@ -190,7 +188,6 @@ class HomeActivity : Activity() {
                 }
             }
 
-        // CARREGAMENTO DA API COM PROTEÇÃO ANTI-CRASH E TIMEOUT DE 60s
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -200,7 +197,6 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
-                
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(60, TimeUnit.SECONDS)
@@ -373,7 +369,11 @@ class HomeActivity : Activity() {
     private fun renderizarFavoritos() {
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
-        val listFavoritos = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }
+        
+        // MÁGICA DA ORDEM: Mapeia usando a sua lista de favoritos para garantir a ordem de inserção!
+        val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> 
+            listCanaisGlobais.find { it.id == favId } 
+        }
 
         if (listFavoritos.isNotEmpty()) {
             tvFavoritosTitulo.visibility = View.VISIBLE
@@ -480,9 +480,6 @@ class HomeActivity : Activity() {
         })
     }
 
-    // =========================================================================
-    // MÁGICA: A FUNÇÃO QUE FALTAVA PARA ABRIR A TELA DE DETALHES!
-    // =========================================================================
     private fun abrirDetalhes(itemClicado: FilmeItem) {
         val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
         intentDet.putExtra("URL", urlGlobal)
@@ -496,6 +493,7 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
+    // AJUSTE: ÍCONES DOS CAMPEONATOS AGORA SÃO DO TAMANHO DOS APLICATIVOS
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
@@ -505,11 +503,15 @@ class HomeActivity : Activity() {
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(280, 280).apply { setMargins(16, 16, 16, 16) }
+                layoutParams = ViewGroup.MarginLayoutParams(240, 240).apply { setMargins(16, 16, 16, 16) }
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
                 isFocusable = true; isClickable = true; setPadding(16, 16, 16, 16)
             }
-            val img = ImageView(parent.context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(110, 110) }
+            val img = ImageView(parent.context).apply { 
+                id = 1001; 
+                layoutParams = LinearLayout.LayoutParams(160, 160)
+                scaleType = ImageView.ScaleType.FIT_CENTER 
+            }
             val txt = TextView(parent.context).apply { 
                 id = 1002
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
