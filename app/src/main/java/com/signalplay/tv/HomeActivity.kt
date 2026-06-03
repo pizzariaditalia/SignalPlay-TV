@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.os.Bundle
+import android.text.TextUtils
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -370,7 +371,6 @@ class HomeActivity : Activity() {
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
         
-        // MÁGICA DA ORDEM: Mapeia usando a sua lista de favoritos para garantir a ordem de inserção!
         val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> 
             listCanaisGlobais.find { it.id == favId } 
         }
@@ -383,8 +383,14 @@ class HomeActivity : Activity() {
                 DataHolder.todosCanais = listCanaisGlobais
                 DataHolder.favoritosIds = listaIdsFavoritosGlobais
                 DataHolder.categoriaAtualId = "FAV"
+                
+                // MÁGICA: O PlayerTvActivity filtra a lista mestre na ordem do servidor.
+                // Traduzimos o canal clicado para o índice exato que ele terá lá dentro!
+                val listaDoPlayer = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }
+                val indiceCorretoProPlayer = listaDoPlayer.indexOf(canalClicado)
+
                 startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply {
-                    putExtra("INDICE_CANAL", listFavoritos.indexOf(canalClicado))
+                    putExtra("INDICE_CANAL", if (indiceCorretoProPlayer != -1) indiceCorretoProPlayer else 0)
                 })
             }, { })
         } else {
@@ -493,7 +499,7 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    // AJUSTE: ÍCONES DOS CAMPEONATOS AGORA SÃO DO TAMANHO DOS APLICATIVOS
+    // AJUSTE: Altura elástica para não cortar textos grandes (WRAP_CONTENT)
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
@@ -503,7 +509,9 @@ class HomeActivity : Activity() {
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(240, 240).apply { setMargins(16, 16, 16, 16) }
+                // A caixa agora abraça o conteúdo (WRAP_CONTENT)
+                layoutParams = ViewGroup.MarginLayoutParams(260, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(16, 16, 16, 16) }
+                minimumHeight = 260
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
                 isFocusable = true; isClickable = true; setPadding(16, 16, 16, 16)
             }
@@ -514,9 +522,9 @@ class HomeActivity : Activity() {
             }
             val txt = TextView(parent.context).apply { 
                 id = 1002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 16 }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }
                 setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 2; setLines(2)
+                maxLines = 2; ellipsize = TextUtils.TruncateAt.END // Pontinhos (...) se o nome for gigante demais
             }
             layout.addView(img); layout.addView(txt)
             return LigaViewHolder(layout)
@@ -534,6 +542,7 @@ class HomeActivity : Activity() {
         override fun getItemCount(): Int = list.size
     }
 
+    // AJUSTE: Altura elástica aplicada aos aplicativos também para manter simetria
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(2001)
@@ -543,7 +552,8 @@ class HomeActivity : Activity() {
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(240, 240).apply { setMargins(16, 16, 16, 16) }
+                layoutParams = ViewGroup.MarginLayoutParams(260, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(16, 16, 16, 16) }
+                minimumHeight = 260
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
                 isFocusable = true; isClickable = true; setPadding(16, 16, 16, 16)
             }
@@ -552,7 +562,12 @@ class HomeActivity : Activity() {
                 layoutParams = LinearLayout.LayoutParams(160, 160);
                 scaleType = ImageView.ScaleType.FIT_CENTER 
             }
-            val txt = TextView(parent.context).apply { id = 2002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }; setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1 }
+            val txt = TextView(parent.context).apply { 
+                id = 2002; 
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }
+                setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 2; ellipsize = TextUtils.TruncateAt.END 
+            }
             layout.addView(img); layout.addView(txt)
             return AppViewHolder(layout)
         }
