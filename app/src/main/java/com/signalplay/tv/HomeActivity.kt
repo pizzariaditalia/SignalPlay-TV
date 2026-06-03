@@ -48,6 +48,7 @@ class HomeActivity : Activity() {
     private var passGlobal = ""
     private var username = ""
 
+    // Bancos de Memória para atualização instantânea
     private var listFilmesGlobais = listOf<FilmeItem>()
     private var listSeriesGlobais = listOf<FilmeItem>()
     private var listCanaisGlobais = listOf<CanalItem>()
@@ -128,7 +129,6 @@ class HomeActivity : Activity() {
         menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
 
-        // LISTA COMPLETA DE LIGAS RESTAURADA
         val listaLigas = listOf(
             LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
             LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
@@ -167,6 +167,7 @@ class HomeActivity : Activity() {
 
         carregarAplicativosDaTV()
 
+        // OUVINTE EM TEMPO REAL
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null && !snapshot.isEmpty) {
@@ -189,6 +190,7 @@ class HomeActivity : Activity() {
                 }
             }
 
+        // CARREGAMENTO DA API COM PROTEÇÃO ANTI-CRASH E TIMEOUT DE 60s
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -198,6 +200,7 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+                
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(60, TimeUnit.SECONDS)
@@ -477,6 +480,22 @@ class HomeActivity : Activity() {
         })
     }
 
+    // =========================================================================
+    // MÁGICA: A FUNÇÃO QUE FALTAVA PARA ABRIR A TELA DE DETALHES!
+    // =========================================================================
+    private fun abrirDetalhes(itemClicado: FilmeItem) {
+        val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
+        intentDet.putExtra("URL", urlGlobal)
+        intentDet.putExtra("USER", userGlobal)
+        intentDet.putExtra("PASS", passGlobal)
+        intentDet.putExtra("USERNAME", username) 
+        intentDet.putExtra("MEDIA_ID", itemClicado.id)
+        intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
+        intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
+        intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
+        startActivity(intentDet)
+    }
+
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
@@ -513,7 +532,6 @@ class HomeActivity : Activity() {
         override fun getItemCount(): Int = list.size
     }
 
-    // AJUSTE: ÍCONES DOS APPS MAIORES E MAIS QUADRADOS
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(2001)
@@ -529,7 +547,7 @@ class HomeActivity : Activity() {
             }
             val img = ImageView(parent.context).apply { 
                 id = 2001; 
-                layoutParams = LinearLayout.LayoutParams(160, 160); // Aumentado de 120 para 160
+                layoutParams = LinearLayout.LayoutParams(160, 160);
                 scaleType = ImageView.ScaleType.FIT_CENTER 
             }
             val txt = TextView(parent.context).apply { id = 2002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }; setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1 }
