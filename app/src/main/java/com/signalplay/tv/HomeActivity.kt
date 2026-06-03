@@ -48,7 +48,6 @@ class HomeActivity : Activity() {
     private var passGlobal = ""
     private var username = ""
 
-    // Bancos de Memória para atualização instantânea
     private var listFilmesGlobais = listOf<FilmeItem>()
     private var listSeriesGlobais = listOf<FilmeItem>()
     private var listCanaisGlobais = listOf<CanalItem>()
@@ -129,12 +128,35 @@ class HomeActivity : Activity() {
         menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
 
+        // LISTA COMPLETA DE LIGAS RESTAURADA
         val listaLigas = listOf(
             LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
             LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
             LigaItem("Bundesliga", "https://api.sofascore.app/api/v1/unique-tournament/35/image/dark", "https://m.sofascore.com/pt/torneio/futebol/germany/bundesliga/35"),
+            LigaItem("Camp. Argentino", "https://api.sofascore.app/api/v1/unique-tournament/155/image/dark", "https://m.sofascore.com/pt/torneio/futebol/argentina/liga-profesional/155"),
+            LigaItem("Camp. Carioca", "https://api.sofascore.app/api/v1/unique-tournament/376/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/carioca/376"),
+            LigaItem("Camp. Paulista", "https://api.sofascore.app/api/v1/unique-tournament/374/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/paulista-serie-a1/374"),
+            LigaItem("Camp. Saudita", "https://api.sofascore.app/api/v1/unique-tournament/2939/image/dark", "https://m.sofascore.com/pt/torneio/futebol/saudi-arabia/saudi-pro-league/2939"),
             LigaItem("Champions League", "https://api.sofascore.app/api/v1/unique-tournament/7/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-champions-league/7"),
-            LigaItem("Série A (Itália)", "https://api.sofascore.app/api/v1/unique-tournament/23/image/dark", "https://m.sofascore.com/pt/torneio/futebol/italy/serie-a/23")
+            LigaItem("Copa América", "https://api.sofascore.app/api/v1/unique-tournament/133/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-america/133"),
+            LigaItem("Copa da Inglaterra", "https://api.sofascore.app/api/v1/unique-tournament/19/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/fa-cup/19"),
+            LigaItem("Copa do Brasil", "https://api.sofascore.app/api/v1/unique-tournament/373/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-brasil/373"),
+            LigaItem("Copa do Mundo", "https://api.sofascore.app/api/v1/unique-tournament/16/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/world-cup/16"),
+            LigaItem("Copa do Nordeste", "https://api.sofascore.app/api/v1/unique-tournament/2841/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-nordeste/2841"),
+            LigaItem("Copa do Rei", "https://api.sofascore.app/api/v1/unique-tournament/116/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/copa-del-rey/116"),
+            LigaItem("Eredivisie", "https://api.sofascore.app/api/v1/unique-tournament/37/image/dark", "https://m.sofascore.com/pt/torneio/futebol/netherlands/eredivisie/37"),
+            LigaItem("Eurocopa", "https://api.sofascore.app/api/v1/unique-tournament/1/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/european-championship/1"),
+            LigaItem("Europa League", "https://api.sofascore.app/api/v1/unique-tournament/679/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-europa-league/679"),
+            LigaItem("La Liga", "https://api.sofascore.app/api/v1/unique-tournament/8/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/laliga/8"),
+            LigaItem("Libertadores", "https://api.sofascore.app/api/v1/unique-tournament/384/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-libertadores/384"),
+            LigaItem("Ligue 1", "https://api.sofascore.app/api/v1/unique-tournament/34/image/dark", "https://m.sofascore.com/pt/torneio/futebol/france/ligue-1/34"),
+            LigaItem("MLS", "https://api.sofascore.app/api/v1/unique-tournament/242/image/dark", "https://m.sofascore.com/pt/torneio/futebol/usa/mls/242"),
+            LigaItem("Mundial de Clubes", "https://api.sofascore.app/api/v1/unique-tournament/569/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/club-world-cup/569"),
+            LigaItem("Nations League", "https://api.sofascore.app/api/v1/unique-tournament/10469/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-nations-league/10469"),
+            LigaItem("Premier League", "https://api.sofascore.app/api/v1/unique-tournament/17/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/premier-league/17"),
+            LigaItem("Primeira Liga", "https://api.sofascore.app/api/v1/unique-tournament/238/image/dark", "https://m.sofascore.com/pt/torneio/futebol/portugal/liga-portugal/238"),
+            LigaItem("Série A (Itália)", "https://api.sofascore.app/api/v1/unique-tournament/23/image/dark", "https://m.sofascore.com/pt/torneio/futebol/italy/serie-a/23"),
+            LigaItem("Sul-Americana", "https://api.sofascore.app/api/v1/unique-tournament/383/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-sudamericana/383")
         )
 
         recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
@@ -145,7 +167,6 @@ class HomeActivity : Activity() {
 
         carregarAplicativosDaTV()
 
-        // OUVINTE EM TEMPO REAL
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null && !snapshot.isEmpty) {
@@ -168,7 +189,6 @@ class HomeActivity : Activity() {
                 }
             }
 
-        // CARREGAMENTO DA API COM PROTEÇÃO ANTI-CRASH E TIMEOUT DE 60s
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -178,8 +198,6 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
-                
-                // MÁGICA: Aumentando o tempo de espera do servidor para não crashar com catálogos gigantes
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(60, TimeUnit.SECONDS)
@@ -200,7 +218,6 @@ class HomeActivity : Activity() {
                 val reqVod = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
                 val reqSeries = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
 
-                // MÁGICA: Colocamos um escudo (try/catch) em cada chamada para o app nunca fechar
                 val defLiveCat = async { try { client.newCall(reqLiveCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
                 val defVodCat = async { try { client.newCall(reqVodCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
                 val defSeriesCat = async { try { client.newCall(reqSeriesCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
@@ -460,19 +477,6 @@ class HomeActivity : Activity() {
         })
     }
 
-    private fun abrirDetalhes(itemClicado: FilmeItem) {
-        val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
-        intentDet.putExtra("URL", urlGlobal)
-        intentDet.putExtra("USER", userGlobal)
-        intentDet.putExtra("PASS", passGlobal)
-        intentDet.putExtra("USERNAME", username) 
-        intentDet.putExtra("MEDIA_ID", itemClicado.id)
-        intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
-        intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
-        intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
-        startActivity(intentDet)
-    }
-
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
@@ -509,6 +513,7 @@ class HomeActivity : Activity() {
         override fun getItemCount(): Int = list.size
     }
 
+    // AJUSTE: ÍCONES DOS APPS MAIORES E MAIS QUADRADOS
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(2001)
@@ -522,7 +527,11 @@ class HomeActivity : Activity() {
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
                 isFocusable = true; isClickable = true; setPadding(16, 16, 16, 16)
             }
-            val img = ImageView(parent.context).apply { id = 2001; layoutParams = LinearLayout.LayoutParams(120, 120); scaleType = ImageView.ScaleType.FIT_CENTER }
+            val img = ImageView(parent.context).apply { 
+                id = 2001; 
+                layoutParams = LinearLayout.LayoutParams(160, 160); // Aumentado de 120 para 160
+                scaleType = ImageView.ScaleType.FIT_CENTER 
+            }
             val txt = TextView(parent.context).apply { id = 2002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }; setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1 }
             layout.addView(img); layout.addView(txt)
             return AppViewHolder(layout)
