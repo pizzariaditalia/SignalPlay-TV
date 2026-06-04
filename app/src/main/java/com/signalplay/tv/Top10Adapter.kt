@@ -3,6 +3,7 @@ package com.signalplay.tv
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.animation.OvershootInterpolator
 import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
@@ -15,6 +16,8 @@ class Top10Adapter(
     private val listaItens: List<FilmeItem>,
     private val onClick: (FilmeItem) -> Unit
 ) : RecyclerView.Adapter<Top10Adapter.Top10ViewHolder>() {
+
+    private val interpolator = OvershootInterpolator(1.2f)
 
     class Top10ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val topNumber: TextView = view.findViewById(R.id.topNumber)
@@ -33,13 +36,13 @@ class Top10Adapter(
         val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
         Glide.with(holder.itemView.context).load(item.urlImagem).apply(options).into(holder.cardImage)
 
-        // SUPER ZOOM E SOMBRA ATIVADOS
+        // MÁGICA: Animação elástica 
         holder.itemView.setOnFocusChangeListener { view, hasFocus ->
             if (hasFocus) {
                 view.bringToFront()
-                view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(200).start()
+                view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(250).setInterpolator(interpolator).start()
             } else {
-                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).start()
+                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
             }
         }
 
