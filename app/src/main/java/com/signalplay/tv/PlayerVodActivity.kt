@@ -15,7 +15,9 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -152,7 +154,22 @@ class PlayerVodActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
-        exoPlayer = ExoPlayer.Builder(this).build()
+        // MÁGICA: Buffer Profundo para VOD
+        // Carrega até 2 minutos de filme/série na memória para zerar os travamentos de internet ruim
+        val loadControl = DefaultLoadControl.Builder()
+            .setAllocator(DefaultAllocator(true, 64 * 1024))
+            .setBufferDurationsMs(
+                32000,  // Min buffer (32 seg)
+                120000, // Max buffer (2 minutos inteiros de filme na memória)
+                2500,   // Precisa baixar 2.5 seg para dar o play
+                5000    // Se a net cair e voltar, precisa de 5 seg pra retomar
+            )
+            .build()
+
+        exoPlayer = ExoPlayer.Builder(this)
+            .setLoadControl(loadControl)
+            .build()
+            
         playerViewVod.player = exoPlayer
         
         exoPlayer?.addListener(object : Player.Listener {
@@ -319,9 +336,6 @@ class PlayerVodActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
-    // =========================================================================
-    // MÁGICA: .UPDATE() COM PLANO B SE A PASTA NÃO EXISTIR
-    // =========================================================================
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
         if (username.isEmpty() || idToSave.isEmpty()) return
@@ -340,7 +354,6 @@ class PlayerVodActivity : Activity() {
                         
                         docRef.update("historico_vod.$idToSave", mapToSave)
                             .addOnFailureListener {
-                                // PLANO B: Cria o campo se ele ainda não existir no banco
                                 docRef.set(mapOf("historico_vod" to mapOf(idToSave to mapToSave)), SetOptions.merge())
                             }
                     }
