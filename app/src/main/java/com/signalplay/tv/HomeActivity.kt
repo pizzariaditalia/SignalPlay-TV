@@ -38,7 +38,6 @@ import java.util.concurrent.TimeUnit
 
 data class LigaItem(val nome: String, val logo: String, val url: String)
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
-data class CategoriaItem(val id: String, val nome: String)
 
 class HomeActivity : Activity() {
 
