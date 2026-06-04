@@ -8,8 +8,10 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.os.Bundle
 import android.view.View
+import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.LinearLayout
+import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
 import com.google.firebase.firestore.FirebaseFirestore
@@ -36,6 +38,7 @@ class SettingsActivity : Activity() {
     private var filterSD = false
     private var filterH265 = false
     private var filter4K = false
+    private val interpolator = OvershootInterpolator(1.2f)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -52,33 +55,37 @@ class SettingsActivity : Activity() {
         val tvVencimento = findViewById<TextView>(R.id.tvVencimento)
         
         val btnParental = findViewById<LinearLayout>(R.id.btnParental)
-        val tvStatusParental = findViewById<TextView>(R.id.tvStatusParental)
+        val switchParental = findViewById<Switch>(R.id.switchParental)
         
         val btnFilterSD = findViewById<LinearLayout>(R.id.btnFilterSD)
-        val tvStatusSD = findViewById<TextView>(R.id.tvStatusSD)
+        val switchSD = findViewById<Switch>(R.id.switchSD)
         
         val btnFilterH265 = findViewById<LinearLayout>(R.id.btnFilterH265)
-        val tvStatusH265 = findViewById<TextView>(R.id.tvStatusH265)
+        val switchH265 = findViewById<Switch>(R.id.switchH265)
         
         val btnFilter4K = findViewById<LinearLayout>(R.id.btnFilter4K)
-        val tvStatus4K = findViewById<TextView>(R.id.tvStatus4K)
+        val switch4K = findViewById<Switch>(R.id.switch4K)
 
         val btnLimparFavs = findViewById<LinearLayout>(R.id.btnLimparFavs)
         val btnLimparHist = findViewById<LinearLayout>(R.id.btnLimparHist)
         val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
         
-        // Mapeando os novos IDs do Botão Mágico
         val btnModoLauncher = findViewById<LinearLayout>(R.id.btnModoLauncher)
-        val tvStatusLauncher = findViewById<TextView>(R.id.tvStatusLauncher)
+        val switchLauncher = findViewById<Switch>(R.id.switchLauncher)
         
         val btnSairConta = findViewById<Button>(R.id.btnSairConta)
 
         tvNomeUsuario.text = "Olá, $username!"
 
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
-            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            if (hasFocus) {
+                v.bringToFront()
+                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
+            } else {
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
+            }
         }
+        
         btnParental.onFocusChangeListener = focusListener
         btnFilterSD.onFocusChangeListener = focusListener
         btnFilterH265.onFocusChangeListener = focusListener
@@ -86,7 +93,7 @@ class SettingsActivity : Activity() {
         btnLimparFavs.onFocusChangeListener = focusListener
         btnLimparHist.onFocusChangeListener = focusListener
         btnAtualizarEPG.onFocusChangeListener = focusListener
-        btnModoLauncher.onFocusChangeListener = focusListener // Botão novo precisa crescer
+        btnModoLauncher.onFocusChangeListener = focusListener
         btnSairConta.onFocusChangeListener = focusListener
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -123,31 +130,23 @@ class SettingsActivity : Activity() {
         filterH265 = prefs.getBoolean("FILTER_H265", false)
         filter4K = prefs.getBoolean("FILTER_4K", false)
 
-        atualizarStatus(tvStatusParental, isParentalActive)
-        atualizarStatus(tvStatusSD, filterSD)
-        atualizarStatus(tvStatusH265, filterH265)
-        atualizarStatus(tvStatus4K, filter4K)
+        switchParental.isChecked = isParentalActive
+        switchSD.isChecked = filterSD
+        switchH265.isChecked = filterH265
+        switch4K.isChecked = filter4K
 
-        // =========================================================================
-        // MÁGICA DO FANTASMA: Checa com o Android se o Launcher está Ativado
-        // =========================================================================
         val aliasName = ComponentName(this, "com.signalplay.tv.LauncherAlias")
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
-        atualizarStatus(tvStatusLauncher, isLauncherEnabled)
+        switchLauncher.isChecked = isLauncherEnabled
 
-        // =========================================================================
-        // QUANDO CLICAR NO BOTÃO DE MODO TV BOX:
-        // =========================================================================
         btnModoLauncher.setOnClickListener {
             isLauncherEnabled = !isLauncherEnabled
             val newState = if (isLauncherEnabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
-            
-            // Acorda (ou faz dormir) o Fantasma sem matar o app atual
             packageManager.setComponentEnabledSetting(aliasName, newState, PackageManager.DONT_KILL_APP)
-            atualizarStatus(tvStatusLauncher, isLauncherEnabled)
+            switchLauncher.isChecked = isLauncherEnabled
             
             if(isLauncherEnabled) {
-                Toast.makeText(this, "Modo TV Box ATIVADO! Aperte o botão da Casinha (Home) no controle.", Toast.LENGTH_LONG).show()
+                Toast.makeText(this, "Modo TV Box ATIVADO! Aperte o botão da Casinha (Home).", Toast.LENGTH_LONG).show()
             } else {
                 Toast.makeText(this, "Modo TV Box DESATIVADO!", Toast.LENGTH_SHORT).show()
             }
@@ -156,22 +155,22 @@ class SettingsActivity : Activity() {
         btnParental.setOnClickListener {
             isParentalActive = !isParentalActive
             prefs.edit().putBoolean("PARENTAL_CONTROL", isParentalActive).apply()
-            atualizarStatus(tvStatusParental, isParentalActive)
+            switchParental.isChecked = isParentalActive
         }
         btnFilterSD.setOnClickListener {
             filterSD = !filterSD
             prefs.edit().putBoolean("FILTER_SD", filterSD).apply()
-            atualizarStatus(tvStatusSD, filterSD)
+            switchSD.isChecked = filterSD
         }
         btnFilterH265.setOnClickListener {
             filterH265 = !filterH265
             prefs.edit().putBoolean("FILTER_H265", filterH265).apply()
-            atualizarStatus(tvStatusH265, filterH265)
+            switchH265.isChecked = filterH265
         }
         btnFilter4K.setOnClickListener {
             filter4K = !filter4K
             prefs.edit().putBoolean("FILTER_4K", filter4K).apply()
-            atualizarStatus(tvStatus4K, filter4K)
+            switch4K.isChecked = filter4K
         }
 
         btnLimparFavs.setOnClickListener {
@@ -299,16 +298,6 @@ class SettingsActivity : Activity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
-        }
-    }
-
-    private fun atualizarStatus(tv: TextView, isActive: Boolean) {
-        if (isActive) {
-            tv.text = "ATIVADO"
-            tv.setTextColor(Color.parseColor("#2ED573"))
-        } else {
-            tv.text = "DESATIVADO"
-            tv.setTextColor(Color.parseColor("#FF4757"))
         }
     }
 }
