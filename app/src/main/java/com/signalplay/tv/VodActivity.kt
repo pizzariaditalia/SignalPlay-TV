@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -16,12 +15,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONArray
 
 class VodActivity : Activity() {
 
@@ -57,10 +52,7 @@ class VodActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
-
+                // 1. Puxa histórico para a barra de progresso
                 var historicoMap: Map<String, Map<String, Long>>? = null
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
@@ -70,7 +62,7 @@ class VodActivity : Activity() {
                         }
                     }
                 
-                withContext(Dispatchers.IO) { Thread.sleep(800) }
+                withContext(Dispatchers.IO) { Thread.sleep(800) } // Aguarda o Firebase responder
 
                 fun getProgress(id: String): Int {
                     val progressoData = historicoMap?.get(id)
@@ -82,39 +74,26 @@ class VodActivity : Activity() {
                     return 0
                 }
 
-                val client = OkHttpClient()
-
-                val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_categories").build()).execute().body?.string() ?: "[]" }
-                val defVod = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()).execute().body?.string() ?: "[]" }
-
-                val jsonCat = defCat.await()
-                val jsonVod = defVod.await()
+                // 2. LÊ DO BANCO LOCAL (ROOM)
+                val dao = AppDatabase.getDatabase(this@VodActivity).catalogoDao()
                 
-                if (jsonCat.startsWith("[")) {
-                    val arr = JSONArray(jsonCat)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val catName = obj.optString("category_name", "")
-                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
-                    }
-                }
-                
-                if (jsonVod.startsWith("[")) {
-                    val arr = JSONArray(jsonVod)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val id = obj.optString("stream_id")
-                        val nome = obj.optString("name")
-                        val icone = obj.optString("stream_icon")
-                        val catId = obj.optString("category_id")
-                        val ext = obj.optString("container_extension", "mp4")
-                        val streamUrl = "$url/movie/$user/$pass/$id.$ext"
-                        // INJETA A PORCENTAGEM
-                        todosFilmes.add(FilmeItem(id, nome, icone, streamUrl, "filme", catId, getProgress(id)))
-                    }
+                val categoriasEntity = dao.getCategoriasPorTipo("vod")
+                todasCategorias.addAll(categoriasEntity.map { CategoriaItem(it.id, it.nome) })
+
+                val filmesEntity = dao.getTodosFilmes()
+                for (filme in filmesEntity) {
+                    todosFilmes.add(FilmeItem(
+                        id = filme.id,
+                        nome = filme.nome,
+                        urlImagem = filme.urlImagem,
+                        streamUrl = filme.streamUrl,
+                        tipo = filme.tipo,
+                        categoryId = filme.categoryId,
+                        progresso = getProgress(filme.id)
+                    ))
                 }
 
+                // 3. Atualiza Tela
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
 
@@ -141,7 +120,7 @@ class VodActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-                    Toast.makeText(this@VodActivity, "Erro ao carregar filmes.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@VodActivity, "Erro ao carregar filmes locais.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -156,7 +135,7 @@ class VodActivity : Activity() {
             intentDet.putExtra("URL", url)
             intentDet.putExtra("USER", user)
             intentDet.putExtra("PASS", pass)
-            intentDet.putExtra("USERNAME", username) // PASSA O USERNAME
+            intentDet.putExtra("USERNAME", username) 
             intentDet.putExtra("MEDIA_ID", filmeClicado.id)
             intentDet.putExtra("MEDIA_TIPO", filmeClicado.tipo)
             intentDet.putExtra("MEDIA_NOME", filmeClicado.nome)
