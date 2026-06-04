@@ -1,10 +1,14 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
+import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
@@ -133,15 +137,13 @@ class PlayerTvActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
-        // MÁGICA: Buffer Inteligente para TV Ao Vivo
-        // Prioriza abrir o canal rápido, mas estoca até 50 segundos de vídeo para evitar travamentos
         val loadControl = DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, 64 * 1024))
             .setBufferDurationsMs(
-                15000, // Min buffer (15 seg)
-                50000, // Max buffer (50 seg)
-                1500,  // Inicia o vídeo com apenas 1.5 seg baixado (Zapping rápido)
-                3000   // Se travar, volta rápido com 3 seg
+                15000,
+                50000,
+                1500,
+                3000
             )
             .build()
 
@@ -339,6 +341,29 @@ class PlayerTvActivity : Activity() {
                     osdProgressContainer.visibility = View.GONE
                 }
             }
+        }
+    }
+
+    // =========================================================================
+    // MODO PICTURE IN PICTURE (PiP)
+    // =========================================================================
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .build()
+            enterPictureInPictureMode(params)
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            // Esconde toda a interface gráfica para ficar só o vídeo limpo
+            osdContainer.visibility = View.GONE
+            painelCanais.visibility = View.GONE
+            painelEpg.visibility = View.GONE
         }
     }
 
