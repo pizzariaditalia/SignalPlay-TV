@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.app.Dialog
 import android.content.ComponentName
 import android.content.Context
@@ -44,6 +45,13 @@ class SettingsActivity : Activity() {
     private var user = ""
     private var pass = ""
 
+    private var isParentalActive = false
+    private var filterSD = false
+    private var filterHD = false
+    private var filterFHD = false
+    private var filterH265 = false
+    private var filter4K = false
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -62,8 +70,7 @@ class SettingsActivity : Activity() {
         val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
         val tvStatusEpg = findViewById<TextView>(R.id.tvStatusEpg)
 
-        val btnShowApps = findViewById<LinearLayout>(R.id.btnShowApps)
-        val switchApps = findViewById<Switch>(R.id.switchApps)
+        val btnHideApps = findViewById<LinearLayout>(R.id.btnHideApps)
 
         val btnParental = findViewById<LinearLayout>(R.id.btnParental)
         val switchParental = findViewById<Switch>(R.id.switchParental)
@@ -89,7 +96,6 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
-        // Busca dados do Firebase (Plano do Usuário)
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
@@ -111,13 +117,19 @@ class SettingsActivity : Activity() {
         
         tvStatusEpg.text = "Última atualização: ${prefs.getString("LAST_EPG_UPDATE", "Nunca")}"
 
-        switchApps.isChecked = prefs.getBoolean("SHOW_APPS", true)
-        switchSD.isChecked = prefs.getBoolean("FILTER_SD", false)
-        switchHD.isChecked = prefs.getBoolean("FILTER_HD", false)
-        switchFHD.isChecked = prefs.getBoolean("FILTER_FHD", false)
-        switchH265.isChecked = prefs.getBoolean("FILTER_H265", false)
-        switch4K.isChecked = prefs.getBoolean("FILTER_4K", false)
-        switchParental.isChecked = prefs.getBoolean("PARENTAL_CONTROL", false)
+        isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+        filterSD = prefs.getBoolean("FILTER_SD", false)
+        filterHD = prefs.getBoolean("FILTER_HD", false)
+        filterFHD = prefs.getBoolean("FILTER_FHD", false)
+        filterH265 = prefs.getBoolean("FILTER_H265", false)
+        filter4K = prefs.getBoolean("FILTER_4K", false)
+
+        switchParental.isChecked = isParentalActive
+        switchSD.isChecked = filterSD
+        switchHD.isChecked = filterHD
+        switchFHD.isChecked = filterFHD
+        switchH265.isChecked = filterH265
+        switch4K.isChecked = filter4K
 
         val aliasName = ComponentName(this, "com.signalplay.tv.LauncherAlias")
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
@@ -135,7 +147,7 @@ class SettingsActivity : Activity() {
         }
         
         btnAtualizarEPG.onFocusChangeListener = focusListener
-        btnShowApps.onFocusChangeListener = focusListener
+        btnHideApps.onFocusChangeListener = focusListener
         btnParental.onFocusChangeListener = focusListener
         btnFilterSD.onFocusChangeListener = focusListener
         btnFilterHD.onFocusChangeListener = focusListener
@@ -151,28 +163,20 @@ class SettingsActivity : Activity() {
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
         }
 
-        // =========================================================================
-        // AÇÕES DOS BOTÕES E SWITCHES
-        // =========================================================================
-
-        btnShowApps.setOnClickListener {
-            val newState = !switchApps.isChecked
-            prefs.edit().putBoolean("SHOW_APPS", newState).apply()
-            switchApps.isChecked = newState
+        btnHideApps.setOnClickListener {
+            abrirDialogoOcultarApps()
         }
 
-        btnFilterSD.setOnClickListener { val st = !switchSD.isChecked; prefs.edit().putBoolean("FILTER_SD", st).apply(); switchSD.isChecked = st }
-        btnFilterHD.setOnClickListener { val st = !switchHD.isChecked; prefs.edit().putBoolean("FILTER_HD", st).apply(); switchHD.isChecked = st }
-        btnFilterFHD.setOnClickListener { val st = !switchFHD.isChecked; prefs.edit().putBoolean("FILTER_FHD", st).apply(); switchFHD.isChecked = st }
-        btnFilterH265.setOnClickListener { val st = !switchH265.isChecked; prefs.edit().putBoolean("FILTER_H265", st).apply(); switchH265.isChecked = st }
-        btnFilter4K.setOnClickListener { val st = !switch4K.isChecked; prefs.edit().putBoolean("FILTER_4K", st).apply(); switch4K.isChecked = st }
+        btnFilterSD.setOnClickListener { filterSD = !switchSD.isChecked; prefs.edit().putBoolean("FILTER_SD", filterSD).apply(); switchSD.isChecked = filterSD }
+        btnFilterHD.setOnClickListener { filterHD = !switchHD.isChecked; prefs.edit().putBoolean("FILTER_HD", filterHD).apply(); switchHD.isChecked = filterHD }
+        btnFilterFHD.setOnClickListener { filterFHD = !switchFHD.isChecked; prefs.edit().putBoolean("FILTER_FHD", filterFHD).apply(); switchFHD.isChecked = filterFHD }
+        btnFilterH265.setOnClickListener { filterH265 = !switchH265.isChecked; prefs.edit().putBoolean("FILTER_H265", filterH265).apply(); switchH265.isChecked = filterH265 }
+        btnFilter4K.setOnClickListener { filter4K = !switch4K.isChecked; prefs.edit().putBoolean("FILTER_4K", filter4K).apply(); switch4K.isChecked = filter4K }
 
         btnParental.setOnClickListener {
-            val isAtualmenteAtivo = switchParental.isChecked
             val savedPin = prefs.getString("PARENTAL_PIN", "")
 
-            if (!isAtualmenteAtivo) {
-                // Vai ATIVAR. Precisamos criar o PIN se não existir.
+            if (!switchParental.isChecked) {
                 if (savedPin.isNullOrEmpty()) {
                     showCustomDialog("Criar PIN Parental", "Digite 4 números para proteger o conteúdo adulto:", true) { inputPin ->
                         if (inputPin.length == 4) {
@@ -188,7 +192,6 @@ class SettingsActivity : Activity() {
                     switchParental.isChecked = true
                 }
             } else {
-                // Vai DESATIVAR. Exige o PIN.
                 showCustomDialog("Desativar Controle Parental", "Digite seu PIN de 4 números:", true) { inputPin ->
                     if (inputPin == savedPin) {
                         prefs.edit().putBoolean("PARENTAL_CONTROL", false).apply()
@@ -347,9 +350,6 @@ class SettingsActivity : Activity() {
         }
     }
 
-    // =========================================================================
-    // POP-UP UNIVERSAL DE VIDRO (PIN E CONFIRMAÇÕES)
-    // =========================================================================
     private fun showCustomDialog(titulo: String, mensagem: String, isPinMode: Boolean, onConfirm: (String) -> Unit) {
         val dialog = Dialog(this)
         dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
@@ -385,5 +385,55 @@ class SettingsActivity : Activity() {
         }
 
         dialog.show()
+    }
+
+    // MÁGICA: Lista suspensa nativa do Android para esconder apps específicos
+    private fun abrirDialogoOcultarApps() {
+        val pm = packageManager
+        val installedApps = mutableMapOf<String, String>() 
+
+        try {
+            val intentLeanback = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) }
+            val leanbackApps = pm.queryIntentActivities(intentLeanback, 0)
+            for (resolveInfo in leanbackApps) {
+                val pkg = resolveInfo.activityInfo.packageName
+                if (pkg == applicationContext.packageName) continue
+                installedApps[pkg] = resolveInfo.loadLabel(pm).toString()
+            }
+
+            val intentLauncher = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+            val launcherApps = pm.queryIntentActivities(intentLauncher, 0)
+            for (resolveInfo in launcherApps) {
+                val pkg = resolveInfo.activityInfo.packageName
+                if (pkg == applicationContext.packageName || installedApps.containsKey(pkg)) continue
+                installedApps[pkg] = resolveInfo.loadLabel(pm).toString()
+            }
+        } catch (e: Exception) {}
+
+        val appList = installedApps.toList().sortedBy { it.second }
+        val appNames = appList.map { it.second }.toTypedArray()
+        val appPackages = appList.map { it.first }
+
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        val hiddenAppsSet = prefs.getStringSet("HIDDEN_APPS", mutableSetOf()) ?: mutableSetOf()
+        
+        val checkedItems = BooleanArray(appList.size) { i -> hiddenAppsSet.contains(appPackages[i]) }
+
+        // Usa o visual padrão da TV para listas de múltipla escolha
+        val builder = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
+        builder.setTitle("Ocultar Aplicativos da Tela Inicial")
+        builder.setMultiChoiceItems(appNames, checkedItems) { _, which, isChecked ->
+            checkedItems[which] = isChecked
+        }
+        builder.setPositiveButton("Salvar") { _, _ ->
+            val newHiddenApps = mutableSetOf<String>()
+            for (i in checkedItems.indices) {
+                if (checkedItems[i]) newHiddenApps.add(appPackages[i])
+            }
+            prefs.edit().putStringSet("HIDDEN_APPS", newHiddenApps).apply()
+            Toast.makeText(this, "Lista de aplicativos atualizada!", Toast.LENGTH_SHORT).show()
+        }
+        builder.setNegativeButton("Cancelar", null)
+        builder.show()
     }
 }
