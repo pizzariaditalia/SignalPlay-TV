@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    // Plugin necessário para processar o banco de dados
+    // Plugin necessário para processar o banco de dados e o Glide
     id 'kotlin-kapt'
     id 'com.google.gms.google-services' 
 }
@@ -16,6 +16,9 @@ android {
         targetSdk 34
         versionCode 1
         versionName "1.0"
+
+        // MÁGICA: Ativa o suporte para aplicativos grandes (mais de 64k métodos)
+        multiDexEnabled true
     }
 
     buildTypes {
@@ -41,30 +44,37 @@ android {
 }
 
 dependencies {
+    // Essenciais do Android
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
     
+    // Componentes de Layout e Prateleiras
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.cardview:cardview:1.0.0'
 
+    // Firebase
     implementation platform('com.google.firebase:firebase-bom:32.7.1')
     implementation 'com.google.firebase:firebase-firestore-ktx'
 
+    // OkHttp
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
+
+    // Coroutines
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
+    // Glide (Carregamento de Capas)
     implementation 'com.github.bumptech.glide:glide:4.16.0'
-    annotationProcessor 'com.github.bumptech.glide:compiler:4.16.0'
+    // CORREÇÃO: Trocado 'annotationProcessor' por 'kapt'
+    kapt 'com.github.bumptech.glide:compiler:4.16.0'
 
+    // Media3 / ExoPlayer
     implementation 'androidx.media3:media3-exoplayer:1.2.1'
     implementation 'androidx.media3:media3-ui:1.2.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
 
-    // =========================================================
-    // MÁGICA: Dependências do Banco de Dados Local (Room)
-    // =========================================================
+    // Banco de Dados Local (Room)
     implementation 'androidx.room:room-runtime:2.6.1'
     implementation 'androidx.room:room-ktx:2.6.1'
     kapt 'androidx.room:room-compiler:2.6.1'
