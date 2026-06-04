@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -16,12 +15,8 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONArray
 
 data class CategoriaItem(val id: String, val nome: String)
 
@@ -50,21 +45,11 @@ class TvActivity : Activity() {
         recyclerCategories.layoutManager = LinearLayoutManager(this)
         recyclerCanaisGrid.layoutManager = GridLayoutManager(this, 5)
 
-        val url = intent.getStringExtra("URL") ?: ""
-        val user = intent.getStringExtra("USER") ?: ""
-        val pass = intent.getStringExtra("PASS") ?: ""
         username = intent.getStringExtra("USERNAME") ?: ""
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val filterSD = prefs.getBoolean("FILTER_SD", false)
-                val filterH265 = prefs.getBoolean("FILTER_H265", false)
-                val filter4K = prefs.getBoolean("FILTER_4K", false)
-                
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
-
+                // 1. Busca os favoritos no Firebase para manter sincronizado
                 db.collection("usuarios")
                     .whereEqualTo("usuario", username)
                     .get()
@@ -75,59 +60,26 @@ class TvActivity : Activity() {
                         }
                     }
 
-                val client = OkHttpClient()
-
-                val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_categories").build()).execute().body?.string() ?: "[]" }
-                val defLive = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()).execute().body?.string() ?: "[]" }
-
-                val jsonCat = defCat.await()
-                val jsonLive = defLive.await()
-
-                if (jsonCat.startsWith("[")) {
-                    val arr = JSONArray(jsonCat)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val catName = obj.optString("category_name", "")
-                        
-                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) {
-                            todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
-                        }
-                    }
-                }
+                // 2. LÊ TUDO DO BANCO DE DADOS LOCAL (ROOM) - Ultra Rápido!
+                val dao = AppDatabase.getDatabase(this@TvActivity).catalogoDao()
+                
+                val categoriasEntity = dao.getCategoriasPorTipo("live")
+                todasCategorias.addAll(categoriasEntity.map { CategoriaItem(it.id, it.nome) })
                 
                 todasCategorias.sortBy { 
                     val n = it.nome.lowercase()
                     if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
                 }
 
-                if (jsonLive.startsWith("[")) {
-                    val arr = JSONArray(jsonLive)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val id = obj.optString("stream_id")
-                        val nome = obj.optString("name")
-                        
-                        val epgId = obj.optString("epg_channel_id", "")
-                        if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
-                        
-                        // MÁGICA: Filtro Agressivo também na TV
-                        val nUp = nome.uppercase()
-                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                        
-                        if (filterSD && isSD) continue
-                        if (filterH265 && isH265) continue
-                        if (filter4K && is4K) continue
-
-                        val icone = obj.optString("stream_icon")
-                        val catId = obj.optString("category_id")
-                        val streamUrl = "$url/live/$user/$pass/$id.ts"
-                        todosCanais.add(CanalItem(id, nome, icone, catId, streamUrl))
+                val canaisEntity = dao.getTodosCanais()
+                for (canal in canaisEntity) {
+                    if (canal.epgChannelId.isNotEmpty()) {
+                        DataHolder.mapaEpgIds[canal.id] = canal.epgChannelId
                     }
+                    todosCanais.add(CanalItem(canal.id, canal.nome, canal.urlImagem, canal.categoryId, canal.streamUrl))
                 }
 
+                // 3. Atualiza a tela
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
 
@@ -152,7 +104,7 @@ class TvActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-                    Toast.makeText(this@TvActivity, "Erro ao conectar com a API de TV.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@TvActivity, "Erro ao carregar canais do banco local.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
