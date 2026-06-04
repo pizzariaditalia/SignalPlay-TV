@@ -28,7 +28,10 @@
                     android:scaleType="matrix"
                     android:src="#222222" />
 
-                <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#44000000" />
+                <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#22000000" />
+                
+                <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_details_gradient" />
+                
                 <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_hero_gradient" />
 
                 <RelativeLayout
@@ -74,10 +77,11 @@
                     android:paddingEnd="48dp"
                     android:paddingBottom="48dp">
 
-                    <TextView android:id="@+id/heroBadge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CARREGANDO..." android:textColor="#FFC107" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="8dp" />
-                    <TextView android:id="@+id/heroTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aguarde" android:textColor="#FFFFFF" android:textSize="42sp" android:textStyle="bold" android:layout_marginBottom="8dp" />
-                    <TextView android:id="@+id/heroDesc" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Conectando ao servidor..." android:textColor="#CCCCCC" android:textSize="16sp" android:layout_marginBottom="24dp"/>
-                    <Button android:id="@+id/btnAssistirDestaque" android:layout_width="wrap_content" android:layout_height="wrap_content" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:text="ASSISTIR AGORA" android:textStyle="bold" android:paddingStart="32dp" android:paddingEnd="32dp" android:visibility="gone" />
+                    <TextView android:id="@+id/heroBadge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CARREGANDO..." android:textColor="#FFC107" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="8dp" android:shadowColor="#000000" android:shadowDx="1" android:shadowDy="1" android:shadowRadius="2" />
+                    <TextView android:id="@+id/heroTitle" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Aguarde" android:textColor="#FFFFFF" android:textSize="48sp" android:textStyle="bold" android:fontFamily="sans-serif-black" android:layout_marginBottom="8dp" android:shadowColor="#000000" android:shadowDx="2" android:shadowDy="2" android:shadowRadius="4" />
+                    <TextView android:id="@+id/heroDesc" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Conectando ao servidor..." android:textColor="#E0E0E0" android:textSize="18sp" android:layout_marginBottom="24dp" android:shadowColor="#000000" android:shadowDx="1" android:shadowDy="1" android:shadowRadius="2" />
+                    
+                    <Button android:id="@+id/btnAssistirDestaque" android:layout_width="wrap_content" android:layout_height="wrap_content" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:text="▶ ASSISTIR AGORA" android:textStyle="bold" android:textSize="16sp" android:paddingStart="32dp" android:paddingEnd="32dp" android:paddingTop="12dp" android:paddingBottom="12dp" android:elevation="8dp" android:visibility="gone" />
                 </LinearLayout>
             </RelativeLayout>
 
