@@ -1,19 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
-    <!-- PERMISSÕES DE INTERNET E REDE -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     
-    <!-- PERMISSÕES PARA O SISTEMA DE ATUALIZAÇÃO E LEITURA DE APPS -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
     
-    <!-- MÁGICA: Permissão obrigatória no Android 11+ para ler outros aplicativos na TV -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
-    <!-- RECURSOS PARA ANDROID TV E TV BOX -->
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
@@ -39,10 +35,6 @@
             </intent-filter>
         </activity>
 
-        <!-- ========================================================= -->
-        <!-- MÁGICA: O FANTASMA QUE TRANSFORMA O APP EM TELA INICIAL -->
-        <!-- Nasce dormindo (enabled="false") -->
-        <!-- ========================================================= -->
         <activity-alias
             android:name=".LauncherAlias"
             android:enabled="false"
@@ -62,9 +54,21 @@
         <activity android:name=".SearchActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".DetailsActivity" android:exported="false" android:screenOrientation="landscape" />
-        <activity android:name=".PlayerTvActivity" android:exported="false" android:configChanges="orientation|keyboardHidden|screenSize" android:screenOrientation="landscape" />
-        <activity android:name=".PlayerVodActivity" android:exported="false" android:configChanges="orientation|keyboardHidden|screenSize" android:screenOrientation="landscape" />
         <activity android:name=".SportsActivity" android:exported="false" android:screenOrientation="landscape" />
+
+        <activity 
+            android:name=".PlayerTvActivity" 
+            android:exported="false" 
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout" 
+            android:supportsPictureInPicture="true"
+            android:screenOrientation="landscape" />
+            
+        <activity 
+            android:name=".PlayerVodActivity" 
+            android:exported="false" 
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout" 
+            android:supportsPictureInPicture="true"
+            android:screenOrientation="landscape" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
