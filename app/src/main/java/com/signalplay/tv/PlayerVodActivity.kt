@@ -1,11 +1,15 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
 import android.widget.Button
@@ -154,15 +158,13 @@ class PlayerVodActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
-        // MÁGICA: Buffer Profundo para VOD
-        // Carrega até 2 minutos de filme/série na memória para zerar os travamentos de internet ruim
         val loadControl = DefaultLoadControl.Builder()
             .setAllocator(DefaultAllocator(true, 64 * 1024))
             .setBufferDurationsMs(
-                32000,  // Min buffer (32 seg)
-                120000, // Max buffer (2 minutos inteiros de filme na memória)
-                2500,   // Precisa baixar 2.5 seg para dar o play
-                5000    // Se a net cair e voltar, precisa de 5 seg pra retomar
+                32000, 
+                120000,
+                2500,  
+                5000   
             )
             .build()
 
@@ -282,6 +284,33 @@ class PlayerVodActivity : Activity() {
             }
     }
 
+    // =========================================================================
+    // MODO PICTURE IN PICTURE (PiP)
+    // =========================================================================
+    override fun onUserLeaveHint() {
+        super.onUserLeaveHint()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(16, 9))
+                .build()
+            enterPictureInPictureMode(params)
+        }
+    }
+
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            // Esconde tudo no modo PiP e remove o controle
+            painelEpisodios.visibility = View.GONE
+            overlayNextEpisode.visibility = View.GONE
+            btnSkipIntro.visibility = View.GONE
+            playerViewVod.useController = false
+        } else {
+            // Restaura o controle quando voltar pra tela cheia
+            playerViewVod.useController = true
+        }
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             
@@ -363,9 +392,15 @@ class PlayerVodActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
-        salvarProgressoNoFirebase()
-        exoPlayer?.pause()
-        countDownTimer?.cancel()
+        
+        // MÁGICA: Se o app foi minimizado para PiP, o vídeo DEVE continuar tocando
+        val inPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) isInPictureInPictureMode else false
+        
+        if (!inPip) {
+            salvarProgressoNoFirebase()
+            exoPlayer?.pause()
+            countDownTimer?.cancel()
+        }
     }
 
     override fun onStop() {
