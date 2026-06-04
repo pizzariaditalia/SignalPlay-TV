@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -15,12 +14,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONArray
 
 class SeriesActivity : Activity() {
 
@@ -53,41 +48,26 @@ class SeriesActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+                // LÊ DO BANCO LOCAL (ROOM)
+                val dao = AppDatabase.getDatabase(this@SeriesActivity).catalogoDao()
 
-                val client = OkHttpClient()
+                val categoriasEntity = dao.getCategoriasPorTipo("series")
+                todasCategorias.addAll(categoriasEntity.map { CategoriaItem(it.id, it.nome) })
 
-                val defCat = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series_categories").build()).execute().body?.string() ?: "[]" }
-                val defSeries = async { client.newCall(Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()).execute().body?.string() ?: "[]" }
-
-                val jsonCat = defCat.await()
-                val jsonSeries = defSeries.await()
-                
-                if (jsonCat.startsWith("[")) {
-                    val arr = JSONArray(jsonCat)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val catName = obj.optString("category_name", "")
-                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) todasCategorias.add(CategoriaItem(obj.optString("category_id"), catName))
-                    }
-                }
-                
-                if (jsonSeries.startsWith("[")) {
-                    val arr = JSONArray(jsonSeries)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val id = obj.optString("series_id")
-                        val nome = obj.optString("name")
-                        val icone = obj.optString("cover") 
-                        val catId = obj.optString("category_id")
-                        val streamUrl = "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=$id"
-                        todasSeries.add(FilmeItem(id, nome, icone, streamUrl, "serie", catId, 0))
-                    }
+                val seriesEntity = dao.getTodasSeries()
+                for (serie in seriesEntity) {
+                    todasSeries.add(FilmeItem(
+                        id = serie.id,
+                        nome = serie.nome,
+                        urlImagem = serie.urlImagem,
+                        streamUrl = serie.streamUrl,
+                        tipo = serie.tipo,
+                        categoryId = serie.categoryId,
+                        progresso = 0
+                    ))
                 }
 
+                // Atualiza Tela
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
 
@@ -114,7 +94,7 @@ class SeriesActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-                    Toast.makeText(this@SeriesActivity, "Erro ao carregar séries.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@SeriesActivity, "Erro ao carregar séries locais.", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -129,7 +109,7 @@ class SeriesActivity : Activity() {
             intentDet.putExtra("URL", url)
             intentDet.putExtra("USER", user)
             intentDet.putExtra("PASS", pass)
-            intentDet.putExtra("USERNAME", username) // PASSA O USERNAME
+            intentDet.putExtra("USERNAME", username)
             intentDet.putExtra("MEDIA_ID", serieClicada.id)
             intentDet.putExtra("MEDIA_TIPO", serieClicada.tipo)
             intentDet.putExtra("MEDIA_NOME", serieClicada.nome)
