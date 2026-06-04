@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -52,7 +53,10 @@ class VodActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 1. Puxa histórico para a barra de progresso
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
+
                 var historicoMap: Map<String, Map<String, Long>>? = null
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
@@ -62,7 +66,7 @@ class VodActivity : Activity() {
                         }
                     }
                 
-                withContext(Dispatchers.IO) { Thread.sleep(800) } // Aguarda o Firebase responder
+                withContext(Dispatchers.IO) { Thread.sleep(800) } 
 
                 fun getProgress(id: String): Int {
                     val progressoData = historicoMap?.get(id)
@@ -74,14 +78,26 @@ class VodActivity : Activity() {
                     return 0
                 }
 
-                // 2. LÊ DO BANCO LOCAL (ROOM)
                 val dao = AppDatabase.getDatabase(this@VodActivity).catalogoDao()
                 
                 val categoriasEntity = dao.getCategoriasPorTipo("vod")
-                todasCategorias.addAll(categoriasEntity.map { CategoriaItem(it.id, it.nome) })
+                val catMap = mutableMapOf<String, String>()
+                
+                for (cat in categoriasEntity) {
+                    val catNameLower = cat.nome.lowercase()
+                    if (isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }) continue
+                    
+                    todasCategorias.add(CategoriaItem(cat.id, cat.nome))
+                    catMap[cat.id] = cat.nome
+                }
 
                 val filmesEntity = dao.getTodosFilmes()
                 for (filme in filmesEntity) {
+                    val catNameLower = catMap[filme.categoryId]?.lowercase() ?: ""
+                    val nLower = filme.nome.lowercase()
+                    
+                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    
                     todosFilmes.add(FilmeItem(
                         id = filme.id,
                         nome = filme.nome,
@@ -93,7 +109,6 @@ class VodActivity : Activity() {
                     ))
                 }
 
-                // 3. Atualiza Tela
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
 
@@ -116,7 +131,6 @@ class VodActivity : Activity() {
                         exibirFilmesDaCategoria(todasCategorias[0].id, todasCategorias[0].nome)
                     }
                 }
-
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
