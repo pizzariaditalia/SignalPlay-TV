@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -48,14 +49,30 @@ class SeriesActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // LÊ DO BANCO LOCAL (ROOM)
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
+
                 val dao = AppDatabase.getDatabase(this@SeriesActivity).catalogoDao()
 
                 val categoriasEntity = dao.getCategoriasPorTipo("series")
-                todasCategorias.addAll(categoriasEntity.map { CategoriaItem(it.id, it.nome) })
+                val catMap = mutableMapOf<String, String>()
+                
+                for (cat in categoriasEntity) {
+                    val catNameLower = cat.nome.lowercase()
+                    if (isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }) continue
+                    
+                    todasCategorias.add(CategoriaItem(cat.id, cat.nome))
+                    catMap[cat.id] = cat.nome
+                }
 
                 val seriesEntity = dao.getTodasSeries()
                 for (serie in seriesEntity) {
+                    val catNameLower = catMap[serie.categoryId]?.lowercase() ?: ""
+                    val nLower = serie.nome.lowercase()
+                    
+                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    
                     todasSeries.add(FilmeItem(
                         id = serie.id,
                         nome = serie.nome,
@@ -67,7 +84,6 @@ class SeriesActivity : Activity() {
                     ))
                 }
 
-                // Atualiza Tela
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
 
@@ -90,7 +106,6 @@ class SeriesActivity : Activity() {
                         exibirSeriesDaCategoria(todasCategorias[0].id, todasCategorias[0].nome)
                     }
                 }
-
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
