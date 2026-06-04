@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.text.Editable
@@ -13,7 +12,6 @@ import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
 import android.widget.TextView
-import android.widget.Toast
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -22,13 +20,8 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
-import okhttp3.Request
-import org.json.JSONArray
-import java.util.concurrent.TimeUnit
 
 data class SearchItem(val id: String, val nome: String, val icone: String, val tipo: String, val urlStreamOrInfo: String)
 
@@ -86,72 +79,22 @@ class SearchActivity : Activity() {
         recycler.adapter = adapter
 
         CoroutineScope(Dispatchers.IO).launch {
-            if (url.isEmpty() || !url.startsWith("http")) {
-                withContext(Dispatchers.Main) {
-                    progress.visibility = View.GONE
-                    tvStatus.text = "Erro: URL do servidor inválida."
-                    Toast.makeText(this@SearchActivity, "Falha na conexão.", Toast.LENGTH_SHORT).show()
-                }
-                return@launch
-            }
-
             try {
-                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                val filterSD = prefs.getBoolean("FILTER_SD", false)
-                val filterH265 = prefs.getBoolean("FILTER_H265", false)
-                val filter4K = prefs.getBoolean("FILTER_4K", false)
+                // LÊ DO BANCO LOCAL (ROOM) EM VEZ DE BAIXAR TUDO DE NOVO
+                val dao = AppDatabase.getDatabase(this@SearchActivity).catalogoDao()
 
-                val client = OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(30, TimeUnit.SECONDS)
-                    .writeTimeout(30, TimeUnit.SECONDS)
-                    .build()
+                val canais = dao.getTodosCanais()
+                val filmes = dao.getTodosFilmes()
+                val series = dao.getTodasSeries()
 
-                val reqLive = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_live_streams").build()
-                val reqVod = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_vod_streams").build()
-                val reqSeries = Request.Builder().url("$url/player_api.php?username=$user&password=$pass&action=get_series").build()
-
-                val defLive = async { try { client.newCall(reqLive).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
-                val defVod = async { try { client.newCall(reqVod).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
-                val defSeries = async { try { client.newCall(reqSeries).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
-
-                val jsonLive = defLive.await()
-                val jsonVod = defVod.await()
-                val jsonSeries = defSeries.await()
-
-                if (jsonLive.startsWith("[")) {
-                    val arr = JSONArray(jsonLive)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val nome = obj.optString("name")
-
-                        // MÁGICA: Filtros Agressivos na Pesquisa
-                        val nUp = nome.uppercase()
-                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                        
-                        if (filterSD && isSD) continue
-                        if (filterH265 && isH265) continue
-                        if (filter4K && is4K) continue
-
-                        masterList.add(SearchItem(obj.optString("stream_id"), nome, obj.optString("stream_icon"), "TV", "$url/live/$user/$pass/${obj.optString("stream_id")}.ts"))
-                    }
+                for (c in canais) {
+                    masterList.add(SearchItem(c.id, c.nome, c.urlImagem, "TV", c.streamUrl))
                 }
-                if (jsonVod.startsWith("[")) {
-                    val arr = JSONArray(jsonVod)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        val ext = obj.optString("container_extension", "mp4")
-                        masterList.add(SearchItem(obj.optString("stream_id"), obj.optString("name"), obj.optString("stream_icon"), "FILME", "$url/movie/$user/$pass/${obj.optString("stream_id")}.$ext"))
-                    }
+                for (f in filmes) {
+                    masterList.add(SearchItem(f.id, f.nome, f.urlImagem, "FILME", f.streamUrl))
                 }
-                if (jsonSeries.startsWith("[")) {
-                    val arr = JSONArray(jsonSeries)
-                    for (i in 0 until arr.length()) {
-                        val obj = arr.getJSONObject(i)
-                        masterList.add(SearchItem(obj.optString("series_id"), obj.optString("name"), obj.optString("cover"), "SÉRIE", "$url/player_api.php?username=$user&password=$pass&action=get_series_info&series_id=${obj.optString("series_id")}"))
-                    }
+                for (s in series) {
+                    masterList.add(SearchItem(s.id, s.nome, s.urlImagem, "SÉRIE", s.streamUrl))
                 }
 
                 withContext(Dispatchers.Main) {
@@ -162,7 +105,7 @@ class SearchActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progress.visibility = View.GONE
-                    tvStatus.text = "Erro ao carregar catálogo."
+                    tvStatus.text = "Erro ao carregar catálogo local."
                 }
             }
         }
