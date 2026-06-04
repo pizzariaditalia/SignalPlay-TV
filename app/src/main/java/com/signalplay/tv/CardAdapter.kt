@@ -1,70 +1,630 @@
 package com.signalplay.tv
 
-import android.view.LayoutInflater
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Color
+import android.graphics.Matrix
+import android.graphics.drawable.Drawable
+import android.os.Bundle
+import android.text.TextUtils
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
+import android.view.animation.OvershootInterpolator
+import android.widget.Button
 import android.widget.ImageView
-import android.widget.ProgressBar
+import android.widget.LinearLayout
+import android.widget.RelativeLayout
+import android.widget.TextView
+import android.widget.Toast
+import androidx.core.content.ContextCompat
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.resource.bitmap.CenterCrop
-import com.bumptech.glide.load.resource.bitmap.RoundedCorners
-import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.request.target.CustomViewTarget
+import com.bumptech.glide.request.transition.Transition
+import com.google.firebase.firestore.FirebaseFirestore
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONArray
+import org.json.JSONObject
+import java.util.concurrent.TimeUnit
 
-data class FilmeItem(
-    val id: String,
-    val nome: String,
-    val urlImagem: String,
-    val streamUrl: String,
-    val tipo: String,
-    val categoryId: String = "",
-    var progresso: Int = 0 // NOVO: Controle de Porcentagem (0 a 100)
-)
+data class LigaItem(val nome: String, val logo: String, val url: String)
+data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
 
-class CardAdapter(
-    private val listaItens: List<FilmeItem>,
-    private val onClick: ((FilmeItem) -> Unit)? = null 
-) : RecyclerView.Adapter<CardAdapter.CardViewHolder>() {
+class HomeActivity : Activity() {
 
-    class CardViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val cardImage: ImageView = view.findViewById(R.id.cardImage)
-        // Busca a barrinha horizontal no seu item_card.xml (Adicione ela lá se não existir)
-        val progressBar: ProgressBar? = view.findViewById(R.id.progressFilme)
-    }
+    private lateinit var db: FirebaseFirestore
+    private lateinit var btnAssistirDestaque: Button
+    
+    // MÁGICA: Animação elástica e premium para o foco do controle remoto
+    private val suaveOvershoot = OvershootInterpolator(1.2f)
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): CardViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_card, parent, false)
-        return CardViewHolder(view)
-    }
+    private var urlGlobal = ""
+    private var userGlobal = ""
+    private var passGlobal = ""
+    private var username = ""
 
-    override fun onBindViewHolder(holder: CardViewHolder, position: Int) {
-        val itemAtual = listaItens[position]
+    private var listFilmesGlobais = listOf<FilmeItem>()
+    private var listSeriesGlobais = listOf<FilmeItem>()
+    private var listCanaisGlobais = listOf<CanalItem>()
+    private var liveCatsGlobal = listOf<CategoriaItem>()
+    
+    private var listaIdsFavoritosGlobais = mutableListOf<String>()
+    private var historicoMapGlobal: Map<String, Any> = emptyMap()
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
         
-        val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
-        Glide.with(holder.itemView.context).load(itemAtual.urlImagem).apply(options).into(holder.cardImage)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        setContentView(R.layout.activity_home)
 
-        // MÁGICA DA TIMELINE: Se tiver progresso, mostra a barra preenchida
-        if (holder.progressBar != null) {
-            if (itemAtual.progresso > 0) {
-                holder.progressBar.visibility = View.VISIBLE
-                holder.progressBar.progress = itemAtual.progresso
-            } else {
-                holder.progressBar.visibility = View.GONE
-            }
-        }
+        db = FirebaseFirestore.getInstance()
+        btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
+        btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
-        // SUPER ZOOM E SOMBRA ATIVADOS
-        holder.itemView.setOnFocusChangeListener { view, hasFocus ->
+        btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) {
-                view.bringToFront()
-                view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(200).start()
+                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
             } else {
-                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).start()
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
             }
         }
 
-        holder.itemView.setOnClickListener { onClick?.invoke(itemAtual) }
+        val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
+        val menuInicio = findViewById<TextView>(R.id.menuInicio)
+        val menuCanais = findViewById<TextView>(R.id.menuCanais)
+        val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
+        val menuSeries = findViewById<TextView>(R.id.menuSeries)
+        val menuConfig = findViewById<TextView>(R.id.menuConfig)
+
+        val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
+            val txt = v as TextView
+            if (hasFocus) {
+                txt.setTextColor(Color.BLACK)
+                v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
+            } else {
+                txt.setTextColor(Color.WHITE)
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
+            }
+        }
+        
+        menuPesquisar.onFocusChangeListener = menuFocusListener
+        menuInicio.onFocusChangeListener = menuFocusListener
+        menuCanais.onFocusChangeListener = menuFocusListener
+        menuFilmes.onFocusChangeListener = menuFocusListener
+        menuSeries.onFocusChangeListener = menuFocusListener
+        menuConfig.onFocusChangeListener = menuFocusListener
+
+        val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
+        val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
+        val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
+        val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
+        val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
+        val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
+        val recyclerEsportes = findViewById<RecyclerView>(R.id.recyclerEsportes)
+        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
+        
+        recyclerEsportes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerTopFilmes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerTopSeries.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        recyclerApps.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+
+        val urlOriginal = intent.getStringExtra("URL") ?: ""
+        urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
+        userGlobal = intent.getStringExtra("USER") ?: ""
+        passGlobal = intent.getStringExtra("PASS") ?: ""
+        username = intent.getStringExtra("USERNAME") ?: ""
+
+        menuPesquisar.setOnClickListener { startActivity(Intent(this, SearchActivity::class.java).apply { putExtras(intent) }) }
+        menuCanais.setOnClickListener { startActivity(Intent(this, TvActivity::class.java).apply { putExtras(intent) }) }
+        menuFilmes.setOnClickListener { startActivity(Intent(this, VodActivity::class.java).apply { putExtras(intent) }) }
+        menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
+        menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
+
+        val listaLigas = listOf(
+            LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
+            LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
+            LigaItem("Bundesliga", "https://api.sofascore.app/api/v1/unique-tournament/35/image/dark", "https://m.sofascore.com/pt/torneio/futebol/germany/bundesliga/35"),
+            LigaItem("Camp. Argentino", "https://api.sofascore.app/api/v1/unique-tournament/155/image/dark", "https://m.sofascore.com/pt/torneio/futebol/argentina/liga-profesional/155"),
+            LigaItem("Camp. Carioca", "https://api.sofascore.app/api/v1/unique-tournament/376/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/carioca/376"),
+            LigaItem("Camp. Paulista", "https://api.sofascore.app/api/v1/unique-tournament/374/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/paulista-serie-a1/374"),
+            LigaItem("Champions League", "https://api.sofascore.app/api/v1/unique-tournament/7/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-champions-league/7"),
+            LigaItem("Libertadores", "https://api.sofascore.app/api/v1/unique-tournament/384/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-libertadores/384"),
+            LigaItem("Premier League", "https://api.sofascore.app/api/v1/unique-tournament/17/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/premier-league/17"),
+            LigaItem("Sul-Americana", "https://api.sofascore.app/api/v1/unique-tournament/383/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-sudamericana/383")
+        )
+
+        recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
+            val intent = Intent(this@HomeActivity, SportsActivity::class.java)
+            intent.putExtra("URL_LIGA", liga.url)
+            startActivity(intent)
+        }
+
+        carregarAplicativosDaTV()
+
+        db.collection("usuarios").whereEqualTo("usuario", username)
+            .addSnapshotListener { snapshot, error ->
+                if (error == null && snapshot != null && !snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    
+                    val favs = doc.get("favoritos") as? List<*>
+                    listaIdsFavoritosGlobais.clear()
+                    favs?.forEach { listaIdsFavoritosGlobais.add(it.toString()) }
+                    
+                    historicoMapGlobal = doc.get("historico_vod") as? Map<String, Any> ?: emptyMap()
+                    
+                    runOnUiThread {
+                        if (listFilmesGlobais.isNotEmpty() || listSeriesGlobais.isNotEmpty()) {
+                            renderizarContinuarAssistindo()
+                        }
+                        if (listCanaisGlobais.isNotEmpty()) {
+                            renderizarFavoritos()
+                        }
+                    }
+                }
+            }
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+                
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+                
+                val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
+
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(30, TimeUnit.SECONDS)
+                    .readTimeout(60, TimeUnit.SECONDS)
+                    .writeTimeout(60, TimeUnit.SECONDS)
+                    .build()
+
+                val reqLiveCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
+                val reqVodCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_categories").build()
+                val reqSeriesCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_categories").build()
+                val reqLive = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_streams").build()
+                val reqVod = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_streams").build()
+                val reqSeries = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series").build()
+
+                val defLiveCat = async { try { client.newCall(reqLiveCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defVodCat = async { try { client.newCall(reqVodCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defSeriesCat = async { try { client.newCall(reqSeriesCat).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defLive = async { try { client.newCall(reqLive).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defVod = async { try { client.newCall(reqVod).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+                val defSeries = async { try { client.newCall(reqSeries).execute().body?.string() ?: "[]" } catch (e: Exception) { "[]" } }
+
+                val jsonLiveCat = defLiveCat.await()
+                val jsonVodCat = defVodCat.await()
+                val jsonSeriesCat = defSeriesCat.await()
+                val jsonLive = defLive.await()
+                val jsonVod = defVod.await()
+                val jsonSeries = defSeries.await()
+
+                val categoriasParaSalvar = mutableListOf<CategoriaEntity>()
+                val canaisParaSalvar = mutableListOf<CanalEntity>()
+                val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
+                val mapCategorias = mutableMapOf<String, String>() 
+
+                if (jsonLiveCat.startsWith("[")) {
+                    val arr = JSONArray(jsonLiveCat)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val catName = obj.optString("category_name", "")
+                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
+                        if (!isParentalActive || !isAdult) {
+                            categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
+                        }
+                    }
+                }
+                if (jsonVodCat.startsWith("[")) {
+                    val arr = JSONArray(jsonVodCat)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name"), "vod"))
+                        mapCategorias[obj.optString("category_id")] = obj.optString("category_name")
+                    }
+                }
+                if (jsonSeriesCat.startsWith("[")) {
+                    val arr = JSONArray(jsonSeriesCat)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name"), "series"))
+                        mapCategorias[obj.optString("category_id")] = obj.optString("category_name")
+                    }
+                }
+
+                if (jsonLive.startsWith("[")) {
+                    val arr = JSONArray(jsonLive)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val nome = obj.optString("name", "Canal")
+                        
+                        val nUp = nome.uppercase()
+                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
+                        
+                        if (filterSD && isSD) continue
+                        if (filterH265 && isH265) continue
+                        if (filter4K && is4K) continue
+
+                        canaisParaSalvar.add(CanalEntity(
+                            id = obj.optString("stream_id", ""),
+                            nome = nome,
+                            urlImagem = obj.optString("stream_icon", ""),
+                            categoryId = obj.optString("category_id", ""),
+                            streamUrl = "$urlGlobal/live/$userGlobal/$passGlobal/${obj.optString("stream_id", "")}.ts",
+                            epgChannelId = obj.optString("epg_channel_id", "")
+                        ))
+                    }
+                }
+
+                if (jsonVod.startsWith("[")) {
+                    val arr = JSONArray(jsonVod)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val id = obj.optString("stream_id", "")
+                        val ext = obj.optString("container_extension", "mp4")
+                        filmesSeriesParaSalvar.add(FilmeEntity(
+                            id = id,
+                            nome = obj.optString("name", "Sem Nome"),
+                            urlImagem = obj.optString("stream_icon", ""),
+                            streamUrl = "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext",
+                            tipo = "filme",
+                            categoryId = obj.optString("category_id", "")
+                        ))
+                    }
+                }
+
+                if (jsonSeries.startsWith("[")) {
+                    val arr = JSONArray(jsonSeries)
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        val id = obj.optString("series_id", "")
+                        filmesSeriesParaSalvar.add(FilmeEntity(
+                            id = id,
+                            nome = obj.optString("name", "Sem Nome"),
+                            urlImagem = obj.optString("cover", ""),
+                            streamUrl = "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id",
+                            tipo = "serie",
+                            categoryId = obj.optString("category_id", "")
+                        ))
+                    }
+                }
+
+                dao.limparCategorias()
+                dao.limparCanais()
+                dao.limparFilmesSeries()
+                
+                if(categoriasParaSalvar.isNotEmpty()) dao.inserirCategorias(categoriasParaSalvar)
+                if(canaisParaSalvar.isNotEmpty()) dao.inserirCanais(canaisParaSalvar)
+                if(filmesSeriesParaSalvar.isNotEmpty()) dao.inserirFilmesSeries(filmesSeriesParaSalvar)
+
+                val liveCats = dao.getCategoriasPorTipo("live").map { CategoriaItem(it.id, it.nome) }.toMutableList()
+                liveCats.sortBy { 
+                    val n = it.nome.lowercase()
+                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
+                }
+                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
+                liveCatsGlobal = liveCats
+                
+                listCanaisGlobais = dao.getTodosCanais().map { CanalItem(it.id, it.nome, it.urlImagem, it.categoryId, it.streamUrl) }
+                listFilmesGlobais = dao.getTodosFilmes().map { FilmeItem(it.id, it.nome, it.urlImagem, it.streamUrl, it.tipo, it.categoryId, 0) }
+                listSeriesGlobais = dao.getTodasSeries().map { FilmeItem(it.id, it.nome, it.urlImagem, it.streamUrl, it.tipo, it.categoryId, 0) }
+
+                withContext(Dispatchers.Main) {
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                    
+                    renderizarContinuarAssistindo()
+                    renderizarFavoritos()
+                    
+                    val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
+                    val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
+                    val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
+                    val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
+
+                    recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { abrirDetalhes(it) }
+                    recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { abrirDetalhes(it) }
+                    recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
+                    recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
+
+                    if (listFilmesGlobais.isNotEmpty()) {
+                        atualizarBanner(listFilmesGlobais.random(), mapCategorias)
+                    }
+                }
+
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { 
+                    findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
+                    Toast.makeText(this@HomeActivity, "Erro ao conectar com o servidor.", Toast.LENGTH_SHORT).show() 
+                }
+            }
+        }
     }
 
-    override fun getItemCount(): Int = listaItens.size
+    private fun renderizarContinuarAssistindo() {
+        val listContinuar = mutableListOf<FilmeItem>()
+        
+        val processarItem = { item: FilmeItem ->
+            val progData = historicoMapGlobal[item.id] as? Map<String, Any>
+            if (progData != null) {
+                val pos = progData["posicao"]?.toString()?.toLongOrNull() ?: 0L
+                val dur = progData["duracao"]?.toString()?.toLongOrNull() ?: 0L
+                
+                if (dur > 0L && pos > 5000L) {
+                    var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
+                    if (perc <= 0) perc = 1 
+                    if (perc > 99) perc = 99
+                    listContinuar.add(FilmeItem(item.id, item.nome, item.urlImagem, item.streamUrl, item.tipo, item.categoryId, perc))
+                }
+            }
+        }
+        
+        listFilmesGlobais.forEach(processarItem)
+        listSeriesGlobais.forEach(processarItem)
+        
+        val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
+        val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
+        
+        if (listContinuar.isNotEmpty()) {
+            tvContinuarTitulo.visibility = View.VISIBLE
+            recyclerContinuar.visibility = View.VISIBLE
+            recyclerContinuar.adapter = CardAdapter(listContinuar.sortedByDescending { it.progresso }) { abrirDetalhes(it) }
+        } else {
+            tvContinuarTitulo.visibility = View.GONE
+            recyclerContinuar.visibility = View.GONE
+        }
+    }
+
+    private fun renderizarFavoritos() {
+        val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
+        val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
+        
+        val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> 
+            listCanaisGlobais.find { it.id == favId } 
+        }
+
+        if (listFavoritos.isNotEmpty()) {
+            tvFavoritosTitulo.visibility = View.VISIBLE
+            recyclerFavoritos.visibility = View.VISIBLE
+            recyclerFavoritos.adapter = CanalAdapter(listFavoritos, listaIdsFavoritosGlobais, { canalClicado ->
+                DataHolder.todasCategorias = liveCatsGlobal
+                DataHolder.todosCanais = listCanaisGlobais
+                DataHolder.favoritosIds = listaIdsFavoritosGlobais
+                DataHolder.categoriaAtualId = "FAV"
+                
+                val listaDoPlayer = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }
+                val indiceCorretoProPlayer = listaDoPlayer.indexOf(canalClicado)
+
+                startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply {
+                    putExtra("INDICE_CANAL", if (indiceCorretoProPlayer != -1) indiceCorretoProPlayer else 0)
+                })
+            }, { })
+        } else {
+            tvFavoritosTitulo.visibility = View.GONE
+            recyclerFavoritos.visibility = View.GONE
+        }
+    }
+
+    private fun carregarAplicativosDaTV() {
+        val pm = packageManager
+        val installedApps = mutableMapOf<String, AppItem>()
+
+        try {
+            // MÁGICA: Varredura dupla para garantir que achamos todos os apps (Leanback e Padrão)
+            val intentLeanback = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) }
+            val leanbackApps = pm.queryIntentActivities(intentLeanback, 0)
+            for (resolveInfo in leanbackApps) {
+                val pkg = resolveInfo.activityInfo.packageName
+                if (pkg == applicationContext.packageName) continue
+                val nome = resolveInfo.loadLabel(pm).toString()
+                val icone = resolveInfo.loadIcon(pm)
+                installedApps[pkg] = AppItem(nome, icone, pkg)
+            }
+
+            val intentLauncher = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+            val launcherApps = pm.queryIntentActivities(intentLauncher, 0)
+            for (resolveInfo in launcherApps) {
+                val pkg = resolveInfo.activityInfo.packageName
+                if (pkg == applicationContext.packageName || installedApps.containsKey(pkg)) continue
+                val nome = resolveInfo.loadLabel(pm).toString()
+                val icone = resolveInfo.loadIcon(pm)
+                installedApps[pkg] = AppItem(nome, icone, pkg)
+            }
+        } catch (e: Exception) {}
+
+        val listaFinal = installedApps.values.toMutableList()
+        listaFinal.sortBy { it.nome }
+
+        // MÁGICA: Injeta as Configurações Nativas da TVBox sempre na primeira posição
+        val settingsIcon = ContextCompat.getDrawable(this, android.R.drawable.ic_menu_preferences)
+        if (settingsIcon != null) {
+            listaFinal.add(0, AppItem("Configurações", settingsIcon, "android.settings.SETTINGS"))
+        }
+
+        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
+        recyclerApps.adapter = AppAdapter(listaFinal) { app ->
+            if (app.pacote == "android.settings.SETTINGS") {
+                startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+            } else {
+                val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
+                if (launchIntent != null) startActivity(launchIntent)
+                else Toast.makeText(this, "Não foi possível abrir o aplicativo.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun atualizarBanner(filme: FilmeItem, mapCategorias: Map<String, String>) {
+        val tvTitle = findViewById<TextView>(R.id.heroTitle)
+        val tvBadge = findViewById<TextView>(R.id.heroBadge)
+        val tvDesc = findViewById<TextView>(R.id.heroDesc)
+        
+        tvTitle.text = filme.nome
+        
+        val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
+        tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
+        tvDesc.text = "Buscando informações..."
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+                val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
+                val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
+                val res = client.newCall(req).execute().body?.string() ?: "{}"
+                
+                var plot = "Sinopse não disponível para este conteúdo."
+                if (res.startsWith("{")) {
+                    val json = JSONObject(res)
+                    val info = json.optJSONObject("info")
+                    if (info != null) {
+                        plot = info.optString("plot", "Sinopse não disponível.")
+                        if (plot.isEmpty() || plot == "null") plot = "Sinopse não disponível."
+                    }
+                }
+                withContext(Dispatchers.Main) { tvDesc.text = plot }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) { tvDesc.text = "Sinopse não disponível." }
+            }
+        }
+
+        btnAssistirDestaque.visibility = View.VISIBLE
+        btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
+        val imageView = findViewById<ImageView>(R.id.heroImage)
+        imageView.scaleType = ImageView.ScaleType.MATRIX
+        Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
+            override fun onLoadFailed(errorDrawable: Drawable?) {}
+            override fun onResourceCleared(placeholder: Drawable?) {}
+            override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
+                view.setImageDrawable(resource)
+                view.post {
+                    val dWidth = resource.intrinsicWidth
+                    val vWidth = view.width
+                    if (dWidth > 0 && vWidth > 0) {
+                        val matrix = Matrix()
+                        val scale = vWidth.toFloat() / dWidth.toFloat()
+                        matrix.setScale(scale, scale)
+                        matrix.postTranslate(0f, 0f)
+                        view.imageMatrix = matrix
+                    }
+                }
+            }
+        })
+    }
+
+    private fun abrirDetalhes(itemClicado: FilmeItem) {
+        val intentDet = Intent(this@HomeActivity, DetailsActivity::class.java)
+        intentDet.putExtra("URL", urlGlobal)
+        intentDet.putExtra("USER", userGlobal)
+        intentDet.putExtra("PASS", passGlobal)
+        intentDet.putExtra("USERNAME", username) 
+        intentDet.putExtra("MEDIA_ID", itemClicado.id)
+        intentDet.putExtra("MEDIA_TIPO", itemClicado.tipo)
+        intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
+        intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
+        startActivity(intentDet)
+    }
+
+    // Adaptado para ficar harmônico com os aplicativos
+    inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
+        private val interpolator = OvershootInterpolator(1.2f)
+        
+        inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val img = view.findViewById<ImageView>(1001)
+            val txt = view.findViewById<TextView>(1002)
+        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LigaViewHolder {
+            val layout = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                layoutParams = ViewGroup.MarginLayoutParams(180, 140).apply { setMargins(12, 12, 12, 12) }
+                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
+                isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
+            }
+            val img = ImageView(parent.context).apply { 
+                id = 1001; 
+                layoutParams = LinearLayout.LayoutParams(80, 80)
+                scaleType = ImageView.ScaleType.FIT_CENTER 
+            }
+            val txt = TextView(parent.context).apply { 
+                id = 1002
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                setTextColor(Color.WHITE); textSize = 11f; textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1; ellipsize = TextUtils.TruncateAt.END 
+            }
+            layout.addView(img); layout.addView(txt)
+            return LigaViewHolder(layout)
+        }
+        override fun onBindViewHolder(holder: LigaViewHolder, position: Int) {
+            val item = list[position]
+            holder.txt.text = item.nome
+            Glide.with(holder.itemView.context).load(item.logo).into(holder.img)
+            holder.itemView.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() } 
+                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start() }
+            }
+            holder.itemView.setOnClickListener { onClick(item) }
+        }
+        override fun getItemCount(): Int = list.size
+    }
+
+    // MÁGICA: Redimensionado e aplicado Efeito Vidro e Animação Suave
+    inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
+        private val interpolator = OvershootInterpolator(1.2f)
+        
+        inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+            val img = view.findViewById<ImageView>(2001)
+            val txt = view.findViewById<TextView>(2002)
+        }
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
+            val layout = LinearLayout(parent.context).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                layoutParams = ViewGroup.MarginLayoutParams(140, 140).apply { setMargins(12, 12, 12, 12) }
+                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
+                isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
+            }
+            val img = ImageView(parent.context).apply { 
+                id = 2001; 
+                layoutParams = LinearLayout.LayoutParams(70, 70);
+                scaleType = ImageView.ScaleType.FIT_CENTER 
+            }
+            val txt = TextView(parent.context).apply { 
+                id = 2002; 
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                setTextColor(Color.WHITE); textSize = 10f; textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1; ellipsize = TextUtils.TruncateAt.END 
+            }
+            layout.addView(img); layout.addView(txt)
+            return AppViewHolder(layout)
+        }
+        override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
+            val item = list[position]
+            holder.txt.text = item.nome
+            holder.img.setImageDrawable(item.icone)
+            holder.itemView.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() } 
+                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start() }
+            }
+            holder.itemView.setOnClickListener { onClick(item) }
+        }
+        override fun getItemCount(): Int = list.size
+    }
 }
