@@ -2,19 +2,22 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#111114"
-    android:padding="48dp">
+    android:background="#111114">
+
+    <!-- Fundo de Vidro / Gradiente Dinâmico -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_details_gradient" />
 
     <LinearLayout
         android:id="@+id/headerSettings"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="#222222"
         android:gravity="center_vertical"
         android:layout_alignParentTop="true"
-        android:layout_marginBottom="32dp"
-        android:orientation="horizontal"
-        android:padding="20dp">
+        android:padding="32dp"
+        android:orientation="horizontal">
 
         <ImageView
             android:layout_width="80dp"
@@ -31,9 +34,9 @@
                 android:id="@+id/tvNomeUsuario"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Olá, Usuário!"
+                android:text="Configurações"
                 android:textColor="#FFFFFF"
-                android:textSize="28sp"
+                android:textSize="32sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -42,335 +45,220 @@
                 android:layout_height="wrap_content"
                 android:layout_marginTop="4dp"
                 android:text="Vencimento: Carregando..."
-                android:textColor="#FFC107"
+                android:textColor="#2ED573"
                 android:textSize="18sp"
                 android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
     <ScrollView
-        android:layout_width="match_parent"
+        android:layout_width="800dp"
         android:layout_height="match_parent"
         android:layout_below="@id/headerSettings"
-        android:fillViewport="true">
+        android:layout_centerHorizontal="true"
+        android:fillViewport="true"
+        android:paddingBottom="48dp"
+        android:scrollbars="none">
 
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:baselineAligned="false"
-            android:orientation="horizontal">
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- SEÇÃO PRIVACIDADE E FILTROS -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Privacidade e Exibição"
+                android:textColor="#FFC107"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"
+                android:layout_marginStart="8dp"/>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/btnParental"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="16dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="Privacidade e Exibição"
-                    android:textColor="#FFC107"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:padding="20dp"
+                android:orientation="horizontal">
 
                 <LinearLayout
-                    android:id="@+id/btnParental"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Controle Parental (+18)"
-                            android:textColor="#FFFFFF"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Ocultar conteúdo adulto do catálogo"
-                            android:textColor="#888888"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvStatusParental"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="DESATIVADO"
-                        android:textColor="#FF4757"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Controle Parental (+18)" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar conteúdo adulto do catálogo" android:textColor="#AAAAAA" android:textSize="14sp" />
                 </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/btnFilterSD"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Ocultar Canais SD"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvStatusSD"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="DESATIVADO"
-                        android:textColor="#FF4757"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/btnFilterH265"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Ocultar Canais H265"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvStatusH265"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="DESATIVADO"
-                        android:textColor="#FF4757"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/btnFilter4K"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:text="Ocultar Canais 4K"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:id="@+id/tvStatus4K"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="DESATIVADO"
-                        android:textColor="#FF4757"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
+                <Switch android:id="@+id/switchParental" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
             </LinearLayout>
 
             <LinearLayout
-                android:layout_width="0dp"
+                android:id="@+id/btnFilterSD"
+                android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginStart="16dp"
-                android:layout_weight="1"
-                android:orientation="vertical">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="16dp"
-                    android:text="Manutenção e Sistema"
-                    android:textColor="#FFC107"
-                    android:textSize="20sp"
-                    android:textStyle="bold" />
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:padding="20dp"
+                android:orientation="horizontal">
 
                 <LinearLayout
-                    android:id="@+id/btnLimparFavs"
-                    android:layout_width="match_parent"
+                    android:layout_width="0dp"
                     android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Zerar Favoritos"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Remove todos os canais salvos"
-                        android:textColor="#888888"
-                        android:textSize="14sp" />
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais SD" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Esconde canais em baixa resolução" android:textColor="#AAAAAA" android:textSize="14sp" />
                 </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/btnLimparHist"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Limpar Histórico"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Zera o 'Continuar Assistindo'"
-                        android:textColor="#888888"
-                        android:textSize="14sp" />
-                </LinearLayout>
-
-                <LinearLayout
-                    android:id="@+id/btnAtualizarEPG"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="12dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:orientation="vertical"
-                    android:padding="16dp">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Sincronizar EPG"
-                        android:textColor="#FFFFFF"
-                        android:textSize="18sp"
-                        android:textStyle="bold" />
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="Baixa o guia de TV mais recente"
-                        android:textColor="#888888"
-                        android:textSize="14sp" />
-                </LinearLayout>
-                
-                <!-- ========================================================= -->
-                <!-- BOTÃO MÁGICO: MODO TV BOX (LAUNCHER) -->
-                <!-- ========================================================= -->
-                <LinearLayout
-                    android:id="@+id/btnModoLauncher"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:layout_marginBottom="24dp"
-                    android:background="@drawable/bg_card_focus"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:gravity="center_vertical"
-                    android:orientation="horizontal"
-                    android:padding="16dp">
-
-                    <LinearLayout
-                        android:layout_width="0dp"
-                        android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Modo TV Box"
-                            android:textColor="#FFFFFF"
-                            android:textSize="18sp"
-                            android:textStyle="bold" />
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Transforma o app na Tela Inicial"
-                            android:textColor="#888888"
-                            android:textSize="14sp" />
-                    </LinearLayout>
-
-                    <TextView
-                        android:id="@+id/tvStatusLauncher"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="DESATIVADO"
-                        android:textColor="#FF4757"
-                        android:textSize="16sp"
-                        android:textStyle="bold" />
-                </LinearLayout>
-
-                <Button
-                    android:id="@+id/btnSairConta"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:backgroundTint="#FF4757"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:padding="16dp"
-                    android:text="DESCONECTAR CONTA"
-                    android:textColor="#FFFFFF"
-                    android:textSize="18sp"
-                    android:textStyle="bold" />
+                <Switch android:id="@+id/switchSD" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
             </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnFilterH265"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:padding="20dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais H265" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Esconde canais com codec HEVC" android:textColor="#AAAAAA" android:textSize="14sp" />
+                </LinearLayout>
+                <Switch android:id="@+id/switchH265" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnFilter4K"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:padding="20dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais 4K" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Recomendado para internet lenta" android:textColor="#AAAAAA" android:textSize="14sp" />
+                </LinearLayout>
+                <Switch android:id="@+id/switch4K" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
+            </LinearLayout>
+
+            <!-- SEÇÃO SISTEMA -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Manutenção e Sistema"
+                android:textColor="#FFC107"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="16dp"
+                android:layout_marginStart="8dp"/>
+
+            <LinearLayout
+                android:id="@+id/btnLimparFavs"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="20dp"
+                android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zerar Favoritos" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Remove todos os canais salvos" android:textColor="#AAAAAA" android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnLimparHist"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="20dp"
+                android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Limpar Histórico" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Zera a prateleira 'Continuar Assistindo'" android:textColor="#AAAAAA" android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnAtualizarEPG"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="20dp"
+                android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Sincronizar EPG" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Baixa o guia de TV mais recente manualmente" android:textColor="#AAAAAA" android:textSize="14sp" />
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/btnModoLauncher"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="32dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:gravity="center_vertical"
+                android:padding="20dp"
+                android:orientation="horizontal">
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Modo TV Box (Tela Inicial)" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                    <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Transforma este app na tela inicial do aparelho" android:textColor="#AAAAAA" android:textSize="14sp" />
+                </LinearLayout>
+                <Switch android:id="@+id/switchLauncher" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FF4757"/>
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnSairConta"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:backgroundTint="#FF4757"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="16dp"
+                android:text="DESCONECTAR CONTA"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold" 
+                android:layout_marginBottom="40dp"/>
+
         </LinearLayout>
     </ScrollView>
 </RelativeLayout>
