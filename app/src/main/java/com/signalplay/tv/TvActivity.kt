@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.view.LayoutInflater
@@ -49,10 +50,16 @@ class TvActivity : Activity() {
 
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // 1. Busca os favoritos no Firebase para manter sincronizado
-                db.collection("usuarios")
-                    .whereEqualTo("usuario", username)
-                    .get()
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterHD = prefs.getBoolean("FILTER_HD", false)
+                val filterFHD = prefs.getBoolean("FILTER_FHD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
+
+                db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
                         if (!snapshot.isEmpty) {
                             val favs = snapshot.documents[0].get("favoritos") as? List<*>
@@ -60,11 +67,17 @@ class TvActivity : Activity() {
                         }
                     }
 
-                // 2. LÊ TUDO DO BANCO DE DADOS LOCAL (ROOM) - Ultra Rápido!
                 val dao = AppDatabase.getDatabase(this@TvActivity).catalogoDao()
-                
                 val categoriasEntity = dao.getCategoriasPorTipo("live")
-                todasCategorias.addAll(categoriasEntity.map { CategoriaItem(it.id, it.nome) })
+                val catMap = mutableMapOf<String, String>()
+                
+                for (cat in categoriasEntity) {
+                    val catNameLower = cat.nome.lowercase()
+                    if (isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }) continue
+                    
+                    todasCategorias.add(CategoriaItem(cat.id, cat.nome))
+                    catMap[cat.id] = cat.nome
+                }
                 
                 todasCategorias.sortBy { 
                     val n = it.nome.lowercase()
@@ -73,16 +86,39 @@ class TvActivity : Activity() {
 
                 val canaisEntity = dao.getTodosCanais()
                 for (canal in canaisEntity) {
-                    if (canal.epgChannelId.isNotEmpty()) {
-                        DataHolder.mapaEpgIds[canal.id] = canal.epgChannelId
+                    val catNameLower = catMap[canal.categoryId]?.lowercase() ?: ""
+                    val nLower = canal.nome.lowercase()
+                    
+                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    
+                    val nUp = canal.nome.uppercase()
+                    val isExplicitSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                    val hasFHD = nUp.contains(" FHD ") || nUp.endsWith(" FHD") || nUp.startsWith("FHD ") || nUp.contains("(FHD)") || nUp.contains("[FHD]") || nUp.contains("|FHD|") || nUp.contains("- FHD") || nUp == "FHD"
+                    val hasHD = (nUp.contains(" HD ") || nUp.endsWith(" HD") || nUp.startsWith("HD ") || nUp.contains("(HD)") || nUp.contains("[HD]") || nUp.contains("|HD|") || nUp.contains("- HD") || nUp == "HD") && !hasFHD
+                    val has4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
+                    val hasH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                    
+                    var shouldHide = false
+                    if (filterSD) {
+                        if (isExplicitSD) shouldHide = true
+                        else if (!hasHD && !hasFHD && !has4K && !hasH265) {
+                            val isSafeCat = catNameLower.contains("24h") || catNameLower.contains("24 horas") || catNameLower.contains("infantil") || catNameLower.contains("kids") || catNameLower.contains("desenho") || catNameLower.contains("religi") || catNameLower.contains("notícia") || catNameLower.contains("news") || catNameLower.contains("document") || catNameLower.contains("educa") || catNameLower.contains("música") || catNameLower.contains("rádio")
+                            if (!isSafeCat) shouldHide = true
+                        }
                     }
+                    if (filterHD && hasHD) shouldHide = true
+                    if (filterFHD && hasFHD) shouldHide = true
+                    if (filterH265 && hasH265) shouldHide = true
+                    if (filter4K && has4K) shouldHide = true
+                    
+                    if (shouldHide) continue
+
+                    if (canal.epgChannelId.isNotEmpty()) DataHolder.mapaEpgIds[canal.id] = canal.epgChannelId
                     todosCanais.add(CanalItem(canal.id, canal.nome, canal.urlImagem, canal.categoryId, canal.streamUrl))
                 }
 
-                // 3. Atualiza a tela
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
-
                     recyclerCategories.adapter = object : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
                         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
                             val v = LayoutInflater.from(parent.context).inflate(R.layout.item_category, parent, false)
@@ -96,10 +132,7 @@ class TvActivity : Activity() {
                         }
                         override fun getItemCount(): Int = todasCategorias.size
                     }
-
-                    if (todasCategorias.isNotEmpty()) {
-                        exibirCanaisDaCategoria(todasCategorias[0].id, todasCategorias[0].nome)
-                    }
+                    if (todasCategorias.isNotEmpty()) exibirCanaisDaCategoria(todasCategorias[0].id, todasCategorias[0].nome)
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
@@ -114,44 +147,33 @@ class TvActivity : Activity() {
         tvTituloCategoria.text = catNome
         val canaisFiltrados = todosCanais.filter { it.categoryId == catId }
 
-        recyclerCanaisGrid.adapter = CanalAdapter(
-            listaCanais = canaisFiltrados,
-            idsFavoritos = favoritosIds,
-            onClick = { canalClicado ->
-                val liveCats = mutableListOf<CategoriaItem>()
-                liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
-                liveCats.addAll(todasCategorias)
-                
-                DataHolder.todasCategorias = liveCats
-                DataHolder.todosCanais = todosCanais
-                DataHolder.favoritosIds = favoritosIds
-                DataHolder.categoriaAtualId = catId
-                
-                val indice = canaisFiltrados.indexOf(canalClicado)
-                val intentPlayer = Intent(this, PlayerTvActivity::class.java)
-                intentPlayer.putExtra("INDICE_CANAL", indice)
-                startActivity(intentPlayer)
-            },
-            onLongClick = { canalClicado ->
-                if (favoritosIds.contains(canalClicado.id)) {
-                    favoritosIds.remove(canalClicado.id)
-                    Toast.makeText(this, "Removido dos Favoritos", Toast.LENGTH_SHORT).show()
-                } else {
-                    favoritosIds.add(canalClicado.id)
-                    Toast.makeText(this, "Adicionado aos Favoritos!", Toast.LENGTH_SHORT).show()
-                }
-
-                db.collection("usuarios")
-                    .whereEqualTo("usuario", username)
-                    .get()
-                    .addOnSuccessListener { snapshot ->
-                        if (!snapshot.isEmpty) {
-                            val docId = snapshot.documents[0].id
-                            db.collection("usuarios").document(docId).update("favoritos", favoritosIds)
-                        }
-                    }
-                recyclerCanaisGrid.adapter?.notifyDataSetChanged()
+        recyclerCanaisGrid.adapter = CanalAdapter(canaisFiltrados, favoritosIds, { canalClicado ->
+            val liveCats = mutableListOf<CategoriaItem>()
+            liveCats.add(CategoriaItem("FAV", "Canais Favoritos"))
+            liveCats.addAll(todasCategorias)
+            DataHolder.todasCategorias = liveCats
+            DataHolder.todosCanais = todosCanais
+            DataHolder.favoritosIds = favoritosIds
+            DataHolder.categoriaAtualId = catId
+            val indice = canaisFiltrados.indexOf(canalClicado)
+            val intentPlayer = Intent(this, PlayerTvActivity::class.java)
+            intentPlayer.putExtra("INDICE_CANAL", indice)
+            startActivity(intentPlayer)
+        }, { canalClicado ->
+            if (favoritosIds.contains(canalClicado.id)) {
+                favoritosIds.remove(canalClicado.id)
+                Toast.makeText(this, "Removido dos Favoritos", Toast.LENGTH_SHORT).show()
+            } else {
+                favoritosIds.add(canalClicado.id)
+                Toast.makeText(this, "Adicionado aos Favoritos!", Toast.LENGTH_SHORT).show()
             }
-        )
+            db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val docId = snapshot.documents[0].id
+                    db.collection("usuarios").document(docId).update("favoritos", favoritosIds)
+                }
+            }
+            recyclerCanaisGrid.adapter?.notifyDataSetChanged()
+        })
     }
 }
