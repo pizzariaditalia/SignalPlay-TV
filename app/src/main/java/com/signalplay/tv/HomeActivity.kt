@@ -38,6 +38,7 @@ import java.util.concurrent.TimeUnit
 
 data class LigaItem(val nome: String, val logo: String, val url: String)
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
+data class CategoriaItem(val id: String, val nome: String)
 
 class HomeActivity : Activity() {
 
@@ -136,26 +137,9 @@ class HomeActivity : Activity() {
             LigaItem("Camp. Argentino", "https://api.sofascore.app/api/v1/unique-tournament/155/image/dark", "https://m.sofascore.com/pt/torneio/futebol/argentina/liga-profesional/155"),
             LigaItem("Camp. Carioca", "https://api.sofascore.app/api/v1/unique-tournament/376/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/carioca/376"),
             LigaItem("Camp. Paulista", "https://api.sofascore.app/api/v1/unique-tournament/374/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/paulista-serie-a1/374"),
-            LigaItem("Camp. Saudita", "https://api.sofascore.app/api/v1/unique-tournament/2939/image/dark", "https://m.sofascore.com/pt/torneio/futebol/saudi-arabia/saudi-pro-league/2939"),
             LigaItem("Champions League", "https://api.sofascore.app/api/v1/unique-tournament/7/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-champions-league/7"),
-            LigaItem("Copa América", "https://api.sofascore.app/api/v1/unique-tournament/133/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-america/133"),
-            LigaItem("Copa da Inglaterra", "https://api.sofascore.app/api/v1/unique-tournament/19/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/fa-cup/19"),
-            LigaItem("Copa do Brasil", "https://api.sofascore.app/api/v1/unique-tournament/373/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-brasil/373"),
-            LigaItem("Copa do Mundo", "https://api.sofascore.app/api/v1/unique-tournament/16/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/world-cup/16"),
-            LigaItem("Copa do Nordeste", "https://api.sofascore.app/api/v1/unique-tournament/2841/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/copa-do-nordeste/2841"),
-            LigaItem("Copa do Rei", "https://api.sofascore.app/api/v1/unique-tournament/116/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/copa-del-rey/116"),
-            LigaItem("Eredivisie", "https://api.sofascore.app/api/v1/unique-tournament/37/image/dark", "https://m.sofascore.com/pt/torneio/futebol/netherlands/eredivisie/37"),
-            LigaItem("Eurocopa", "https://api.sofascore.app/api/v1/unique-tournament/1/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/european-championship/1"),
-            LigaItem("Europa League", "https://api.sofascore.app/api/v1/unique-tournament/679/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-europa-league/679"),
-            LigaItem("La Liga", "https://api.sofascore.app/api/v1/unique-tournament/8/image/dark", "https://m.sofascore.com/pt/torneio/futebol/spain/laliga/8"),
             LigaItem("Libertadores", "https://api.sofascore.app/api/v1/unique-tournament/384/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-libertadores/384"),
-            LigaItem("Ligue 1", "https://api.sofascore.app/api/v1/unique-tournament/34/image/dark", "https://m.sofascore.com/pt/torneio/futebol/france/ligue-1/34"),
-            LigaItem("MLS", "https://api.sofascore.app/api/v1/unique-tournament/242/image/dark", "https://m.sofascore.com/pt/torneio/futebol/usa/mls/242"),
-            LigaItem("Mundial de Clubes", "https://api.sofascore.app/api/v1/unique-tournament/569/image/dark", "https://m.sofascore.com/pt/torneio/futebol/world/club-world-cup/569"),
-            LigaItem("Nations League", "https://api.sofascore.app/api/v1/unique-tournament/10469/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-nations-league/10469"),
             LigaItem("Premier League", "https://api.sofascore.app/api/v1/unique-tournament/17/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/premier-league/17"),
-            LigaItem("Primeira Liga", "https://api.sofascore.app/api/v1/unique-tournament/238/image/dark", "https://m.sofascore.com/pt/torneio/futebol/portugal/liga-portugal/238"),
-            LigaItem("Série A (Itália)", "https://api.sofascore.app/api/v1/unique-tournament/23/image/dark", "https://m.sofascore.com/pt/torneio/futebol/italy/serie-a/23"),
             LigaItem("Sul-Americana", "https://api.sofascore.app/api/v1/unique-tournament/383/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-sudamericana/383")
         )
 
@@ -189,6 +173,9 @@ class HomeActivity : Activity() {
                 }
             }
 
+        // =========================================================
+        // MÁGICA DE SINCRONIZAÇÃO COM O BANCO DE DADOS LOCAL (ROOM)
+        // =========================================================
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -198,18 +185,15 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+                
+                // Instancia o Banco de Dados Local
+                val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
+
                 val client = OkHttpClient.Builder()
                     .connectTimeout(30, TimeUnit.SECONDS)
                     .readTimeout(60, TimeUnit.SECONDS)
                     .writeTimeout(60, TimeUnit.SECONDS)
                     .build()
-
-                val liveCats = mutableListOf<CategoriaItem>()
-                val mapCategorias = mutableMapOf<String, String>() 
-                
-                val listTodosCanais = mutableListOf<CanalItem>()
-                val listFilmes = mutableListOf<FilmeItem>()
-                val listSeries = mutableListOf<FilmeItem>()
 
                 val reqLiveCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
                 val reqVodCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_categories").build()
@@ -232,40 +216,46 @@ class HomeActivity : Activity() {
                 val jsonVod = defVod.await()
                 val jsonSeries = defSeries.await()
 
+                val categoriasParaSalvar = mutableListOf<CategoriaEntity>()
+                val canaisParaSalvar = mutableListOf<CanalEntity>()
+                val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
+                val mapCategorias = mutableMapOf<String, String>() 
+
+                // 1. Processar e Salvar Categorias
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) liveCats.add(CategoriaItem(obj.optString("category_id"), catName))
+                        if (!isParentalActive || !isAdult) {
+                            categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
+                        }
                     }
                 }
-                
                 if (jsonVodCat.startsWith("[")) {
                     val arr = JSONArray(jsonVodCat)
-                    for (i in 0 until arr.length()) mapCategorias[arr.getJSONObject(i).optString("category_id")] = arr.getJSONObject(i).optString("category_name")
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name"), "vod"))
+                        mapCategorias[obj.optString("category_id")] = obj.optString("category_name")
+                    }
                 }
                 if (jsonSeriesCat.startsWith("[")) {
                     val arr = JSONArray(jsonSeriesCat)
-                    for (i in 0 until arr.length()) mapCategorias[arr.getJSONObject(i).optString("category_id")] = arr.getJSONObject(i).optString("category_name")
+                    for (i in 0 until arr.length()) {
+                        val obj = arr.getJSONObject(i)
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name"), "series"))
+                        mapCategorias[obj.optString("category_id")] = obj.optString("category_name")
+                    }
                 }
-                
-                liveCats.sortBy { 
-                    val n = it.nome.lowercase()
-                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
-                }
-                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
-                liveCatsGlobal = liveCats
 
+                // 2. Processar e Salvar Canais
                 if (jsonLive.startsWith("[")) {
                     val arr = JSONArray(jsonLive)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        val id = obj.optString("stream_id", "")
                         val nome = obj.optString("name", "Canal")
-                        val epgId = obj.optString("epg_channel_id", "")
-                        if (epgId.isNotEmpty()) DataHolder.mapaEpgIds[id] = epgId
                         
                         val nUp = nome.uppercase()
                         val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
@@ -276,17 +266,32 @@ class HomeActivity : Activity() {
                         if (filterH265 && isH265) continue
                         if (filter4K && is4K) continue
 
-                        listTodosCanais.add(CanalItem(id, nome, obj.optString("stream_icon", ""), obj.optString("category_id"), "$urlGlobal/live/$userGlobal/$passGlobal/$id.ts"))
+                        canaisParaSalvar.add(CanalEntity(
+                            id = obj.optString("stream_id", ""),
+                            nome = nome,
+                            urlImagem = obj.optString("stream_icon", ""),
+                            categoryId = obj.optString("category_id", ""),
+                            streamUrl = "$urlGlobal/live/$userGlobal/$passGlobal/${obj.optString("stream_id", "")}.ts",
+                            epgChannelId = obj.optString("epg_channel_id", "")
+                        ))
                     }
                 }
 
+                // 3. Processar e Salvar Filmes e Séries
                 if (jsonVod.startsWith("[")) {
                     val arr = JSONArray(jsonVod)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("stream_id", "")
                         val ext = obj.optString("container_extension", "mp4")
-                        listFilmes.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("stream_icon", ""), "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext", "filme", obj.optString("category_id"), 0))
+                        filmesSeriesParaSalvar.add(FilmeEntity(
+                            id = id,
+                            nome = obj.optString("name", "Sem Nome"),
+                            urlImagem = obj.optString("stream_icon", ""),
+                            streamUrl = "$urlGlobal/movie/$userGlobal/$passGlobal/$id.$ext",
+                            tipo = "filme",
+                            categoryId = obj.optString("category_id", "")
+                        ))
                     }
                 }
 
@@ -295,13 +300,38 @@ class HomeActivity : Activity() {
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val id = obj.optString("series_id", "")
-                        listSeries.add(FilmeItem(id, obj.optString("name", "Sem Nome"), obj.optString("cover", ""), "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id", "serie", obj.optString("category_id"), 0))
+                        filmesSeriesParaSalvar.add(FilmeEntity(
+                            id = id,
+                            nome = obj.optString("name", "Sem Nome"),
+                            urlImagem = obj.optString("cover", ""),
+                            streamUrl = "$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_series_info&series_id=$id",
+                            tipo = "serie",
+                            categoryId = obj.optString("category_id", "")
+                        ))
                     }
                 }
+
+                // Salva tudo no banco de dados local
+                dao.limparCategorias()
+                dao.limparCanais()
+                dao.limparFilmesSeries()
                 
-                listCanaisGlobais = listTodosCanais
-                listFilmesGlobais = listFilmes
-                listSeriesGlobais = listSeries
+                if(categoriasParaSalvar.isNotEmpty()) dao.inserirCategorias(categoriasParaSalvar)
+                if(canaisParaSalvar.isNotEmpty()) dao.inserirCanais(canaisParaSalvar)
+                if(filmesSeriesParaSalvar.isNotEmpty()) dao.inserirFilmesSeries(filmesSeriesParaSalvar)
+
+                // 4. Lê do Banco de Dados para Popular a Tela (Transforma Entity em Item para a interface)
+                val liveCats = dao.getCategoriasPorTipo("live").map { CategoriaItem(it.id, it.nome) }.toMutableList()
+                liveCats.sortBy { 
+                    val n = it.nome.lowercase()
+                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
+                }
+                liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
+                liveCatsGlobal = liveCats
+                
+                listCanaisGlobais = dao.getTodosCanais().map { CanalItem(it.id, it.nome, it.urlImagem, it.categoryId, it.streamUrl) }
+                listFilmesGlobais = dao.getTodosFilmes().map { FilmeItem(it.id, it.nome, it.urlImagem, it.streamUrl, it.tipo, it.categoryId, 0) }
+                listSeriesGlobais = dao.getTodasSeries().map { FilmeItem(it.id, it.nome, it.urlImagem, it.streamUrl, it.tipo, it.categoryId, 0) }
 
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
@@ -314,13 +344,13 @@ class HomeActivity : Activity() {
                     val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
                     val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
 
-                    recyclerUltimos.adapter = CardAdapter(listFilmes.reversed().take(30)) { abrirDetalhes(it) }
-                    recyclerSeriesAlta.adapter = CardAdapter(listSeries.reversed().take(30)) { abrirDetalhes(it) }
-                    recyclerTopFilmes.adapter = Top10Adapter(listFilmes.take(10)) { abrirDetalhes(it) }
-                    recyclerTopSeries.adapter = Top10Adapter(listSeries.take(10)) { abrirDetalhes(it) }
+                    recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { abrirDetalhes(it) }
+                    recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { abrirDetalhes(it) }
+                    recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
+                    recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
 
-                    if (listFilmes.isNotEmpty()) {
-                        atualizarBanner(listFilmes.random(), mapCategorias)
+                    if (listFilmesGlobais.isNotEmpty()) {
+                        atualizarBanner(listFilmesGlobais.random(), mapCategorias)
                     }
                 }
 
@@ -384,8 +414,6 @@ class HomeActivity : Activity() {
                 DataHolder.favoritosIds = listaIdsFavoritosGlobais
                 DataHolder.categoriaAtualId = "FAV"
                 
-                // MÁGICA: O PlayerTvActivity filtra a lista mestre na ordem do servidor.
-                // Traduzimos o canal clicado para o índice exato que ele terá lá dentro!
                 val listaDoPlayer = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }
                 val indiceCorretoProPlayer = listaDoPlayer.indexOf(canalClicado)
 
@@ -499,7 +527,6 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    // AJUSTE: Altura elástica para não cortar textos grandes (WRAP_CONTENT)
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
@@ -509,7 +536,6 @@ class HomeActivity : Activity() {
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                // A caixa agora abraça o conteúdo (WRAP_CONTENT)
                 layoutParams = ViewGroup.MarginLayoutParams(260, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(16, 16, 16, 16) }
                 minimumHeight = 260
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
@@ -524,7 +550,7 @@ class HomeActivity : Activity() {
                 id = 1002
                 layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }
                 setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 2; ellipsize = TextUtils.TruncateAt.END // Pontinhos (...) se o nome for gigante demais
+                maxLines = 2; ellipsize = TextUtils.TruncateAt.END 
             }
             layout.addView(img); layout.addView(txt)
             return LigaViewHolder(layout)
@@ -542,7 +568,6 @@ class HomeActivity : Activity() {
         override fun getItemCount(): Int = list.size
     }
 
-    // AJUSTE: Altura elástica aplicada aos aplicativos também para manter simetria
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(2001)
