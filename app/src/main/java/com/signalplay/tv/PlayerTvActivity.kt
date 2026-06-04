@@ -14,7 +14,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
+import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -131,7 +133,22 @@ class PlayerTvActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
-        exoPlayer = ExoPlayer.Builder(this).build()
+        // MÁGICA: Buffer Inteligente para TV Ao Vivo
+        // Prioriza abrir o canal rápido, mas estoca até 50 segundos de vídeo para evitar travamentos
+        val loadControl = DefaultLoadControl.Builder()
+            .setAllocator(DefaultAllocator(true, 64 * 1024))
+            .setBufferDurationsMs(
+                15000, // Min buffer (15 seg)
+                50000, // Max buffer (50 seg)
+                1500,  // Inicia o vídeo com apenas 1.5 seg baixado (Zapping rápido)
+                3000   // Se travar, volta rápido com 3 seg
+            )
+            .build()
+
+        exoPlayer = ExoPlayer.Builder(this)
+            .setLoadControl(loadControl)
+            .build()
+            
         playerView.player = exoPlayer
         exoPlayer?.addListener(object : Player.Listener {
             override fun onPlaybackStateChanged(playbackState: Int) {
@@ -163,15 +180,11 @@ class PlayerTvActivity : Activity() {
         exoPlayer?.playWhenReady = true
     }
 
-    // =========================================================================
-    // FILTRO ANTI-LIXO (Decodificador Blindado UTF-8)
-    // =========================================================================
     private fun decodificarTexto(raw: String): String {
         if (raw.isEmpty()) return ""
         try {
             val decodedBytes = Base64.decode(raw, Base64.DEFAULT)
             val txt = String(decodedBytes, Charsets.UTF_8)
-            // Se tiver o símbolo de erro (), ignora e devolve o texto original
             if (txt.isNotBlank() && !txt.contains("")) {
                 return txt
             }
@@ -250,7 +263,6 @@ class PlayerTvActivity : Activity() {
                     for (i in 0 until listings.length()) {
                         val prog = listings.getJSONObject(i)
                         
-                        // USA O NOVO ESCUDO PARA O TÍTULO ATUAL
                         val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
 
                         val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
@@ -289,7 +301,6 @@ class PlayerTvActivity : Activity() {
                                 
                                 if (i + 1 < listings.length()) {
                                     val nextProg = listings.getJSONObject(i + 1)
-                                    // USA O MESMO ESCUDO PARA O PRÓXIMO PROGRAMA
                                     programaSeguinteTitulo = decodificarTexto(nextProg.optString("title", ""))
                                 }
                                 
