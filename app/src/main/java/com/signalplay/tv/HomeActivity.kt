@@ -45,7 +45,6 @@ class HomeActivity : Activity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var btnAssistirDestaque: Button
     
-    // MÁGICA: Animação elástica e premium para o foco do controle remoto
     private val suaveOvershoot = OvershootInterpolator(1.2f)
 
     private var urlGlobal = ""
@@ -155,8 +154,6 @@ class HomeActivity : Activity() {
             startActivity(intent)
         }
 
-        carregarAplicativosDaTV()
-
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null && !snapshot.isEmpty) {
@@ -179,23 +176,30 @@ class HomeActivity : Activity() {
                 }
             }
 
+        // =========================================================
+        // MÁGICA: Ao voltar para a Home, ele recarrega a prateleira
+        // de apps para esconder os que o usuário marcou na tela de config.
+        // =========================================================
+    }
+
+    override fun onResume() {
+        super.onResume()
+        carregarAplicativosDaTV()
+        
+        // Garante que o catálogo carregue na primeira vez
+        if (listFilmesGlobais.isEmpty()) {
+            carregarCatalogoDaAPI()
+        }
+    }
+
+    private fun carregarCatalogoDaAPI() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val filterSD = prefs.getBoolean("FILTER_SD", false)
-                val filterH265 = prefs.getBoolean("FILTER_H265", false)
-                val filter4K = prefs.getBoolean("FILTER_4K", false)
-                
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
                 
                 val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
-
-                val client = OkHttpClient.Builder()
-                    .connectTimeout(30, TimeUnit.SECONDS)
-                    .readTimeout(60, TimeUnit.SECONDS)
-                    .writeTimeout(60, TimeUnit.SECONDS)
-                    .build()
+                val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
 
                 val reqLiveCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
                 val reqVodCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_categories").build()
@@ -223,15 +227,15 @@ class HomeActivity : Activity() {
                 val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
                 val mapCategorias = mutableMapOf<String, String>() 
 
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
+
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) {
-                            categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
-                        }
+                        if (!isParentalActive || !isAdult) categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
                     }
                 }
                 if (jsonVodCat.startsWith("[")) {
@@ -255,20 +259,9 @@ class HomeActivity : Activity() {
                     val arr = JSONArray(jsonLive)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        val nome = obj.optString("name", "Canal")
-                        
-                        val nUp = nome.uppercase()
-                        val isSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                        val isH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                        val is4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                        
-                        if (filterSD && isSD) continue
-                        if (filterH265 && isH265) continue
-                        if (filter4K && is4K) continue
-
                         canaisParaSalvar.add(CanalEntity(
                             id = obj.optString("stream_id", ""),
-                            nome = nome,
+                            nome = obj.optString("name", "Canal"),
                             urlImagem = obj.optString("stream_icon", ""),
                             categoryId = obj.optString("category_id", ""),
                             streamUrl = "$urlGlobal/live/$userGlobal/$passGlobal/${obj.optString("stream_id", "")}.ts",
@@ -426,15 +419,16 @@ class HomeActivity : Activity() {
 
     private fun carregarAplicativosDaTV() {
         val pm = packageManager
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        val hiddenApps = prefs.getStringSet("HIDDEN_APPS", emptySet()) ?: emptySet()
         val installedApps = mutableMapOf<String, AppItem>()
 
         try {
-            // MÁGICA: Varredura dupla para garantir que achamos todos os apps (Leanback e Padrão)
             val intentLeanback = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) }
             val leanbackApps = pm.queryIntentActivities(intentLeanback, 0)
             for (resolveInfo in leanbackApps) {
                 val pkg = resolveInfo.activityInfo.packageName
-                if (pkg == applicationContext.packageName) continue
+                if (pkg == applicationContext.packageName || hiddenApps.contains(pkg)) continue
                 val nome = resolveInfo.loadLabel(pm).toString()
                 val icone = resolveInfo.loadIcon(pm)
                 installedApps[pkg] = AppItem(nome, icone, pkg)
@@ -444,7 +438,7 @@ class HomeActivity : Activity() {
             val launcherApps = pm.queryIntentActivities(intentLauncher, 0)
             for (resolveInfo in launcherApps) {
                 val pkg = resolveInfo.activityInfo.packageName
-                if (pkg == applicationContext.packageName || installedApps.containsKey(pkg)) continue
+                if (pkg == applicationContext.packageName || installedApps.containsKey(pkg) || hiddenApps.contains(pkg)) continue
                 val nome = resolveInfo.loadLabel(pm).toString()
                 val icone = resolveInfo.loadIcon(pm)
                 installedApps[pkg] = AppItem(nome, icone, pkg)
@@ -454,10 +448,12 @@ class HomeActivity : Activity() {
         val listaFinal = installedApps.values.toMutableList()
         listaFinal.sortBy { it.nome }
 
-        // MÁGICA: Injeta as Configurações Nativas da TVBox sempre na primeira posição
-        val settingsIcon = ContextCompat.getDrawable(this, android.R.drawable.ic_menu_preferences)
-        if (settingsIcon != null) {
-            listaFinal.add(0, AppItem("Configurações", settingsIcon, "android.settings.SETTINGS"))
+        val settingsPkg = "android.settings.SETTINGS"
+        if (!hiddenApps.contains(settingsPkg)) {
+            val settingsIcon = ContextCompat.getDrawable(this, android.R.drawable.ic_menu_preferences)
+            if (settingsIcon != null) {
+                listaFinal.add(0, AppItem("Configurações", settingsIcon, settingsPkg))
+            }
         }
 
         val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
@@ -542,7 +538,6 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    // Adaptado para ficar harmônico com os aplicativos
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
         
@@ -585,7 +580,6 @@ class HomeActivity : Activity() {
         override fun getItemCount(): Int = list.size
     }
 
-    // MÁGICA: Redimensionado e aplicado Efeito Vidro e Animação Suave
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
         
