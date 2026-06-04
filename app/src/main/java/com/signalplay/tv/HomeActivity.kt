@@ -73,11 +73,8 @@ class HomeActivity : Activity() {
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
         btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) {
-                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
-            } else {
-                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
-            }
+            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
+            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
         }
 
         val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
@@ -166,30 +163,17 @@ class HomeActivity : Activity() {
                     historicoMapGlobal = doc.get("historico_vod") as? Map<String, Any> ?: emptyMap()
                     
                     runOnUiThread {
-                        if (listFilmesGlobais.isNotEmpty() || listSeriesGlobais.isNotEmpty()) {
-                            renderizarContinuarAssistindo()
-                        }
-                        if (listCanaisGlobais.isNotEmpty()) {
-                            renderizarFavoritos()
-                        }
+                        if (listFilmesGlobais.isNotEmpty() || listSeriesGlobais.isNotEmpty()) renderizarContinuarAssistindo()
+                        if (listCanaisGlobais.isNotEmpty()) renderizarFavoritos()
                     }
                 }
             }
-
-        // =========================================================
-        // MÁGICA: Ao voltar para a Home, ele recarrega a prateleira
-        // de apps para esconder os que o usuário marcou na tela de config.
-        // =========================================================
     }
 
     override fun onResume() {
         super.onResume()
         carregarAplicativosDaTV()
-        
-        // Garante que o catálogo carregue na primeira vez
-        if (listFilmesGlobais.isEmpty()) {
-            carregarCatalogoDaAPI()
-        }
+        if (listFilmesGlobais.isEmpty()) carregarCatalogoDaAPI()
     }
 
     private fun carregarCatalogoDaAPI() {
@@ -197,7 +181,13 @@ class HomeActivity : Activity() {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterHD = prefs.getBoolean("FILTER_HD", false)
+                val filterFHD = prefs.getBoolean("FILTER_FHD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
+
                 val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
                 val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
 
@@ -225,33 +215,26 @@ class HomeActivity : Activity() {
                 val categoriasParaSalvar = mutableListOf<CategoriaEntity>()
                 val canaisParaSalvar = mutableListOf<CanalEntity>()
                 val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
-                val mapCategorias = mutableMapOf<String, String>() 
-
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
 
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        val catName = obj.optString("category_name", "")
-                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "live"))
                     }
                 }
                 if (jsonVodCat.startsWith("[")) {
                     val arr = JSONArray(jsonVodCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name"), "vod"))
-                        mapCategorias[obj.optString("category_id")] = obj.optString("category_name")
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "vod"))
                     }
                 }
                 if (jsonSeriesCat.startsWith("[")) {
                     val arr = JSONArray(jsonSeriesCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name"), "series"))
-                        mapCategorias[obj.optString("category_id")] = obj.optString("category_name")
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "series"))
                     }
                 }
 
@@ -311,7 +294,25 @@ class HomeActivity : Activity() {
                 if(canaisParaSalvar.isNotEmpty()) dao.inserirCanais(canaisParaSalvar)
                 if(filmesSeriesParaSalvar.isNotEmpty()) dao.inserirFilmesSeries(filmesSeriesParaSalvar)
 
-                val liveCats = dao.getCategoriasPorTipo("live").map { CategoriaItem(it.id, it.nome) }.toMutableList()
+                val mapLiveCats = mutableMapOf<String, String>()
+                val mapVodCats = mutableMapOf<String, String>()
+                val mapSeriesCats = mutableMapOf<String, String>()
+
+                val liveCats = mutableListOf<CategoriaItem>()
+                for (cat in categoriasParaSalvar) {
+                    val nLower = cat.nome.lowercase()
+                    if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
+                    
+                    if (cat.tipo == "live") {
+                        liveCats.add(CategoriaItem(cat.id, cat.nome))
+                        mapLiveCats[cat.id] = cat.nome
+                    } else if (cat.tipo == "vod") {
+                        mapVodCats[cat.id] = cat.nome
+                    } else if (cat.tipo == "series") {
+                        mapSeriesCats[cat.id] = cat.nome
+                    }
+                }
+
                 liveCats.sortBy { 
                     val n = it.nome.lowercase()
                     if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
@@ -319,9 +320,52 @@ class HomeActivity : Activity() {
                 liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
                 liveCatsGlobal = liveCats
                 
-                listCanaisGlobais = dao.getTodosCanais().map { CanalItem(it.id, it.nome, it.urlImagem, it.categoryId, it.streamUrl) }
-                listFilmesGlobais = dao.getTodosFilmes().map { FilmeItem(it.id, it.nome, it.urlImagem, it.streamUrl, it.tipo, it.categoryId, 0) }
-                listSeriesGlobais = dao.getTodasSeries().map { FilmeItem(it.id, it.nome, it.urlImagem, it.streamUrl, it.tipo, it.categoryId, 0) }
+                val canaisFiltrados = mutableListOf<CanalItem>()
+                for (canal in canaisParaSalvar) {
+                    val catNameLower = mapLiveCats[canal.categoryId]?.lowercase() ?: ""
+                    val nLower = canal.nome.lowercase()
+                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    
+                    val nUp = canal.nome.uppercase()
+                    val isExplicitSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
+                    val hasFHD = nUp.contains(" FHD ") || nUp.endsWith(" FHD") || nUp.startsWith("FHD ") || nUp.contains("(FHD)") || nUp.contains("[FHD]") || nUp.contains("|FHD|") || nUp.contains("- FHD") || nUp == "FHD"
+                    val hasHD = (nUp.contains(" HD ") || nUp.endsWith(" HD") || nUp.startsWith("HD ") || nUp.contains("(HD)") || nUp.contains("[HD]") || nUp.contains("|HD|") || nUp.contains("- HD") || nUp == "HD") && !hasFHD
+                    val has4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
+                    val hasH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
+                    
+                    var shouldHide = false
+                    if (filterSD) {
+                        if (isExplicitSD) shouldHide = true
+                        else if (!hasHD && !hasFHD && !has4K && !hasH265) {
+                            val isSafeCat = catNameLower.contains("24h") || catNameLower.contains("24 horas") || catNameLower.contains("infantil") || catNameLower.contains("kids") || catNameLower.contains("desenho") || catNameLower.contains("religi") || catNameLower.contains("notícia") || catNameLower.contains("news") || catNameLower.contains("document") || catNameLower.contains("educa") || catNameLower.contains("música") || catNameLower.contains("rádio")
+                            if (!isSafeCat) shouldHide = true
+                        }
+                    }
+                    if (filterHD && hasHD) shouldHide = true
+                    if (filterFHD && hasFHD) shouldHide = true
+                    if (filterH265 && hasH265) shouldHide = true
+                    if (filter4K && has4K) shouldHide = true
+                    
+                    if (shouldHide) continue
+                    canaisFiltrados.add(CanalItem(canal.id, canal.nome, canal.urlImagem, canal.categoryId, canal.streamUrl))
+                }
+                listCanaisGlobais = canaisFiltrados
+
+                val fFiltrados = mutableListOf<FilmeItem>()
+                val sFiltradas = mutableListOf<FilmeItem>()
+                
+                for (media in filmesSeriesParaSalvar) {
+                    val mapCorreto = if (media.tipo == "filme") mapVodCats else mapSeriesCats
+                    val catNameLower = mapCorreto[media.categoryId]?.lowercase() ?: ""
+                    val nLower = media.nome.lowercase()
+                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    
+                    if (media.tipo == "filme") fFiltrados.add(FilmeItem(media.id, media.nome, media.urlImagem, media.streamUrl, media.tipo, media.categoryId, 0))
+                    else sFiltradas.add(FilmeItem(media.id, media.nome, media.urlImagem, media.streamUrl, media.tipo, media.categoryId, 0))
+                }
+                
+                listFilmesGlobais = fFiltrados
+                listSeriesGlobais = sFiltradas
 
                 withContext(Dispatchers.Main) {
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
@@ -340,10 +384,11 @@ class HomeActivity : Activity() {
                     recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
 
                     if (listFilmesGlobais.isNotEmpty()) {
-                        atualizarBanner(listFilmesGlobais.random(), mapCategorias)
+                        val mCat = mapVodCats.toMutableMap()
+                        mCat.putAll(mapSeriesCats)
+                        atualizarBanner(listFilmesGlobais.random(), mCat)
                     }
                 }
-
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) { 
                     findViewById<RelativeLayout>(R.id.loadingOverlay).visibility = View.GONE
@@ -355,13 +400,11 @@ class HomeActivity : Activity() {
 
     private fun renderizarContinuarAssistindo() {
         val listContinuar = mutableListOf<FilmeItem>()
-        
         val processarItem = { item: FilmeItem ->
             val progData = historicoMapGlobal[item.id] as? Map<String, Any>
             if (progData != null) {
                 val pos = progData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                 val dur = progData["duracao"]?.toString()?.toLongOrNull() ?: 0L
-                
                 if (dur > 0L && pos > 5000L) {
                     var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
                     if (perc <= 0) perc = 1 
@@ -370,7 +413,6 @@ class HomeActivity : Activity() {
                 }
             }
         }
-        
         listFilmesGlobais.forEach(processarItem)
         listSeriesGlobais.forEach(processarItem)
         
@@ -390,10 +432,7 @@ class HomeActivity : Activity() {
     private fun renderizarFavoritos() {
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
-        
-        val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> 
-            listCanaisGlobais.find { it.id == favId } 
-        }
+        val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> listCanaisGlobais.find { it.id == favId } }
 
         if (listFavoritos.isNotEmpty()) {
             tvFavoritosTitulo.visibility = View.VISIBLE
@@ -403,13 +442,8 @@ class HomeActivity : Activity() {
                 DataHolder.todosCanais = listCanaisGlobais
                 DataHolder.favoritosIds = listaIdsFavoritosGlobais
                 DataHolder.categoriaAtualId = "FAV"
-                
-                val listaDoPlayer = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }
-                val indiceCorretoProPlayer = listaDoPlayer.indexOf(canalClicado)
-
-                startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply {
-                    putExtra("INDICE_CANAL", if (indiceCorretoProPlayer != -1) indiceCorretoProPlayer else 0)
-                })
+                val indiceCorretoProPlayer = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }.indexOf(canalClicado)
+                startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply { putExtra("INDICE_CANAL", if (indiceCorretoProPlayer != -1) indiceCorretoProPlayer else 0) })
             }, { })
         } else {
             tvFavoritosTitulo.visibility = View.GONE
@@ -451,19 +485,16 @@ class HomeActivity : Activity() {
         val settingsPkg = "android.settings.SETTINGS"
         if (!hiddenApps.contains(settingsPkg)) {
             val settingsIcon = ContextCompat.getDrawable(this, android.R.drawable.ic_menu_preferences)
-            if (settingsIcon != null) {
-                listaFinal.add(0, AppItem("Configurações", settingsIcon, settingsPkg))
-            }
+            if (settingsIcon != null) listaFinal.add(0, AppItem("Configurações", settingsIcon, settingsPkg))
         }
 
         val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
         recyclerApps.adapter = AppAdapter(listaFinal) { app ->
-            if (app.pacote == "android.settings.SETTINGS") {
-                startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
-            } else {
+            if (app.pacote == "android.settings.SETTINGS") startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+            else {
                 val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
                 if (launchIntent != null) startActivity(launchIntent)
-                else Toast.makeText(this, "Não foi possível abrir o aplicativo.", Toast.LENGTH_SHORT).show()
+                else Toast.makeText(this, "Não foi possível abrir.", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -472,9 +503,7 @@ class HomeActivity : Activity() {
         val tvTitle = findViewById<TextView>(R.id.heroTitle)
         val tvBadge = findViewById<TextView>(R.id.heroBadge)
         val tvDesc = findViewById<TextView>(R.id.heroDesc)
-        
         tvTitle.text = filme.nome
-        
         val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
         tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
         tvDesc.text = "Buscando informações..."
@@ -485,7 +514,6 @@ class HomeActivity : Activity() {
                 val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
                 val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
                 val res = client.newCall(req).execute().body?.string() ?: "{}"
-                
                 var plot = "Sinopse não disponível para este conteúdo."
                 if (res.startsWith("{")) {
                     val json = JSONObject(res)
@@ -540,30 +568,19 @@ class HomeActivity : Activity() {
 
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
-        
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
             val txt = view.findViewById<TextView>(1002)
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LigaViewHolder {
             val layout = LinearLayout(parent.context).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER
+                orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
                 layoutParams = ViewGroup.MarginLayoutParams(180, 140).apply { setMargins(12, 12, 12, 12) }
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
                 isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
             }
-            val img = ImageView(parent.context).apply { 
-                id = 1001; 
-                layoutParams = LinearLayout.LayoutParams(80, 80)
-                scaleType = ImageView.ScaleType.FIT_CENTER 
-            }
-            val txt = TextView(parent.context).apply { 
-                id = 1002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
-                setTextColor(Color.WHITE); textSize = 11f; textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 1; ellipsize = TextUtils.TruncateAt.END 
-            }
+            val img = ImageView(parent.context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(80, 80); scaleType = ImageView.ScaleType.FIT_CENTER }
+            val txt = TextView(parent.context).apply { id = 1002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }; setTextColor(Color.WHITE); textSize = 11f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1; ellipsize = TextUtils.TruncateAt.END }
             layout.addView(img); layout.addView(txt)
             return LigaViewHolder(layout)
         }
@@ -582,30 +599,19 @@ class HomeActivity : Activity() {
 
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
-        
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(2001)
             val txt = view.findViewById<TextView>(2002)
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
             val layout = LinearLayout(parent.context).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = android.view.Gravity.CENTER
+                orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
                 layoutParams = ViewGroup.MarginLayoutParams(140, 140).apply { setMargins(12, 12, 12, 12) }
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
                 isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
             }
-            val img = ImageView(parent.context).apply { 
-                id = 2001; 
-                layoutParams = LinearLayout.LayoutParams(70, 70);
-                scaleType = ImageView.ScaleType.FIT_CENTER 
-            }
-            val txt = TextView(parent.context).apply { 
-                id = 2002; 
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
-                setTextColor(Color.WHITE); textSize = 10f; textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 1; ellipsize = TextUtils.TruncateAt.END 
-            }
+            val img = ImageView(parent.context).apply { id = 2001; layoutParams = LinearLayout.LayoutParams(70, 70); scaleType = ImageView.ScaleType.FIT_CENTER }
+            val txt = TextView(parent.context).apply { id = 2002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }; setTextColor(Color.WHITE); textSize = 10f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1; ellipsize = TextUtils.TruncateAt.END }
             layout.addView(img); layout.addView(txt)
             return AppViewHolder(layout)
         }
