@@ -12,6 +12,7 @@ import android.text.TextUtils
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
+import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
@@ -43,6 +44,9 @@ class HomeActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
     private lateinit var btnAssistirDestaque: Button
+    
+    // MÁGICA: Animação elástica e premium para o foco do controle remoto
+    private val suaveOvershoot = OvershootInterpolator(1.2f)
 
     private var urlGlobal = ""
     private var userGlobal = ""
@@ -70,8 +74,11 @@ class HomeActivity : Activity() {
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
         btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
-            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+            if (hasFocus) {
+                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
+            } else {
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
+            }
         }
 
         val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
@@ -85,10 +92,10 @@ class HomeActivity : Activity() {
             val txt = v as TextView
             if (hasFocus) {
                 txt.setTextColor(Color.BLACK)
-                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(8f).setDuration(150).start()
+                v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
             } else {
                 txt.setTextColor(Color.WHITE)
-                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start()
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
             }
         }
         
@@ -172,9 +179,6 @@ class HomeActivity : Activity() {
                 }
             }
 
-        // =========================================================
-        // MÁGICA DE SINCRONIZAÇÃO COM O BANCO DE DADOS LOCAL (ROOM)
-        // =========================================================
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -185,7 +189,6 @@ class HomeActivity : Activity() {
                 
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex")
                 
-                // Instancia o Banco de Dados Local
                 val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
 
                 val client = OkHttpClient.Builder()
@@ -220,7 +223,6 @@ class HomeActivity : Activity() {
                 val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
                 val mapCategorias = mutableMapOf<String, String>() 
 
-                // 1. Processar e Salvar Categorias
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
@@ -249,7 +251,6 @@ class HomeActivity : Activity() {
                     }
                 }
 
-                // 2. Processar e Salvar Canais
                 if (jsonLive.startsWith("[")) {
                     val arr = JSONArray(jsonLive)
                     for (i in 0 until arr.length()) {
@@ -276,7 +277,6 @@ class HomeActivity : Activity() {
                     }
                 }
 
-                // 3. Processar e Salvar Filmes e Séries
                 if (jsonVod.startsWith("[")) {
                     val arr = JSONArray(jsonVod)
                     for (i in 0 until arr.length()) {
@@ -310,7 +310,6 @@ class HomeActivity : Activity() {
                     }
                 }
 
-                // Salva tudo no banco de dados local
                 dao.limparCategorias()
                 dao.limparCanais()
                 dao.limparFilmesSeries()
@@ -319,7 +318,6 @@ class HomeActivity : Activity() {
                 if(canaisParaSalvar.isNotEmpty()) dao.inserirCanais(canaisParaSalvar)
                 if(filmesSeriesParaSalvar.isNotEmpty()) dao.inserirFilmesSeries(filmesSeriesParaSalvar)
 
-                // 4. Lê do Banco de Dados para Popular a Tela (Transforma Entity em Item para a interface)
                 val liveCats = dao.getCategoriasPorTipo("live").map { CategoriaItem(it.id, it.nome) }.toMutableList()
                 liveCats.sortBy { 
                     val n = it.nome.lowercase()
@@ -431,28 +429,46 @@ class HomeActivity : Activity() {
         val installedApps = mutableMapOf<String, AppItem>()
 
         try {
-            val packages = pm.getInstalledApplications(PackageManager.GET_META_DATA)
-            for (appInfo in packages) {
-                val pkg = appInfo.packageName
+            // MÁGICA: Varredura dupla para garantir que achamos todos os apps (Leanback e Padrão)
+            val intentLeanback = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER) }
+            val leanbackApps = pm.queryIntentActivities(intentLeanback, 0)
+            for (resolveInfo in leanbackApps) {
+                val pkg = resolveInfo.activityInfo.packageName
                 if (pkg == applicationContext.packageName) continue
-                
-                val launchIntent = pm.getLaunchIntentForPackage(pkg)
-                if (launchIntent != null) {
-                    val nome = appInfo.loadLabel(pm).toString()
-                    val icone = appInfo.loadIcon(pm)
-                    installedApps[pkg] = AppItem(nome, icone, pkg)
-                }
+                val nome = resolveInfo.loadLabel(pm).toString()
+                val icone = resolveInfo.loadIcon(pm)
+                installedApps[pkg] = AppItem(nome, icone, pkg)
+            }
+
+            val intentLauncher = Intent(Intent.ACTION_MAIN, null).apply { addCategory(Intent.CATEGORY_LAUNCHER) }
+            val launcherApps = pm.queryIntentActivities(intentLauncher, 0)
+            for (resolveInfo in launcherApps) {
+                val pkg = resolveInfo.activityInfo.packageName
+                if (pkg == applicationContext.packageName || installedApps.containsKey(pkg)) continue
+                val nome = resolveInfo.loadLabel(pm).toString()
+                val icone = resolveInfo.loadIcon(pm)
+                installedApps[pkg] = AppItem(nome, icone, pkg)
             }
         } catch (e: Exception) {}
 
         val listaFinal = installedApps.values.toMutableList()
         listaFinal.sortBy { it.nome }
 
+        // MÁGICA: Injeta as Configurações Nativas da TVBox sempre na primeira posição
+        val settingsIcon = ContextCompat.getDrawable(this, android.R.drawable.ic_menu_preferences)
+        if (settingsIcon != null) {
+            listaFinal.add(0, AppItem("Configurações", settingsIcon, "android.settings.SETTINGS"))
+        }
+
         val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
         recyclerApps.adapter = AppAdapter(listaFinal) { app ->
-            val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
-            if (launchIntent != null) startActivity(launchIntent)
-            else Toast.makeText(this, "Não foi possível abrir o aplicativo.", Toast.LENGTH_SHORT).show()
+            if (app.pacote == "android.settings.SETTINGS") {
+                startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
+            } else {
+                val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
+                if (launchIntent != null) startActivity(launchIntent)
+                else Toast.makeText(this, "Não foi possível abrir o aplicativo.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 
@@ -526,7 +542,10 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
+    // Adaptado para ficar harmônico com os aplicativos
     inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
+        private val interpolator = OvershootInterpolator(1.2f)
+        
         inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(1001)
             val txt = view.findViewById<TextView>(1002)
@@ -535,21 +554,20 @@ class HomeActivity : Activity() {
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(260, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(16, 16, 16, 16) }
-                minimumHeight = 260
-                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
-                isFocusable = true; isClickable = true; setPadding(16, 16, 16, 16)
+                layoutParams = ViewGroup.MarginLayoutParams(180, 140).apply { setMargins(12, 12, 12, 12) }
+                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
+                isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
             }
             val img = ImageView(parent.context).apply { 
                 id = 1001; 
-                layoutParams = LinearLayout.LayoutParams(160, 160)
+                layoutParams = LinearLayout.LayoutParams(80, 80)
                 scaleType = ImageView.ScaleType.FIT_CENTER 
             }
             val txt = TextView(parent.context).apply { 
                 id = 1002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }
-                setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 2; ellipsize = TextUtils.TruncateAt.END 
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                setTextColor(Color.WHITE); textSize = 11f; textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1; ellipsize = TextUtils.TruncateAt.END 
             }
             layout.addView(img); layout.addView(txt)
             return LigaViewHolder(layout)
@@ -559,15 +577,18 @@ class HomeActivity : Activity() {
             holder.txt.text = item.nome
             Glide.with(holder.itemView.context).load(item.logo).into(holder.img)
             holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.10f).scaleY(1.10f).translationZ(10f).setDuration(150).start() } 
-                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start() }
+                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() } 
+                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start() }
             }
             holder.itemView.setOnClickListener { onClick(item) }
         }
         override fun getItemCount(): Int = list.size
     }
 
+    // MÁGICA: Redimensionado e aplicado Efeito Vidro e Animação Suave
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
+        private val interpolator = OvershootInterpolator(1.2f)
+        
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
             val img = view.findViewById<ImageView>(2001)
             val txt = view.findViewById<TextView>(2002)
@@ -576,21 +597,20 @@ class HomeActivity : Activity() {
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(260, ViewGroup.LayoutParams.WRAP_CONTENT).apply { setMargins(16, 16, 16, 16) }
-                minimumHeight = 260
-                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_menu_focus)
-                isFocusable = true; isClickable = true; setPadding(16, 16, 16, 16)
+                layoutParams = ViewGroup.MarginLayoutParams(140, 140).apply { setMargins(12, 12, 12, 12) }
+                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
+                isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
             }
             val img = ImageView(parent.context).apply { 
                 id = 2001; 
-                layoutParams = LinearLayout.LayoutParams(160, 160);
+                layoutParams = LinearLayout.LayoutParams(70, 70);
                 scaleType = ImageView.ScaleType.FIT_CENTER 
             }
             val txt = TextView(parent.context).apply { 
                 id = 2002; 
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 12 }
-                setTextColor(Color.WHITE); textSize = 12f; textAlignment = View.TEXT_ALIGNMENT_CENTER
-                maxLines = 2; ellipsize = TextUtils.TruncateAt.END 
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                setTextColor(Color.WHITE); textSize = 10f; textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1; ellipsize = TextUtils.TruncateAt.END 
             }
             layout.addView(img); layout.addView(txt)
             return AppViewHolder(layout)
@@ -600,8 +620,8 @@ class HomeActivity : Activity() {
             holder.txt.text = item.nome
             holder.img.setImageDrawable(item.icone)
             holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.10f).scaleY(1.10f).translationZ(10f).setDuration(150).start() } 
-                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(150).start() }
+                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() } 
+                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start() }
             }
             holder.itemView.setOnClickListener { onClick(item) }
         }
