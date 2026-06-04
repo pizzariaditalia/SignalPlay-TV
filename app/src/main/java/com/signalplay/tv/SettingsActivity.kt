@@ -1,15 +1,19 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.Dialog
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
 import android.os.Bundle
 import android.view.View
+import android.view.Window
 import android.view.animation.OvershootInterpolator
 import android.widget.Button
+import android.widget.EditText
 import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
@@ -34,11 +38,11 @@ import java.util.concurrent.TimeUnit
 class SettingsActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
-    private var isParentalActive = false
-    private var filterSD = false
-    private var filterH265 = false
-    private var filter4K = false
     private val interpolator = OvershootInterpolator(1.2f)
+    private var username = ""
+    private var url = ""
+    private var user = ""
+    private var pass = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -46,29 +50,37 @@ class SettingsActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
 
-        val url = intent.getStringExtra("URL") ?: ""
-        val user = intent.getStringExtra("USER") ?: ""
-        val pass = intent.getStringExtra("PASS") ?: ""
-        val username = intent.getStringExtra("USERNAME") ?: ""
+        url = intent.getStringExtra("URL") ?: ""
+        user = intent.getStringExtra("USER") ?: ""
+        pass = intent.getStringExtra("PASS") ?: ""
+        username = intent.getStringExtra("USERNAME") ?: ""
 
         val tvNomeUsuario = findViewById<TextView>(R.id.tvNomeUsuario)
+        val tvStatusPlano = findViewById<TextView>(R.id.tvStatusPlano)
         val tvVencimento = findViewById<TextView>(R.id.tvVencimento)
         
+        val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
+        val tvStatusEpg = findViewById<TextView>(R.id.tvStatusEpg)
+
+        val btnShowApps = findViewById<LinearLayout>(R.id.btnShowApps)
+        val switchApps = findViewById<Switch>(R.id.switchApps)
+
         val btnParental = findViewById<LinearLayout>(R.id.btnParental)
         val switchParental = findViewById<Switch>(R.id.switchParental)
         
         val btnFilterSD = findViewById<LinearLayout>(R.id.btnFilterSD)
         val switchSD = findViewById<Switch>(R.id.switchSD)
-        
+        val btnFilterHD = findViewById<LinearLayout>(R.id.btnFilterHD)
+        val switchHD = findViewById<Switch>(R.id.switchHD)
+        val btnFilterFHD = findViewById<LinearLayout>(R.id.btnFilterFHD)
+        val switchFHD = findViewById<Switch>(R.id.switchFHD)
         val btnFilterH265 = findViewById<LinearLayout>(R.id.btnFilterH265)
         val switchH265 = findViewById<Switch>(R.id.switchH265)
-        
         val btnFilter4K = findViewById<LinearLayout>(R.id.btnFilter4K)
         val switch4K = findViewById<Switch>(R.id.switch4K)
 
         val btnLimparFavs = findViewById<LinearLayout>(R.id.btnLimparFavs)
         val btnLimparHist = findViewById<LinearLayout>(R.id.btnLimparHist)
-        val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
         
         val btnModoLauncher = findViewById<LinearLayout>(R.id.btnModoLauncher)
         val switchLauncher = findViewById<Switch>(R.id.switchLauncher)
@@ -77,67 +89,145 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
-        val focusListener = View.OnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) {
-                v.bringToFront()
-                v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
-            } else {
-                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
-            }
-        }
-        
-        btnParental.onFocusChangeListener = focusListener
-        btnFilterSD.onFocusChangeListener = focusListener
-        btnFilterH265.onFocusChangeListener = focusListener
-        btnFilter4K.onFocusChangeListener = focusListener
-        btnLimparFavs.onFocusChangeListener = focusListener
-        btnLimparHist.onFocusChangeListener = focusListener
-        btnAtualizarEPG.onFocusChangeListener = focusListener
-        btnModoLauncher.onFocusChangeListener = focusListener
-        btnSairConta.onFocusChangeListener = focusListener
+        // Busca dados do Firebase (Plano do Usuário)
+        db.collection("usuarios").whereEqualTo("usuario", username).get()
+            .addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    val status = doc.getString("status")?.uppercase() ?: "DESCONHECIDO"
+                    val vencimento = doc.getString("vencimento") ?: "Ilimitado"
 
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val client = OkHttpClient()
-                val req = Request.Builder().url("$url/player_api.php?username=$user&password=$pass").build()
-                val res = client.newCall(req).execute()
-                val jsonStr = res.body?.string() ?: "{}"
-                if (jsonStr.startsWith("{")) {
-                    val json = JSONObject(jsonStr)
-                    val userInfo = json.optJSONObject("user_info")
-                    if (userInfo != null) {
-                        val expStr = userInfo.optString("exp_date", "")
-                        withContext(Dispatchers.Main) {
-                            if (expStr.isNotEmpty() && expStr != "null") {
-                                val expLong = expStr.toLongOrNull()
-                                if (expLong != null) {
-                                    val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                                    val date = Date(expLong * 1000)
-                                    tvVencimento.text = "Vencimento: ${sdf.format(date)}"
-                                } else tvVencimento.text = "Vencimento: Ilimitado"
-                            } else tvVencimento.text = "Vencimento: Ilimitado"
-                        }
+                    tvStatusPlano.text = status
+                    when (status) {
+                        "ATIVO" -> { tvStatusPlano.setBackgroundColor(Color.parseColor("#2ED573")); tvStatusPlano.setTextColor(Color.BLACK) }
+                        "TESTE" -> { tvStatusPlano.setBackgroundColor(Color.parseColor("#FFC107")); tvStatusPlano.setTextColor(Color.BLACK) }
+                        "BLOQUEADO" -> { tvStatusPlano.setBackgroundColor(Color.parseColor("#FF4757")); tvStatusPlano.setTextColor(Color.WHITE) }
                     }
+                    tvVencimento.text = "Vencimento: $vencimento"
                 }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { tvVencimento.text = "Vencimento: Não detectado" }
             }
-        }
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-        filterSD = prefs.getBoolean("FILTER_SD", false)
-        filterH265 = prefs.getBoolean("FILTER_H265", false)
-        filter4K = prefs.getBoolean("FILTER_4K", false)
+        
+        tvStatusEpg.text = "Última atualização: ${prefs.getString("LAST_EPG_UPDATE", "Nunca")}"
 
-        switchParental.isChecked = isParentalActive
-        switchSD.isChecked = filterSD
-        switchH265.isChecked = filterH265
-        switch4K.isChecked = filter4K
+        switchApps.isChecked = prefs.getBoolean("SHOW_APPS", true)
+        switchSD.isChecked = prefs.getBoolean("FILTER_SD", false)
+        switchHD.isChecked = prefs.getBoolean("FILTER_HD", false)
+        switchFHD.isChecked = prefs.getBoolean("FILTER_FHD", false)
+        switchH265.isChecked = prefs.getBoolean("FILTER_H265", false)
+        switch4K.isChecked = prefs.getBoolean("FILTER_4K", false)
+        switchParental.isChecked = prefs.getBoolean("PARENTAL_CONTROL", false)
 
         val aliasName = ComponentName(this, "com.signalplay.tv.LauncherAlias")
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         switchLauncher.isChecked = isLauncherEnabled
+
+        val focusListener = View.OnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) {
+                v.bringToFront()
+                v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
+                v.setBackgroundResource(R.drawable.bg_menu_focus)
+            } else {
+                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
+                v.setBackgroundResource(R.drawable.bg_glass)
+            }
+        }
+        
+        btnAtualizarEPG.onFocusChangeListener = focusListener
+        btnShowApps.onFocusChangeListener = focusListener
+        btnParental.onFocusChangeListener = focusListener
+        btnFilterSD.onFocusChangeListener = focusListener
+        btnFilterHD.onFocusChangeListener = focusListener
+        btnFilterFHD.onFocusChangeListener = focusListener
+        btnFilterH265.onFocusChangeListener = focusListener
+        btnFilter4K.onFocusChangeListener = focusListener
+        btnLimparFavs.onFocusChangeListener = focusListener
+        btnLimparHist.onFocusChangeListener = focusListener
+        btnModoLauncher.onFocusChangeListener = focusListener
+
+        btnSairConta.onFocusChangeListener = View.OnFocusChangeListener { v, hasFocus ->
+            if (hasFocus) v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
+            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
+        }
+
+        // =========================================================================
+        // AÇÕES DOS BOTÕES E SWITCHES
+        // =========================================================================
+
+        btnShowApps.setOnClickListener {
+            val newState = !switchApps.isChecked
+            prefs.edit().putBoolean("SHOW_APPS", newState).apply()
+            switchApps.isChecked = newState
+        }
+
+        btnFilterSD.setOnClickListener { val st = !switchSD.isChecked; prefs.edit().putBoolean("FILTER_SD", st).apply(); switchSD.isChecked = st }
+        btnFilterHD.setOnClickListener { val st = !switchHD.isChecked; prefs.edit().putBoolean("FILTER_HD", st).apply(); switchHD.isChecked = st }
+        btnFilterFHD.setOnClickListener { val st = !switchFHD.isChecked; prefs.edit().putBoolean("FILTER_FHD", st).apply(); switchFHD.isChecked = st }
+        btnFilterH265.setOnClickListener { val st = !switchH265.isChecked; prefs.edit().putBoolean("FILTER_H265", st).apply(); switchH265.isChecked = st }
+        btnFilter4K.setOnClickListener { val st = !switch4K.isChecked; prefs.edit().putBoolean("FILTER_4K", st).apply(); switch4K.isChecked = st }
+
+        btnParental.setOnClickListener {
+            val isAtualmenteAtivo = switchParental.isChecked
+            val savedPin = prefs.getString("PARENTAL_PIN", "")
+
+            if (!isAtualmenteAtivo) {
+                // Vai ATIVAR. Precisamos criar o PIN se não existir.
+                if (savedPin.isNullOrEmpty()) {
+                    showCustomDialog("Criar PIN Parental", "Digite 4 números para proteger o conteúdo adulto:", true) { inputPin ->
+                        if (inputPin.length == 4) {
+                            prefs.edit().putString("PARENTAL_PIN", inputPin).putBoolean("PARENTAL_CONTROL", true).apply()
+                            switchParental.isChecked = true
+                            Toast.makeText(this, "Controle Parental Ativado!", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(this, "O PIN deve ter 4 dígitos.", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } else {
+                    prefs.edit().putBoolean("PARENTAL_CONTROL", true).apply()
+                    switchParental.isChecked = true
+                }
+            } else {
+                // Vai DESATIVAR. Exige o PIN.
+                showCustomDialog("Desativar Controle Parental", "Digite seu PIN de 4 números:", true) { inputPin ->
+                    if (inputPin == savedPin) {
+                        prefs.edit().putBoolean("PARENTAL_CONTROL", false).apply()
+                        switchParental.isChecked = false
+                        Toast.makeText(this, "Controle Parental Desativado!", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Toast.makeText(this, "PIN Incorreto!", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        btnLimparFavs.setOnClickListener {
+            showCustomDialog("Zerar Favoritos", "Tem certeza que deseja apagar todos os canais salvos?", false) {
+                if (username.isNotEmpty()) {
+                    db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
+                        if (!snapshot.isEmpty) {
+                            val docId = snapshot.documents[0].id
+                            db.collection("usuarios").document(docId).update("favoritos", emptyList<String>())
+                            Toast.makeText(this, "Canais Favoritos removidos!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
+
+        btnLimparHist.setOnClickListener {
+            showCustomDialog("Limpar Histórico", "Isso apagará a prateleira 'Continuar Assistindo'. Confirma?", false) {
+                if (username.isNotEmpty()) {
+                    db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
+                        if (!snapshot.isEmpty) {
+                            val docId = snapshot.documents[0].id
+                            db.collection("usuarios").document(docId).update("historico_vod", emptyMap<String, Any>())
+                            Toast.makeText(this, "Histórico limpo com sucesso!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                }
+            }
+        }
 
         btnModoLauncher.setOnClickListener {
             isLauncherEnabled = !isLauncherEnabled
@@ -145,60 +235,12 @@ class SettingsActivity : Activity() {
             packageManager.setComponentEnabledSetting(aliasName, newState, PackageManager.DONT_KILL_APP)
             switchLauncher.isChecked = isLauncherEnabled
             
-            if(isLauncherEnabled) {
-                Toast.makeText(this, "Modo TV Box ATIVADO! Aperte o botão da Casinha (Home).", Toast.LENGTH_LONG).show()
-            } else {
-                Toast.makeText(this, "Modo TV Box DESATIVADO!", Toast.LENGTH_SHORT).show()
-            }
-        }
-
-        btnParental.setOnClickListener {
-            isParentalActive = !isParentalActive
-            prefs.edit().putBoolean("PARENTAL_CONTROL", isParentalActive).apply()
-            switchParental.isChecked = isParentalActive
-        }
-        btnFilterSD.setOnClickListener {
-            filterSD = !filterSD
-            prefs.edit().putBoolean("FILTER_SD", filterSD).apply()
-            switchSD.isChecked = filterSD
-        }
-        btnFilterH265.setOnClickListener {
-            filterH265 = !filterH265
-            prefs.edit().putBoolean("FILTER_H265", filterH265).apply()
-            switchH265.isChecked = filterH265
-        }
-        btnFilter4K.setOnClickListener {
-            filter4K = !filter4K
-            prefs.edit().putBoolean("FILTER_4K", filter4K).apply()
-            switch4K.isChecked = filter4K
-        }
-
-        btnLimparFavs.setOnClickListener {
-            if (username.isNotEmpty()) {
-                db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
-                    if (!snapshot.isEmpty) {
-                        val docId = snapshot.documents[0].id
-                        db.collection("usuarios").document(docId).update("favoritos", emptyList<String>())
-                        Toast.makeText(this, "Canais Favoritos removidos!", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
-        }
-
-        btnLimparHist.setOnClickListener {
-            if (username.isNotEmpty()) {
-                db.collection("usuarios").whereEqualTo("usuario", username).get().addOnSuccessListener { snapshot ->
-                    if (!snapshot.isEmpty) {
-                        val docId = snapshot.documents[0].id
-                        db.collection("usuarios").document(docId).update("historico_vod", emptyMap<String, Any>())
-                        Toast.makeText(this, "Histórico limpo com sucesso!", Toast.LENGTH_SHORT).show()
-                    }
-                }
-            }
+            if(isLauncherEnabled) Toast.makeText(this, "Modo TV Box ATIVADO! Aperte o botão da Casinha (Home).", Toast.LENGTH_LONG).show()
+            else Toast.makeText(this, "Modo TV Box DESATIVADO!", Toast.LENGTH_SHORT).show()
         }
 
         btnAtualizarEPG.setOnClickListener {
-            Toast.makeText(this, "Baixando EPG... Isso pode demorar até 1 minuto.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Baixando Guia (EPG)... Aguarde.", Toast.LENGTH_LONG).show()
             CoroutineScope(Dispatchers.IO).launch {
                 try {
                     val client = OkHttpClient.Builder().connectTimeout(120, TimeUnit.SECONDS).readTimeout(120, TimeUnit.SECONDS).build()
@@ -209,7 +251,6 @@ class SettingsActivity : Activity() {
                     if (inputStream != null) {
                         val reader = BufferedReader(InputStreamReader(inputStream))
                         val epgDb = mutableMapOf<String, MutableList<JSONObject>>()
-                        
                         var line: String?
                         var currentChannel = ""
                         var currentStart = 0L
@@ -280,13 +321,18 @@ class SettingsActivity : Activity() {
                         val file = File(filesDir, "epg_data.json")
                         file.writeText(finalJson.toString())
 
+                        val sdfAg = SimpleDateFormat("dd/MM/yy HH:mm", Locale.getDefault())
+                        val dataHora = sdfAg.format(Date())
+                        prefs.edit().putString("LAST_EPG_UPDATE", dataHora).apply()
+
                         withContext(Dispatchers.Main) {
-                            Toast.makeText(this@SettingsActivity, "EPG Sincronizado com Sucesso!", Toast.LENGTH_LONG).show()
+                            tvStatusEpg.text = "Última atualização: $dataHora"
+                            Toast.makeText(this@SettingsActivity, "EPG Sincronizado!", Toast.LENGTH_LONG).show()
                         }
                     }
                 } catch (e: Exception) {
                     withContext(Dispatchers.Main) {
-                        Toast.makeText(this@SettingsActivity, "Erro de Conexão ao Sincronizar EPG.", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@SettingsActivity, "Erro ao baixar EPG.", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
@@ -299,5 +345,45 @@ class SettingsActivity : Activity() {
             startActivity(intent)
             finish()
         }
+    }
+
+    // =========================================================================
+    // POP-UP UNIVERSAL DE VIDRO (PIN E CONFIRMAÇÕES)
+    // =========================================================================
+    private fun showCustomDialog(titulo: String, mensagem: String, isPinMode: Boolean, onConfirm: (String) -> Unit) {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_custom)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val tvTitle = dialog.findViewById<TextView>(R.id.dialogTitle)
+        val tvMessage = dialog.findViewById<TextView>(R.id.dialogMessage)
+        val edtInput = dialog.findViewById<EditText>(R.id.dialogInput)
+        val btnCancel = dialog.findViewById<Button>(R.id.btnDialogCancel)
+        val btnConfirm = dialog.findViewById<Button>(R.id.btnDialogConfirm)
+
+        tvTitle.text = titulo
+        tvMessage.text = mensagem
+
+        if (isPinMode) {
+            edtInput.visibility = View.VISIBLE
+            edtInput.requestFocus()
+        } else {
+            edtInput.visibility = View.GONE
+            btnConfirm.requestFocus()
+        }
+
+        btnCancel.setOnClickListener { dialog.dismiss() }
+        btnConfirm.setOnClickListener {
+            val inputResult = edtInput.text.toString()
+            if (isPinMode && inputResult.isEmpty()) {
+                Toast.makeText(this, "Digite o PIN!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+            onConfirm(inputResult)
+            dialog.dismiss()
+        }
+
+        dialog.show()
     }
 }
