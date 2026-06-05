@@ -3,14 +3,21 @@ package com.signalplay.tv
 import android.app.Activity
 import android.app.AlertDialog
 import android.app.Dialog
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.drawable.ColorDrawable
+import android.net.Uri
+import android.os.Build
 import android.os.Bundle
+import android.os.Environment
 import android.view.View
+import android.view.ViewGroup
 import android.view.Window
 import android.view.animation.OvershootInterpolator
 import android.widget.Button
@@ -19,6 +26,7 @@ import android.widget.LinearLayout
 import android.widget.Switch
 import android.widget.TextView
 import android.widget.Toast
+import androidx.core.content.FileProvider
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,6 +60,8 @@ class SettingsActivity : Activity() {
     private var filterH265 = false
     private var filter4K = false
 
+    private var downloadId: Long = -1L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_settings)
@@ -67,6 +77,7 @@ class SettingsActivity : Activity() {
         val tvStatusPlano = findViewById<TextView>(R.id.tvStatusPlano)
         val tvVencimento = findViewById<TextView>(R.id.tvVencimento)
         
+        val btnCheckUpdate = findViewById<LinearLayout>(R.id.btnCheckUpdate)
         val btnAtualizarEPG = findViewById<LinearLayout>(R.id.btnAtualizarEPG)
         val tvStatusEpg = findViewById<TextView>(R.id.tvStatusEpg)
 
@@ -99,6 +110,7 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
+        // BUSCA O VENCIMENTO EXATAMENTE DO FIREBASE
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
@@ -117,7 +129,6 @@ class SettingsActivity : Activity() {
             }
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        
         tvStatusEpg.text = "Última atualização: ${prefs.getString("LAST_EPG_UPDATE", "Nunca")}"
 
         isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
@@ -138,16 +149,28 @@ class SettingsActivity : Activity() {
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         switchLauncher.isChecked = isLauncherEnabled
 
+        // =========================================================================================
+        // MÁGICA DO BUG VISUAL: Muda a cor do texto para Preto no Foco e Branco ao sair
+        // =========================================================================================
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
+            val vg = v as? ViewGroup
+            val tvTitulo = vg?.getChildAt(0) as? TextView
+            val tvSub = vg?.getChildAt(1) as? TextView
+
             if (hasFocus) {
                 v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
                 v.setBackgroundResource(R.drawable.bg_menu_focus)
+                tvTitulo?.setTextColor(Color.BLACK)
+                tvSub?.setTextColor(Color.DKGRAY)
             } else {
                 v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
                 v.setBackgroundResource(R.drawable.bg_glass)
+                tvTitulo?.setTextColor(Color.WHITE)
+                tvSub?.setTextColor(Color.parseColor("#E0E0E0"))
             }
         }
         
+        btnCheckUpdate?.onFocusChangeListener = focusListener
         btnAtualizarEPG.onFocusChangeListener = focusListener
         btnHideApps.onFocusChangeListener = focusListener
         btnParental.onFocusChangeListener = focusListener
@@ -167,14 +190,48 @@ class SettingsActivity : Activity() {
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
         }
 
-        btnHideApps.setOnClickListener { abrirDialogoOcultarApps() }
+        // =========================================================================================
+        // PULO DO GATO: VERIFICAÇÃO MANUAL DE ATUALIZAÇÃO
+        // =========================================================================================
+        btnCheckUpdate?.setOnClickListener {
+            Toast.makeText(this, "Procurando novas atualizações...", Toast.LENGTH_SHORT).show()
+            db.collection("configuracoes").document("app").get()
+                .addOnSuccessListener { doc ->
+                    if (doc.exists()) {
+                        val versaoNuvem = doc.getLong("versao_atual") ?: 1L
+                        val linkApk = doc.getString("link_apk") ?: ""
+                        
+                        val versaoInstalada = try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                packageManager.getPackageInfo(packageName, 0).longVersionCode
+                            } else {
+                                @Suppress("DEPRECATION")
+                                packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                            }
+                        } catch (e: Exception) { 1L }
 
+                        if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
+                            // Encontrou versão nova!
+                            showCustomDialog("Nova Versão Encontrada!", "A versão $versaoNuvem está disponível. Deseja baixar e instalar agora?", false) {
+                                baixarEInstalarAtualizacao(linkApk)
+                            }
+                        } else {
+                            // Já está na última versão!
+                            Toast.makeText(this, "O sistema já está atualizado com a versão mais recente!", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }
+                .addOnFailureListener {
+                    Toast.makeText(this, "Falha ao consultar o servidor.", Toast.LENGTH_SHORT).show()
+                }
+        }
+
+        btnHideApps.setOnClickListener { abrirDialogoOcultarApps() }
         btnFilterSD.setOnClickListener { filterSD = !switchSD.isChecked; prefs.edit().putBoolean("FILTER_SD", filterSD).apply(); switchSD.isChecked = filterSD }
         btnFilterHD.setOnClickListener { filterHD = !switchHD.isChecked; prefs.edit().putBoolean("FILTER_HD", filterHD).apply(); switchHD.isChecked = filterHD }
         btnFilterFHD.setOnClickListener { filterFHD = !switchFHD.isChecked; prefs.edit().putBoolean("FILTER_FHD", filterFHD).apply(); switchFHD.isChecked = filterFHD }
         btnFilterH265.setOnClickListener { filterH265 = !switchH265.isChecked; prefs.edit().putBoolean("FILTER_H265", filterH265).apply(); switchH265.isChecked = filterH265 }
         btnFilter4K.setOnClickListener { filter4K = !switch4K.isChecked; prefs.edit().putBoolean("FILTER_4K", filter4K).apply(); switch4K.isChecked = filter4K }
-
         btnSpeedTest.setOnClickListener { executarTesteVelocidade() }
 
         btnLimparCache.setOnClickListener {
@@ -352,6 +409,59 @@ class SettingsActivity : Activity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
+        }
+    }
+
+    // =========================================================================================
+    // LÓGICA DE DOWNLOAD E INSTALAÇÃO (Copiada da Tela Inicial)
+    // =========================================================================================
+    private fun baixarEInstalarAtualizacao(urlLink: String) {
+        Toast.makeText(this, "Iniciando download...", Toast.LENGTH_SHORT).show()
+        try {
+            val request = DownloadManager.Request(Uri.parse(urlLink))
+            request.setTitle("Atualização SignalPlay TV")
+            request.setDescription("Baixando a versão mais recente do sistema...")
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "SignalPlay_Update.apk")
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+
+            val fileAntigo = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
+            if (fileAntigo.exists()) fileAntigo.delete()
+
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadId = manager.enqueue(request)
+
+            val onComplete = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    if (id == downloadId) {
+                        instalarApk()
+                    }
+                }
+            }
+
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            }
+        } catch (e: Exception) {
+            Toast.makeText(this, "Erro ao iniciar o download.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun instalarApk() {
+        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
+        if (file.exists()) {
+            val uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(uri, "application/vnd.android.package-archive")
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            try {
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Autorize a instalação de fontes desconhecidas.", Toast.LENGTH_LONG).show()
+            }
         }
     }
 
