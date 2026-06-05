@@ -65,14 +65,14 @@ class MainActivity : Activity() {
         verificarAtualizacao()
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        val savedUser = prefs.getString("USER", "")
-        val savedPass = prefs.getString("PASS", "")
+        // Buscamos as credenciais do CLIENTE para o Auto-Login
+        val savedClientUser = prefs.getString("USERNAME", "")
+        val savedClientPass = prefs.getString("CLIENT_PASS", "")
 
-        // Login Automático usando as credenciais salvas
-        if (!savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            edtUser.setText(savedUser)
-            edtPass.setText(savedPass)
-            fazerLogin(savedUser, savedPass)
+        if (!savedClientUser.isNullOrEmpty() && !savedClientPass.isNullOrEmpty()) {
+            edtUser.setText(savedClientUser)
+            edtPass.setText(savedClientPass)
+            fazerLogin(savedClientUser, savedClientPass)
         }
 
         btnLogin.setOnClickListener {
@@ -80,7 +80,7 @@ class MainActivity : Activity() {
             val pass = edtPass.text.toString().trim()
 
             if (user.isEmpty() || pass.isEmpty()) {
-                Toast.makeText(this, "Preencha usuário e senha!", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Preencha o Usuário e a Senha!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
@@ -88,52 +88,75 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun fazerLogin(user: String, pass: String) {
+    private fun mostrarErro(mensagem: String) {
+        Toast.makeText(this@MainActivity, mensagem, Toast.LENGTH_LONG).show()
+        btnLogin.isEnabled = true
+        progressBarLogin.visibility = View.GONE
+    }
+
+    private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
         progressBarLogin.visibility = View.VISIBLE
 
-        // 1. Vai no Firebase conferir o Usuário
-        db.collection("usuarios").whereEqualTo("usuario", user).get()
+        // PASSO 1: Busca o usuário e senha do cliente no Firebase
+        db.collection("usuarios")
+            .whereEqualTo("usuario", userDigitado)
+            .whereEqualTo("senha", passDigitada)
+            .get()
             .addOnSuccessListener { snapshot ->
-                if (!snapshot.isEmpty) {
-                    val doc = snapshot.documents[0]
-                    val status = doc.getString("status")?.uppercase() ?: "ATIVO"
-                    
-                    // MÁGICA: Busca a URL que você gravou lá no documento do Firebase (campo "url")
-                    val urlNuvem = doc.getString("url") ?: ""
-
-                    if (status == "BLOQUEADO") {
-                        Toast.makeText(this@MainActivity, "Sua conta está bloqueada! Contate o suporte.", Toast.LENGTH_LONG).show()
-                        btnLogin.isEnabled = true
-                        progressBarLogin.visibility = View.GONE
-                        return@addOnSuccessListener
-                    }
-
-                    if (urlNuvem.isEmpty()) {
-                        Toast.makeText(this@MainActivity, "Nenhum servidor vinculado a este usuário.", Toast.LENGTH_LONG).show()
-                        btnLogin.isEnabled = true
-                        progressBarLogin.visibility = View.GONE
-                        return@addOnSuccessListener
-                    }
-
-                    // Prepara a URL removendo a barra no final (se houver) e valida no Painel
-                    val urlFormatada = if (urlNuvem.endsWith("/")) urlNuvem.dropLast(1) else urlNuvem
-                    validarNoPainelXtream(urlFormatada, user, pass)
-                    
-                } else {
-                    Toast.makeText(this@MainActivity, "Usuário não encontrado no sistema!", Toast.LENGTH_LONG).show()
-                    btnLogin.isEnabled = true
-                    progressBarLogin.visibility = View.GONE
+                if (snapshot.isEmpty) {
+                    mostrarErro("Usuário ou senha inválidos!")
+                    return@addOnSuccessListener
                 }
+
+                val doc = snapshot.documents[0]
+                val docId = doc.id // Usado depois para atualizar o vencimento
+                val status = doc.getString("status")?.lowercase() ?: ""
+
+                if (status != "ativo" && status != "teste") {
+                    mostrarErro("Acesso Suspenso: Conta expirada ou bloqueada!")
+                    return@addOnSuccessListener
+                }
+
+                val servidorId = doc.getString("servidor_id")
+                if (servidorId.isNullOrEmpty()) {
+                    mostrarErro("Nenhum servidor associado no painel.")
+                    return@addOnSuccessListener
+                }
+
+                // PASSO 2: Pega os dados do Servidor Oculto (A Ponte)
+                db.collection("servidores").document(servidorId).get()
+                    .addOnSuccessListener { serverDoc ->
+                        if (!serverDoc.exists()) {
+                            mostrarErro("O servidor vinculado foi excluído do sistema.")
+                            return@addOnSuccessListener
+                        }
+
+                        val urlServidor = serverDoc.getString("url") ?: ""
+                        val masterUser = serverDoc.getString("xtream_user") ?: ""
+                        val masterPass = serverDoc.getString("xtream_pass") ?: ""
+                        val tipoServer = serverDoc.getString("tipo") ?: "xtream"
+
+                        if (tipoServer != "xtream") {
+                            mostrarErro("Esta versão da TV suporta apenas servidores Xtream.")
+                            return@addOnSuccessListener
+                        }
+
+                        val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
+                        
+                        // PASSO 3: Logar usando a conta Master Oficial
+                        validarNoPainelXtream(cleanUrl, masterUser, masterPass, userDigitado, passDigitada, docId)
+                    }
+                    .addOnFailureListener {
+                        mostrarErro("Erro ao buscar as informações do servidor.")
+                    }
             }
             .addOnFailureListener {
-                Toast.makeText(this@MainActivity, "Erro ao conectar ao banco de dados.", Toast.LENGTH_LONG).show()
-                btnLogin.isEnabled = true
-                progressBarLogin.visibility = View.GONE
+                mostrarErro("Erro ao conectar ao banco de dados.")
             }
     }
 
-    private fun validarNoPainelXtream(url: String, user: String, pass: String) {
+    private fun validarNoPainelXtream(url: String, masterUser: String, masterPass: String, clientUser: String, clientPass: String, userDocId: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient.Builder()
@@ -142,7 +165,7 @@ class MainActivity : Activity() {
                     .build()
 
                 val req = Request.Builder()
-                    .url("$url/player_api.php?username=$user&password=$pass")
+                    .url("$url/player_api.php?username=$masterUser&password=$masterPass")
                     .build()
 
                 val res = client.newCall(req).execute()
@@ -154,12 +177,15 @@ class MainActivity : Activity() {
                         val userInfo = json.optJSONObject("user_info")
 
                         if (userInfo != null && userInfo.optInt("auth", 0) == 1) {
+                            
+                            // MÁGICA: Salvamos a conta Master para o Player, e o ClientUser para o Firebase!
                             val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                             prefs.edit()
-                                .putString("URL", url) // Salva a URL para o app usar, mas o cliente não vê
-                                .putString("USER", user)
-                                .putString("PASS", pass)
-                                .putString("USERNAME", user)
+                                .putString("URL", url)
+                                .putString("USER", masterUser) 
+                                .putString("PASS", masterPass) 
+                                .putString("USERNAME", clientUser) 
+                                .putString("CLIENT_PASS", clientPass) 
                                 .apply()
 
                             val expDateLong = userInfo.optString("exp_date", "0").toLongOrNull() ?: 0L
@@ -169,37 +195,30 @@ class MainActivity : Activity() {
                                 "Ilimitado"
                             }
 
-                            // Atualiza os dados de vencimento lá no Firebase
+                            // Atualiza os dados de vencimento lá no Firebase do Cliente
                             val userData = hashMapOf(
-                                "usuario" to user,
                                 "status" to "ATIVO",
                                 "vencimento" to vencimentoFormatado
                             )
-                            db.collection("usuarios").document(user).set(userData, SetOptions.merge())
+                            db.collection("usuarios").document(userDocId).set(userData, SetOptions.merge())
 
                             val intent = Intent(this@MainActivity, HomeActivity::class.java)
                             intent.putExtra("URL", url)
-                            intent.putExtra("USER", user)
-                            intent.putExtra("PASS", pass)
-                            intent.putExtra("USERNAME", user)
+                            intent.putExtra("USER", masterUser)
+                            intent.putExtra("PASS", masterPass)
+                            intent.putExtra("USERNAME", clientUser)
                             startActivity(intent)
                             finish()
                         } else {
-                            Toast.makeText(this@MainActivity, "Usuário ou Senha inválidos no servidor!", Toast.LENGTH_LONG).show()
-                            btnLogin.isEnabled = true
-                            progressBarLogin.visibility = View.GONE
+                            mostrarErro("O servidor Mestre IPTV recusou a conexão.")
                         }
                     } else {
-                        Toast.makeText(this@MainActivity, "Erro no servidor Xtream.", Toast.LENGTH_LONG).show()
-                        btnLogin.isEnabled = true
-                        progressBarLogin.visibility = View.GONE
+                        mostrarErro("Erro no servidor Xtream. Resposta inválida.")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Falha de conexão. Verifique sua internet.", Toast.LENGTH_LONG).show()
-                    btnLogin.isEnabled = true
-                    progressBarLogin.visibility = View.GONE
+                    mostrarErro("Falha de conexão. Verifique a sua internet.")
                 }
             }
         }
