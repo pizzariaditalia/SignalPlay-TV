@@ -34,10 +34,6 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
 
-    // =======================================================
-    // ATENÇÃO: ESSAS VARIÁVEIS AQUI NÃO PODEM SUMIR!
-    // =======================================================
-    private lateinit var edtUrl: EditText
     private lateinit var edtUser: EditText
     private lateinit var edtPass: EditText
     private lateinit var btnLogin: Button
@@ -53,7 +49,6 @@ class MainActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
 
-        edtUrl = findViewById(R.id.edtUrl)
         edtUser = findViewById(R.id.edtUser)
         edtPass = findViewById(R.id.edtPass)
         btnLogin = findViewById(R.id.btnLogin)
@@ -70,42 +65,42 @@ class MainActivity : Activity() {
         verificarAtualizacao()
 
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        val savedUrl = prefs.getString("URL", "")
         val savedUser = prefs.getString("USER", "")
         val savedPass = prefs.getString("PASS", "")
 
-        if (!savedUrl.isNullOrEmpty() && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            edtUrl.setText(savedUrl)
+        // Login Automático usando as credenciais salvas
+        if (!savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
             edtUser.setText(savedUser)
             edtPass.setText(savedPass)
-            fazerLogin(savedUrl, savedUser, savedPass)
+            fazerLogin(savedUser, savedPass)
         }
 
         btnLogin.setOnClickListener {
-            val url = edtUrl.text.toString().trim()
             val user = edtUser.text.toString().trim()
             val pass = edtPass.text.toString().trim()
 
-            if (url.isEmpty() || user.isEmpty() || pass.isEmpty()) {
-                Toast.makeText(this, "Preencha todos os campos!", Toast.LENGTH_SHORT).show()
+            if (user.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Preencha usuário e senha!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            fazerLogin(url, user, pass)
+            fazerLogin(user, pass)
         }
     }
 
-    private fun fazerLogin(urlOriginal: String, user: String, pass: String) {
+    private fun fazerLogin(user: String, pass: String) {
         btnLogin.isEnabled = false
         progressBarLogin.visibility = View.VISIBLE
 
-        val url = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
-
+        // 1. Vai no Firebase conferir o Usuário
         db.collection("usuarios").whereEqualTo("usuario", user).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
                     val doc = snapshot.documents[0]
                     val status = doc.getString("status")?.uppercase() ?: "ATIVO"
+                    
+                    // MÁGICA: Busca a URL que você gravou lá no documento do Firebase (campo "url")
+                    val urlNuvem = doc.getString("url") ?: ""
 
                     if (status == "BLOQUEADO") {
                         Toast.makeText(this@MainActivity, "Sua conta está bloqueada! Contate o suporte.", Toast.LENGTH_LONG).show()
@@ -113,11 +108,28 @@ class MainActivity : Activity() {
                         progressBarLogin.visibility = View.GONE
                         return@addOnSuccessListener
                     }
+
+                    if (urlNuvem.isEmpty()) {
+                        Toast.makeText(this@MainActivity, "Nenhum servidor vinculado a este usuário.", Toast.LENGTH_LONG).show()
+                        btnLogin.isEnabled = true
+                        progressBarLogin.visibility = View.GONE
+                        return@addOnSuccessListener
+                    }
+
+                    // Prepara a URL removendo a barra no final (se houver) e valida no Painel
+                    val urlFormatada = if (urlNuvem.endsWith("/")) urlNuvem.dropLast(1) else urlNuvem
+                    validarNoPainelXtream(urlFormatada, user, pass)
+                    
+                } else {
+                    Toast.makeText(this@MainActivity, "Usuário não encontrado no sistema!", Toast.LENGTH_LONG).show()
+                    btnLogin.isEnabled = true
+                    progressBarLogin.visibility = View.GONE
                 }
-                validarNoPainelXtream(url, user, pass)
             }
             .addOnFailureListener {
-                validarNoPainelXtream(url, user, pass)
+                Toast.makeText(this@MainActivity, "Erro ao conectar ao banco de dados.", Toast.LENGTH_LONG).show()
+                btnLogin.isEnabled = true
+                progressBarLogin.visibility = View.GONE
             }
     }
 
@@ -144,7 +156,7 @@ class MainActivity : Activity() {
                         if (userInfo != null && userInfo.optInt("auth", 0) == 1) {
                             val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                             prefs.edit()
-                                .putString("URL", url)
+                                .putString("URL", url) // Salva a URL para o app usar, mas o cliente não vê
                                 .putString("USER", user)
                                 .putString("PASS", pass)
                                 .putString("USERNAME", user)
@@ -157,6 +169,7 @@ class MainActivity : Activity() {
                                 "Ilimitado"
                             }
 
+                            // Atualiza os dados de vencimento lá no Firebase
                             val userData = hashMapOf(
                                 "usuario" to user,
                                 "status" to "ATIVO",
@@ -172,12 +185,12 @@ class MainActivity : Activity() {
                             startActivity(intent)
                             finish()
                         } else {
-                            Toast.makeText(this@MainActivity, "Usuário ou Senha inválidos!", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@MainActivity, "Usuário ou Senha inválidos no servidor!", Toast.LENGTH_LONG).show()
                             btnLogin.isEnabled = true
                             progressBarLogin.visibility = View.GONE
                         }
                     } else {
-                        Toast.makeText(this@MainActivity, "Erro no servidor. Verifique a URL.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@MainActivity, "Erro no servidor Xtream.", Toast.LENGTH_LONG).show()
                         btnLogin.isEnabled = true
                         progressBarLogin.visibility = View.GONE
                     }
@@ -214,7 +227,6 @@ class MainActivity : Activity() {
                         Toast.makeText(this, "Atualização Obrigatória Encontrada! Baixando...", Toast.LENGTH_LONG).show()
                         btnLogin.isEnabled = false
                         btnLogin.text = "BAIXANDO ATUALIZAÇÃO..."
-                        edtUrl.isEnabled = false
                         edtUser.isEnabled = false
                         edtPass.isEnabled = false
                         
