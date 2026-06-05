@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
-    // Plugin necessário para processar o banco de dados e o Glide
     id 'kotlin-kapt'
     id 'com.google.gms.google-services' 
 }
@@ -17,7 +16,7 @@ android {
         versionCode 1
         versionName "1.0"
 
-        // MÁGICA: Ativa o suporte para aplicativos grandes (mais de 64k métodos)
+        // Ativa o suporte para aplicativos grandes
         multiDexEnabled true
     }
 
@@ -54,22 +53,24 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.cardview:cardview:1.0.0'
 
-    // Firebase
+    // MultiDex (Resolve o problema de MergeExtDexDebug)
+    implementation 'androidx.multidex:multidex:2.0.1'
+
+    // Firebase (Banco de Dados)
     implementation platform('com.google.firebase:firebase-bom:32.7.1')
     implementation 'com.google.firebase:firebase-firestore-ktx'
 
-    // OkHttp
+    // OkHttp (Motor de comunicação)
     implementation 'com.squareup.okhttp3:okhttp:4.12.0'
 
-    // Coroutines
+    // Coroutines (Processamento em Segundo Plano)
     implementation 'org.jetbrains.kotlinx:kotlinx-coroutines-android:1.7.3'
 
     // Glide (Carregamento de Capas)
     implementation 'com.github.bumptech.glide:glide:4.16.0'
-    // CORREÇÃO: Trocado 'annotationProcessor' por 'kapt'
     kapt 'com.github.bumptech.glide:compiler:4.16.0'
 
-    // Media3 / ExoPlayer
+    // Media3 / ExoPlayer (Motor de vídeo Premium)
     implementation 'androidx.media3:media3-exoplayer:1.2.1'
     implementation 'androidx.media3:media3-ui:1.2.1'
     implementation 'androidx.media3:media3-exoplayer-hls:1.2.1'
