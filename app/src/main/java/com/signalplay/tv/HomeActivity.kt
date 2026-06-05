@@ -37,7 +37,6 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.util.concurrent.TimeUnit
 
-data class LigaItem(val nome: String, val logo: String, val url: String)
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
 
 class HomeActivity : Activity() {
@@ -82,6 +81,7 @@ class HomeActivity : Activity() {
         val menuCanais = findViewById<TextView>(R.id.menuCanais)
         val menuFilmes = findViewById<TextView>(R.id.menuFilmes)
         val menuSeries = findViewById<TextView>(R.id.menuSeries)
+        val menuEsportes = findViewById<TextView>(R.id.menuEsportes)
         val menuConfig = findViewById<TextView>(R.id.menuConfig)
 
         val menuFocusListener = View.OnFocusChangeListener { v, hasFocus ->
@@ -100,6 +100,7 @@ class HomeActivity : Activity() {
         menuCanais.onFocusChangeListener = menuFocusListener
         menuFilmes.onFocusChangeListener = menuFocusListener
         menuSeries.onFocusChangeListener = menuFocusListener
+        menuEsportes.onFocusChangeListener = menuFocusListener
         menuConfig.onFocusChangeListener = menuFocusListener
 
         val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
@@ -108,10 +109,8 @@ class HomeActivity : Activity() {
         val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
         val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
-        val recyclerEsportes = findViewById<RecyclerView>(R.id.recyclerEsportes)
         val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
         
-        recyclerEsportes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
@@ -131,24 +130,10 @@ class HomeActivity : Activity() {
         menuFilmes.setOnClickListener { startActivity(Intent(this, VodActivity::class.java).apply { putExtras(intent) }) }
         menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
-
-        val listaLigas = listOf(
-            LigaItem("Brasileirão A", "https://api.sofascore.app/api/v1/unique-tournament/325/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-a/325"),
-            LigaItem("Brasileirão B", "https://api.sofascore.app/api/v1/unique-tournament/390/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/brasileirao-serie-b/390"),
-            LigaItem("Bundesliga", "https://api.sofascore.app/api/v1/unique-tournament/35/image/dark", "https://m.sofascore.com/pt/torneio/futebol/germany/bundesliga/35"),
-            LigaItem("Camp. Argentino", "https://api.sofascore.app/api/v1/unique-tournament/155/image/dark", "https://m.sofascore.com/pt/torneio/futebol/argentina/liga-profesional/155"),
-            LigaItem("Camp. Carioca", "https://api.sofascore.app/api/v1/unique-tournament/376/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/carioca/376"),
-            LigaItem("Camp. Paulista", "https://api.sofascore.app/api/v1/unique-tournament/374/image/dark", "https://m.sofascore.com/pt/torneio/futebol/brazil/paulista-serie-a1/374"),
-            LigaItem("Champions League", "https://api.sofascore.app/api/v1/unique-tournament/7/image/dark", "https://m.sofascore.com/pt/torneio/futebol/europe/uefa-champions-league/7"),
-            LigaItem("Libertadores", "https://api.sofascore.app/api/v1/unique-tournament/384/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-libertadores/384"),
-            LigaItem("Premier League", "https://api.sofascore.app/api/v1/unique-tournament/17/image/dark", "https://m.sofascore.com/pt/torneio/futebol/england/premier-league/17"),
-            LigaItem("Sul-Americana", "https://api.sofascore.app/api/v1/unique-tournament/383/image/dark", "https://m.sofascore.com/pt/torneio/futebol/south-america/copa-sudamericana/383")
-        )
-
-        recyclerEsportes.adapter = LigaAdapter(listaLigas) { liga ->
-            val intent = Intent(this@HomeActivity, SportsActivity::class.java)
-            intent.putExtra("URL_LIGA", liga.url)
-            startActivity(intent)
+        
+        // MÁGICA: O botão de esportes agora está limpo e elegante lá no topo!
+        menuEsportes.setOnClickListener {
+            startActivity(Intent(this, SportsActivity::class.java).apply { putExtra("URL_LIGA", "https://m.sofascore.com/pt/") })
         }
 
         db.collection("usuarios").whereEqualTo("usuario", username)
@@ -220,7 +205,9 @@ class HomeActivity : Activity() {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "live"))
+                        val catName = obj.optString("category_name", "")
+                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
+                        if (!isParentalActive || !isAdult) categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
                     }
                 }
                 if (jsonVodCat.startsWith("[")) {
@@ -564,37 +551,6 @@ class HomeActivity : Activity() {
         intentDet.putExtra("MEDIA_NOME", itemClicado.nome)
         intentDet.putExtra("MEDIA_CAPA", itemClicado.urlImagem)
         startActivity(intentDet)
-    }
-
-    inner class LigaAdapter(private val list: List<LigaItem>, private val onClick: (LigaItem) -> Unit) : RecyclerView.Adapter<LigaAdapter.LigaViewHolder>() {
-        private val interpolator = OvershootInterpolator(1.2f)
-        inner class LigaViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-            val img = view.findViewById<ImageView>(1001)
-            val txt = view.findViewById<TextView>(1002)
-        }
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): LigaViewHolder {
-            val layout = LinearLayout(parent.context).apply {
-                orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(180, 140).apply { setMargins(12, 12, 12, 12) }
-                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
-                isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
-            }
-            val img = ImageView(parent.context).apply { id = 1001; layoutParams = LinearLayout.LayoutParams(80, 80); scaleType = ImageView.ScaleType.FIT_CENTER }
-            val txt = TextView(parent.context).apply { id = 1002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }; setTextColor(Color.WHITE); textSize = 11f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1; ellipsize = TextUtils.TruncateAt.END }
-            layout.addView(img); layout.addView(txt)
-            return LigaViewHolder(layout)
-        }
-        override fun onBindViewHolder(holder: LigaViewHolder, position: Int) {
-            val item = list[position]
-            holder.txt.text = item.nome
-            Glide.with(holder.itemView.context).load(item.logo).into(holder.img)
-            holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() } 
-                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start() }
-            }
-            holder.itemView.setOnClickListener { onClick(item) }
-        }
-        override fun getItemCount(): Int = list.size
     }
 
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
