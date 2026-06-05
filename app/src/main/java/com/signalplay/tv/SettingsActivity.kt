@@ -86,6 +86,9 @@ class SettingsActivity : Activity() {
         val btnFilter4K = findViewById<LinearLayout>(R.id.btnFilter4K)
         val switch4K = findViewById<Switch>(R.id.switch4K)
 
+        val btnSpeedTest = findViewById<LinearLayout>(R.id.btnSpeedTest)
+        val btnLimparCache = findViewById<LinearLayout>(R.id.btnLimparCache)
+
         val btnLimparFavs = findViewById<LinearLayout>(R.id.btnLimparFavs)
         val btnLimparHist = findViewById<LinearLayout>(R.id.btnLimparHist)
         
@@ -154,6 +157,8 @@ class SettingsActivity : Activity() {
         btnFilterFHD.onFocusChangeListener = focusListener
         btnFilterH265.onFocusChangeListener = focusListener
         btnFilter4K.onFocusChangeListener = focusListener
+        btnSpeedTest.onFocusChangeListener = focusListener
+        btnLimparCache.onFocusChangeListener = focusListener
         btnLimparFavs.onFocusChangeListener = focusListener
         btnLimparHist.onFocusChangeListener = focusListener
         btnModoLauncher.onFocusChangeListener = focusListener
@@ -163,9 +168,7 @@ class SettingsActivity : Activity() {
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
         }
 
-        btnHideApps.setOnClickListener {
-            abrirDialogoOcultarApps()
-        }
+        btnHideApps.setOnClickListener { abrirDialogoOcultarApps() }
 
         btnFilterSD.setOnClickListener { filterSD = !switchSD.isChecked; prefs.edit().putBoolean("FILTER_SD", filterSD).apply(); switchSD.isChecked = filterSD }
         btnFilterHD.setOnClickListener { filterHD = !switchHD.isChecked; prefs.edit().putBoolean("FILTER_HD", filterHD).apply(); switchHD.isChecked = filterHD }
@@ -173,9 +176,19 @@ class SettingsActivity : Activity() {
         btnFilterH265.setOnClickListener { filterH265 = !switchH265.isChecked; prefs.edit().putBoolean("FILTER_H265", filterH265).apply(); switchH265.isChecked = filterH265 }
         btnFilter4K.setOnClickListener { filter4K = !switch4K.isChecked; prefs.edit().putBoolean("FILTER_4K", filter4K).apply(); switch4K.isChecked = filter4K }
 
+        btnSpeedTest.setOnClickListener { executarTesteVelocidade() }
+
+        btnLimparCache.setOnClickListener {
+            CoroutineScope(Dispatchers.IO).launch {
+                try {
+                    cacheDir.deleteRecursively()
+                    withContext(Dispatchers.Main) { Toast.makeText(this@SettingsActivity, "Cache limpo! TV Box otimizada.", Toast.LENGTH_SHORT).show() }
+                } catch (e: Exception) {}
+            }
+        }
+
         btnParental.setOnClickListener {
             val savedPin = prefs.getString("PARENTAL_PIN", "")
-
             if (!switchParental.isChecked) {
                 if (savedPin.isNullOrEmpty()) {
                     showCustomDialog("Criar PIN Parental", "Digite 4 números para proteger o conteúdo adulto:", true) { inputPin ->
@@ -183,9 +196,7 @@ class SettingsActivity : Activity() {
                             prefs.edit().putString("PARENTAL_PIN", inputPin).putBoolean("PARENTAL_CONTROL", true).apply()
                             switchParental.isChecked = true
                             Toast.makeText(this, "Controle Parental Ativado!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(this, "O PIN deve ter 4 dígitos.", Toast.LENGTH_SHORT).show()
-                        }
+                        } else Toast.makeText(this, "O PIN deve ter 4 dígitos.", Toast.LENGTH_SHORT).show()
                     }
                 } else {
                     prefs.edit().putBoolean("PARENTAL_CONTROL", true).apply()
@@ -197,9 +208,7 @@ class SettingsActivity : Activity() {
                         prefs.edit().putBoolean("PARENTAL_CONTROL", false).apply()
                         switchParental.isChecked = false
                         Toast.makeText(this, "Controle Parental Desativado!", Toast.LENGTH_SHORT).show()
-                    } else {
-                        Toast.makeText(this, "PIN Incorreto!", Toast.LENGTH_SHORT).show()
-                    }
+                    } else Toast.makeText(this, "PIN Incorreto!", Toast.LENGTH_SHORT).show()
                 }
             }
         }
@@ -237,7 +246,6 @@ class SettingsActivity : Activity() {
             val newState = if (isLauncherEnabled) PackageManager.COMPONENT_ENABLED_STATE_ENABLED else PackageManager.COMPONENT_ENABLED_STATE_DISABLED
             packageManager.setComponentEnabledSetting(aliasName, newState, PackageManager.DONT_KILL_APP)
             switchLauncher.isChecked = isLauncherEnabled
-            
             if(isLauncherEnabled) Toast.makeText(this, "Modo TV Box ATIVADO! Aperte o botão da Casinha (Home).", Toast.LENGTH_LONG).show()
             else Toast.makeText(this, "Modo TV Box DESATIVADO!", Toast.LENGTH_SHORT).show()
         }
@@ -334,9 +342,7 @@ class SettingsActivity : Activity() {
                         }
                     }
                 } catch (e: Exception) {
-                    withContext(Dispatchers.Main) {
-                        Toast.makeText(this@SettingsActivity, "Erro ao baixar EPG.", Toast.LENGTH_SHORT).show()
-                    }
+                    withContext(Dispatchers.Main) { Toast.makeText(this@SettingsActivity, "Erro ao baixar EPG.", Toast.LENGTH_SHORT).show() }
                 }
             }
         }
@@ -347,6 +353,62 @@ class SettingsActivity : Activity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
+        }
+    }
+
+    private fun executarTesteVelocidade() {
+        val dialog = Dialog(this)
+        dialog.requestWindowFeature(Window.FEATURE_NO_TITLE)
+        dialog.setContentView(R.layout.dialog_custom)
+        dialog.window?.setBackgroundDrawable(ColorDrawable(Color.TRANSPARENT))
+
+        val tvTitle = dialog.findViewById<TextView>(R.id.dialogTitle)
+        val tvMessage = dialog.findViewById<TextView>(R.id.dialogMessage)
+        val edtInput = dialog.findViewById<EditText>(R.id.dialogInput)
+        val btnCancel = dialog.findViewById<Button>(R.id.btnDialogCancel)
+        val btnConfirm = dialog.findViewById<Button>(R.id.btnDialogConfirm)
+
+        tvTitle.text = "Teste de Velocidade"
+        tvMessage.text = "Calculando a capacidade de download real da sua rede...\n\nIsso pode levar alguns segundos."
+        edtInput.visibility = View.GONE
+        btnCancel.visibility = View.GONE
+        btnConfirm.text = "Aguarde..."
+        btnConfirm.isEnabled = false
+
+        dialog.show()
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).build()
+                val req = Request.Builder().url("https://speed.cloudflare.com/__down?bytes=15000000").build()
+                
+                val startTime = System.currentTimeMillis()
+                val res = client.newCall(req).execute()
+                res.body?.bytes() 
+                val endTime = System.currentTimeMillis()
+
+                val timeInSeconds = (endTime - startTime) / 1000.0
+                if (timeInSeconds > 0) {
+                    val megabytes = 15.0
+                    val mbps = (megabytes * 8) / timeInSeconds 
+
+                    withContext(Dispatchers.Main) {
+                        tvMessage.text = String.format("A velocidade de conexão de entrada na TV Box é de:\n\n%.1f Mbps", mbps)
+                        btnConfirm.text = "Fechar"
+                        btnConfirm.isEnabled = true
+                        btnConfirm.setOnClickListener { dialog.dismiss() }
+                        btnConfirm.requestFocus()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    tvMessage.text = "Não foi possível testar a conexão.\nVerifique se o aparelho possui acesso à internet."
+                    btnConfirm.text = "Fechar"
+                    btnConfirm.isEnabled = true
+                    btnConfirm.setOnClickListener { dialog.dismiss() }
+                    btnConfirm.requestFocus()
+                }
+            }
         }
     }
 
@@ -383,11 +445,9 @@ class SettingsActivity : Activity() {
             onConfirm(inputResult)
             dialog.dismiss()
         }
-
         dialog.show()
     }
 
-    // MÁGICA: Lista suspensa nativa do Android para esconder apps específicos
     private fun abrirDialogoOcultarApps() {
         val pm = packageManager
         val installedApps = mutableMapOf<String, String>() 
@@ -419,7 +479,6 @@ class SettingsActivity : Activity() {
         
         val checkedItems = BooleanArray(appList.size) { i -> hiddenAppsSet.contains(appPackages[i]) }
 
-        // Usa o visual padrão da TV para listas de múltipla escolha
         val builder = AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
         builder.setTitle("Ocultar Aplicativos da Tela Inicial")
         builder.setMultiChoiceItems(appNames, checkedItems) { _, which, isChecked ->
