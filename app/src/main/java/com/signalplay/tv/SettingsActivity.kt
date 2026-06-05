@@ -110,12 +110,23 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
+        // BUSCA UNIVERSAL DA DATA NO FIREBASE
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
                     val doc = snapshot.documents[0]
                     val status = doc.getString("status")?.uppercase() ?: "DESCONHECIDO"
-                    val vencimento = doc.getString("vencimento") ?: "Ilimitado"
+                    
+                    // Extrai a data, seja em texto ou como campo Timestamp
+                    val vencObj = doc.get("vencimento")
+                    val vencimentoTexto = when (vencObj) {
+                        is String -> vencObj
+                        is com.google.firebase.Timestamp -> {
+                            val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                            sdf.format(vencObj.toDate())
+                        }
+                        else -> "Ilimitado"
+                    }
 
                     tvStatusPlano.text = status
                     when (status) {
@@ -123,7 +134,7 @@ class SettingsActivity : Activity() {
                         "TESTE" -> { tvStatusPlano.setBackgroundColor(Color.parseColor("#FFC107")); tvStatusPlano.setTextColor(Color.BLACK) }
                         "BLOQUEADO" -> { tvStatusPlano.setBackgroundColor(Color.parseColor("#FF4757")); tvStatusPlano.setTextColor(Color.WHITE) }
                     }
-                    tvVencimento.text = "Vencimento: $vencimento"
+                    tvVencimento.text = "Vencimento: $vencimentoTexto"
                 }
             }
 
@@ -148,21 +159,18 @@ class SettingsActivity : Activity() {
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         switchLauncher.isChecked = isLauncherEnabled
 
+        // =========================================================================================
+        // VARREDURA RECURSIVA DE CORES: Resolve definitivamente o bug do texto invisível
+        // =========================================================================================
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
-            val vg = v as? ViewGroup
-            val tvTitulo = vg?.getChildAt(0) as? TextView
-            val tvSub = vg?.getChildAt(1) as? TextView
-
             if (hasFocus) {
                 v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
                 v.setBackgroundResource(R.drawable.bg_menu_focus)
-                tvTitulo?.setTextColor(Color.BLACK)
-                tvSub?.setTextColor(Color.DKGRAY)
+                mudarCoresDosTextos(v, Color.BLACK, true)
             } else {
                 v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
                 v.setBackgroundResource(R.drawable.bg_glass)
-                tvTitulo?.setTextColor(Color.WHITE)
-                tvSub?.setTextColor(Color.parseColor("#E0E0E0"))
+                mudarCoresDosTextos(v, Color.WHITE, false)
             }
         }
         
@@ -400,6 +408,26 @@ class SettingsActivity : Activity() {
             intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
             startActivity(intent)
             finish()
+        }
+    }
+
+    // Função que entra dentro do botão e pinta TODOS os textos sem erro
+    private fun mudarCoresDosTextos(view: View, cor: Int, isFocado: Boolean) {
+        if (view is TextView) {
+            // Se perdeu o foco, volta o titulo pra Branco e o subtitulo pra Cinza
+            if (!isFocado) {
+                if (view.typeface != null && view.typeface.isBold) {
+                    view.setTextColor(Color.WHITE)
+                } else {
+                    view.setTextColor(Color.parseColor("#AAAAAA"))
+                }
+            } else {
+                view.setTextColor(cor) // Preto no foco
+            }
+        } else if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                mudarCoresDosTextos(view.getChildAt(i), cor, isFocado)
+            }
         }
     }
 
