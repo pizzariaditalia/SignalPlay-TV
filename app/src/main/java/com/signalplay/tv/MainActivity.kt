@@ -34,14 +34,15 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
 
+    // SE ESSAS 7 LINHAS ABAIXO SUMIREM, O GITHUB DÁ ERRO!
     private lateinit var edtUrl: EditText
     private lateinit var edtUser: EditText
     private lateinit var edtPass: EditText
     private lateinit var btnLogin: Button
     private lateinit var progressBarLogin: ProgressBar
     private lateinit var tvVersion: TextView
-
     private lateinit var db: FirebaseFirestore
+    
     private var downloadId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
