@@ -1,8 +1,11 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.DownloadManager
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -11,21 +14,35 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.ProgressBar
+import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import org.json.JSONObject
 import java.io.File
-import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
 
+    private lateinit var edtUrl: EditText
+    private lateinit var edtUser: EditText
+    private lateinit var edtPass: EditText
+    private lateinit var btnLogin: Button
+    private lateinit var progressBarLogin: ProgressBar
+    private lateinit var tvVersion: TextView
+
     private lateinit var db: FirebaseFirestore
+    private var downloadId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -33,202 +50,236 @@ class MainActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
 
-        // Lendo os IDs exatos do seu activity_main.xml
-        val edtUsuario = findViewById<EditText>(R.id.edtUsuario)
-        val edtSenha = findViewById<EditText>(R.id.edtSenha)
-        val btnEntrar = findViewById<Button>(R.id.btnEntrar)
-        val progressBar = findViewById<ProgressBar>(R.id.progressBar)
+        edtUrl = findViewById(R.id.edtUrl)
+        edtUser = findViewById(R.id.edtUser)
+        edtPass = findViewById(R.id.edtPass)
+        btnLogin = findViewById(R.id.btnLogin)
+        progressBarLogin = findViewById(R.id.progressBarLogin)
+        
+        // Exibe a versão atual para o usuário saber em qual está
+        tvVersion = findViewById(R.id.tvVersion)
+        tvVersion.text = "Versão: ${BuildConfig.VERSION_NAME}"
 
-        // =========================================================================
-        // MÁGICA: VERIFICADOR DE ATUALIZAÇÃO EM NUVEM (IN-APP UPDATER)
-        // =========================================================================
+        // Dispara o gatilho invisível de busca de atualizações
         verificarAtualizacao()
 
+        // Sistema de Auto-Login (Puxa os dados salvos)
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val savedUrl = prefs.getString("URL", "")
         val savedUser = prefs.getString("USER", "")
         val savedPass = prefs.getString("PASS", "")
-        val savedUsername = prefs.getString("USERNAME", "")
 
         if (!savedUrl.isNullOrEmpty() && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            val intent = Intent(this, HomeActivity::class.java)
-            intent.putExtra("URL", savedUrl)
-            intent.putExtra("USER", savedUser)
-            intent.putExtra("PASS", savedPass)
-            intent.putExtra("USERNAME", savedUsername)
-            startActivity(intent)
-            finish()
-            return
+            edtUrl.setText(savedUrl)
+            edtUser.setText(savedUser)
+            edtPass.setText(savedPass)
+            fazerLogin(savedUrl, savedUser, savedPass)
         }
 
-        btnEntrar.setOnClickListener {
-            val user = edtUsuario.text.toString().trim()
-            val pass = edtSenha.text.toString().trim()
+        // Ação do Botão de Entrar
+        btnLogin.setOnClickListener {
+            val url = edtUrl.text.toString().trim()
+            val user = edtUser.text.toString().trim()
+            val pass = edtPass.text.toString().trim()
 
-            if (user.isEmpty() || pass.isEmpty()) {
-                Toast.makeText(this, "Preencha usuário e senha!", Toast.LENGTH_SHORT).show()
+            if (url.isEmpty() || user.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Preencha todos os campos!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            // Ativa o carregamento visual usando os elementos que você já tem
-            progressBar.visibility = View.VISIBLE
-            btnEntrar.isEnabled = false
-            btnEntrar.text = "Validando Acesso..."
-            edtUsuario.isEnabled = false
-            edtSenha.isEnabled = false
-
-            db.collection("usuarios").whereEqualTo("usuario", user).whereEqualTo("senha", pass).get()
-                .addOnSuccessListener { snapshot ->
-                    if (snapshot.isEmpty) {
-                        restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
-                        Toast.makeText(this, "Usuário ou senha incorretos!", Toast.LENGTH_LONG).show()
-                        return@addOnSuccessListener
-                    }
-
-                    val dadosUser = snapshot.documents[0]
-                    val status = dadosUser.getString("status")
-                    if (status != "ativo" && status != "teste") {
-                        restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
-                        Toast.makeText(this, "Conta bloqueada ou expirada!", Toast.LENGTH_LONG).show()
-                        return@addOnSuccessListener
-                    }
-
-                    val serverId = dadosUser.getString("servidor_id")
-                    if (serverId.isNullOrEmpty()) {
-                        restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
-                        Toast.makeText(this, "Nenhum servidor vinculado à sua conta.", Toast.LENGTH_LONG).show()
-                        return@addOnSuccessListener
-                    }
-
-                    db.collection("servidores").document(serverId).get().addOnSuccessListener { serverDoc ->
-                        if (!serverDoc.exists()) {
-                            restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
-                            Toast.makeText(this, "Servidor offline.", Toast.LENGTH_LONG).show()
-                            return@addOnSuccessListener
-                        }
-
-                        val sUrl = serverDoc.getString("url") ?: ""
-                        val sUser = serverDoc.getString("xtream_user") ?: ""
-                        val sPass = serverDoc.getString("xtream_pass") ?: ""
-
-                        prefs.edit()
-                            .putString("URL", sUrl)
-                            .putString("USER", sUser)
-                            .putString("PASS", sPass)
-                            .putString("USERNAME", user)
-                            .apply()
-
-                        val intent = Intent(this, HomeActivity::class.java)
-                        intent.putExtra("URL", sUrl)
-                        intent.putExtra("USER", sUser)
-                        intent.putExtra("PASS", sPass)
-                        intent.putExtra("USERNAME", user)
-                        startActivity(intent)
-                        finish()
-                    }
-                }
-                .addOnFailureListener {
-                    restaurarBotoes(progressBar, btnEntrar, edtUsuario, edtSenha)
-                    Toast.makeText(this, "Erro ao conectar com o banco de dados.", Toast.LENGTH_SHORT).show()
-                }
+            fazerLogin(url, user, pass)
         }
     }
 
-    private fun restaurarBotoes(progress: ProgressBar, btn: Button, edtUser: EditText, edtPass: EditText) {
-        progress.visibility = View.GONE
-        btn.isEnabled = true
-        btn.text = "Entrar"
-        edtUser.isEnabled = true
-        edtPass.isEnabled = true
-    }
-
     // =========================================================================
-    // LÓGICA DO DOWNLOAD E INSTALAÇÃO
+    // SISTEMA DE LOGIN E VALIDAÇÃO (XTREAM UI + FIREBASE)
     // =========================================================================
-    private fun verificarAtualizacao() {
-        db.collection("configuracoes").document("app").get().addOnSuccessListener { doc ->
-            if (doc.exists()) {
-                val versaoNuvem = doc.getLong("versao_atual")?.toInt() ?: 1
-                val linkDownload = doc.getString("link_apk") ?: ""
-                
-                // Pega a versão instalada na TV do cliente
-                val versaoApp = try {
-                    packageManager.getPackageInfo(packageName, 0).versionCode
-                } catch (e: Exception) { 1 }
+    private fun fazerLogin(urlOriginal: String, user: String, pass: String) {
+        btnLogin.isEnabled = false
+        progressBarLogin.visibility = View.VISIBLE
 
-                // Se a versão da Nuvem for maior, BLOQUEIA O APP E EXIGE ATUALIZAÇÃO!
-                if (versaoNuvem > versaoApp && linkDownload.isNotEmpty()) {
-                    mostrarTelaDeAtualizacaoForcada(linkDownload)
+        val url = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
+
+        // Valida no Firebase primeiro para checar se o usuário foi bloqueado
+        db.collection("usuarios").whereEqualTo("usuario", user).get()
+            .addOnSuccessListener { snapshot ->
+                if (!snapshot.isEmpty) {
+                    val doc = snapshot.documents[0]
+                    val status = doc.getString("status")?.uppercase() ?: "ATIVO"
+
+                    if (status == "BLOQUEADO") {
+                        Toast.makeText(this@MainActivity, "Sua conta está bloqueada! Contate o suporte.", Toast.LENGTH_LONG).show()
+                        btnLogin.isEnabled = true
+                        progressBarLogin.visibility = View.GONE
+                        return@addOnSuccessListener
+                    }
                 }
+                // Se não está bloqueado, vai verificar a senha no painel
+                validarNoPainelXtream(url, user, pass)
             }
-        }
+            .addOnFailureListener {
+                // Se o Firebase falhar, valida no painel direto para não travar o cliente
+                validarNoPainelXtream(url, user, pass)
+            }
     }
 
-    private fun mostrarTelaDeAtualizacaoForcada(linkApk: String) {
-        val progressBar = findViewById<ProgressBar>(R.id.progressBar)
-        val btnEntrar = findViewById<Button>(R.id.btnEntrar)
-        val edtUsuario = findViewById<EditText>(R.id.edtUsuario)
-        val edtSenha = findViewById<EditText>(R.id.edtSenha)
-
-        progressBar.visibility = View.VISIBLE
-        btnEntrar.isEnabled = false
-        edtUsuario.isEnabled = false
-        edtSenha.isEnabled = false
-        
-        // Usa o botão principal para mostrar o status do download
-        baixarEInstalarApk(linkApk, btnEntrar)
-    }
-
-    private fun baixarEInstalarApk(apkUrl: String, btnStatus: Button) {
-        btnStatus.text = "Baixando atualização..."
-        
+    private fun validarNoPainelXtream(url: String, user: String, pass: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                val client = OkHttpClient()
-                val request = Request.Builder().url(apkUrl).build()
-                val response = client.newCall(request).execute()
-                val body = response.body
-                
-                if (body != null) {
-                    val file = File(getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
-                    val inputStream = body.byteStream()
-                    val outputStream = FileOutputStream(file)
-                    val buffer = ByteArray(4096)
-                    var bytesRead: Int
-                    
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        outputStream.write(buffer, 0, bytesRead)
-                    }
-                    
-                    outputStream.flush()
-                    outputStream.close()
-                    inputStream.close()
+                val client = OkHttpClient.Builder()
+                    .connectTimeout(15, TimeUnit.SECONDS)
+                    .readTimeout(15, TimeUnit.SECONDS)
+                    .build()
 
-                    withContext(Dispatchers.Main) {
-                        btnStatus.text = "Iniciando Instalação..."
-                        instalarApk(file)
+                val req = Request.Builder()
+                    .url("$url/player_api.php?username=$user&password=$pass")
+                    .build()
+
+                val res = client.newCall(req).execute()
+                val jsonStr = res.body?.string() ?: "{}"
+
+                withContext(Dispatchers.Main) {
+                    if (jsonStr.startsWith("{")) {
+                        val json = JSONObject(jsonStr)
+                        val userInfo = json.optJSONObject("user_info")
+
+                        if (userInfo != null && userInfo.optInt("auth", 0) == 1) {
+                            // Sucesso no Login! Salva no celular.
+                            val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                            prefs.edit()
+                                .putString("URL", url)
+                                .putString("USER", user)
+                                .putString("PASS", pass)
+                                .putString("USERNAME", user)
+                                .apply()
+
+                            // Atualiza os dados do Firebase em segundo plano
+                            val expDateLong = userInfo.optString("exp_date", "0").toLongOrNull() ?: 0L
+                            val vencimentoFormatado = if (expDateLong > 0) {
+                                SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(expDateLong * 1000))
+                            } else {
+                                "Ilimitado"
+                            }
+
+                            val userData = hashMapOf(
+                                "usuario" to user,
+                                "status" to "ATIVO",
+                                "vencimento" to vencimentoFormatado
+                            )
+                            db.collection("usuarios").document(user).set(userData, SetOptions.merge())
+
+                            // Vai para a tela inicial
+                            val intent = Intent(this@MainActivity, HomeActivity::class.java)
+                            intent.putExtra("URL", url)
+                            intent.putExtra("USER", user)
+                            intent.putExtra("PASS", pass)
+                            intent.putExtra("USERNAME", user)
+                            startActivity(intent)
+                            finish()
+                        } else {
+                            Toast.makeText(this@MainActivity, "Usuário ou Senha inválidos!", Toast.LENGTH_LONG).show()
+                            btnLogin.isEnabled = true
+                            progressBarLogin.visibility = View.GONE
+                        }
+                    } else {
+                        Toast.makeText(this@MainActivity, "Erro no servidor. Verifique a URL.", Toast.LENGTH_LONG).show()
+                        btnLogin.isEnabled = true
+                        progressBarLogin.visibility = View.GONE
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    btnStatus.text = "Erro ao atualizar. Reinicie o App."
+                    Toast.makeText(this@MainActivity, "Falha de conexão. Verifique sua internet.", Toast.LENGTH_LONG).show()
+                    btnLogin.isEnabled = true
+                    progressBarLogin.visibility = View.GONE
                 }
             }
         }
     }
 
-    private fun instalarApk(file: File) {
+    // =========================================================================
+    // SISTEMA DE ATUALIZAÇÃO AUTOMÁTICA OBRIGATÓRIA (FIREBASE + DOWNLOADER)
+    // =========================================================================
+    private fun verificarAtualizacao() {
+        db.collection("configuracoes").document("app").get()
+            .addOnSuccessListener { doc ->
+                if (doc.exists()) {
+                    val versaoNuvem = doc.getLong("versao_atual") ?: 1L
+                    val linkApk = doc.getString("link_apk") ?: ""
+                    val versaoInstalada = BuildConfig.VERSION_CODE.toLong()
+
+                    if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
+                        // Trava a tela de login!
+                        Toast.makeText(this, "Atualização Obrigatória Encontrada! Baixando...", Toast.LENGTH_LONG).show()
+                        btnLogin.isEnabled = false
+                        btnLogin.text = "BAIXANDO ATUALIZAÇÃO..."
+                        edtUrl.isEnabled = false
+                        edtUser.isEnabled = false
+                        edtPass.isEnabled = false
+                        
+                        baixarEInstalarAtualizacao(linkApk)
+                    }
+                }
+            }
+    }
+
+    private fun baixarEInstalarAtualizacao(url: String) {
         try {
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-            
-            val apkUri: Uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
-            
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
-            startActivity(intent)
+            val request = DownloadManager.Request(Uri.parse(url))
+            request.setTitle("Atualização SignalPlay TV")
+            request.setDescription("Baixando a versão mais recente do sistema...")
+            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "SignalPlay_Update.apk")
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
+
+            // Limpa arquivos velhos que possam estar ocupando espaço na memória da TV
+            val fileAntigo = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
+            if (fileAntigo.exists()) fileAntigo.delete()
+
+            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+            downloadId = manager.enqueue(request)
+
+            // Fica "escutando" o Android avisar que o Download terminou
+            val onComplete = object : BroadcastReceiver() {
+                override fun onReceive(context: Context?, intent: Intent?) {
+                    val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                    if (id == downloadId) {
+                        btnLogin.text = "INSTALAR ATUALIZAÇÃO"
+                        btnLogin.isEnabled = true
+                        btnLogin.setOnClickListener { instalarApk() }
+                        instalarApk()
+                    }
+                }
+            }
+
+            // Registra o escutador de acordo com a versão do Android da Box
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
+            } else {
+                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+            }
         } catch (e: Exception) {
-            Toast.makeText(this, "Erro ao tentar abrir o instalador.", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Erro ao iniciar o download. Verifique o link.", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    private fun instalarApk() {
+        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
+
+        if (file.exists()) {
+            val uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
+
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.setDataAndType(uri, "application/vnd.android.package-archive")
+            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+
+            try {
+                startActivity(intent)
+            } catch (e: Exception) {
+                Toast.makeText(this, "Erro ao abrir o instalador. Por favor, dê as permissões necessárias para o App.", Toast.LENGTH_LONG).show()
+            }
+        } else {
+            Toast.makeText(this, "Arquivo da atualização não foi encontrado.", Toast.LENGTH_SHORT).show()
         }
     }
 }
