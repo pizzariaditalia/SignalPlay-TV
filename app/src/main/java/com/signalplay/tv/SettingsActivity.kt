@@ -159,9 +159,7 @@ class SettingsActivity : Activity() {
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         switchLauncher.isChecked = isLauncherEnabled
 
-        // =========================================================================================
-        // VARREDURA RECURSIVA DE CORES: Resolve definitivamente o bug do texto invisível
-        // =========================================================================================
+        // VARREDURA RECURSIVA DE CORES
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
             if (hasFocus) {
                 v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
@@ -196,32 +194,54 @@ class SettingsActivity : Activity() {
 
         btnCheckUpdate?.setOnClickListener {
             Toast.makeText(this, "Procurando novas atualizações...", Toast.LENGTH_SHORT).show()
+            
             db.collection("configuracoes").document("app").get()
                 .addOnSuccessListener { doc ->
                     if (doc.exists()) {
-                        val versaoNuvem = doc.getLong("versao_atual") ?: 1L
-                        val linkApk = doc.getString("link_apk") ?: ""
-                        
-                        val versaoInstalada = try {
-                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                                packageManager.getPackageInfo(packageName, 0).longVersionCode
-                            } else {
-                                @Suppress("DEPRECATION")
-                                packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                        try {
+                            // O TRADUTOR BLINDADO DE VERSÃO
+                            val objVersao = doc.get("versao_atual")
+                            val versaoNuvem: Long = when (objVersao) {
+                                is Number -> objVersao.toLong()
+                                is String -> objVersao.substringBefore(".").toLongOrNull() ?: 1L
+                                else -> 1L
                             }
-                        } catch (e: Exception) { 1L }
 
-                        if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
-                            showCustomDialog("Nova Versão Encontrada!", "A versão $versaoNuvem está disponível. Deseja baixar e instalar agora?", false) {
-                                baixarEInstalarAtualizacao(linkApk)
+                            val linkApk = doc.getString("link_apk") ?: ""
+                            
+                            val versaoInstalada = try {
+                                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                    packageManager.getPackageInfo(packageName, 0).longVersionCode
+                                } else {
+                                    @Suppress("DEPRECATION")
+                                    packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                                }
+                            } catch (e: Exception) { 1L }
+
+                            if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
+                                showCustomDialog(
+                                    "Nova Versão Encontrada!", 
+                                    "Uma nova atualização foi encontrada no servidor.\n\nDeseja baixar e instalar agora?", 
+                                    false
+                                ) {
+                                    baixarEInstalarAtualizacao(linkApk)
+                                }
+                            } else {
+                                showCustomDialog(
+                                    "Sistema Atualizado", 
+                                    "Você já está na versão mais recente.\n\nSua Versão (Código): $versaoInstalada\nVersão na Nuvem: $versaoNuvem", 
+                                    false
+                                ) {}
                             }
-                        } else {
-                            Toast.makeText(this, "O sistema já está atualizado com a versão mais recente!", Toast.LENGTH_LONG).show()
+                        } catch (e: Exception) {
+                            showCustomDialog("Erro Interno", "Não foi possível ler a versão do servidor.", false) {}
                         }
+                    } else {
+                        showCustomDialog("Aviso", "O servidor de atualizações não está configurado.", false) {}
                     }
                 }
                 .addOnFailureListener {
-                    Toast.makeText(this, "Falha ao consultar o servidor.", Toast.LENGTH_SHORT).show()
+                    showCustomDialog("Erro de Conexão", "Não foi possível conectar ao servidor.", false) {}
                 }
         }
 
@@ -411,10 +431,8 @@ class SettingsActivity : Activity() {
         }
     }
 
-    // Função que entra dentro do botão e pinta TODOS os textos sem erro
     private fun mudarCoresDosTextos(view: View, cor: Int, isFocado: Boolean) {
         if (view is TextView) {
-            // Se perdeu o foco, volta o titulo pra Branco e o subtitulo pra Cinza
             if (!isFocado) {
                 if (view.typeface != null && view.typeface.isBold) {
                     view.setTextColor(Color.WHITE)
@@ -422,7 +440,7 @@ class SettingsActivity : Activity() {
                     view.setTextColor(Color.parseColor("#AAAAAA"))
                 }
             } else {
-                view.setTextColor(cor) // Preto no foco
+                view.setTextColor(cor) 
             }
         } else if (view is ViewGroup) {
             for (i in 0 until view.childCount) {
