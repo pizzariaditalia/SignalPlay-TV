@@ -32,6 +32,7 @@ import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -71,8 +72,11 @@ class HomeActivity : Activity() {
     private var listaIdsFavoritosGlobais = mutableListOf<String>()
     private var historicoMapGlobal: Map<String, Any> = emptyMap()
 
-    // O SEGREDO DO DESEMPENHO: Uma única caçamba de reciclagem para todas as listas
     private val viewPoolCompartilhado = RecyclerView.RecycledViewPool()
+
+    // O ESCUDO ANTI-VAZAMENTO: Tudo que rodar em background será atrelado a este Job
+    private val activityJob = Job()
+    private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -221,10 +225,13 @@ class HomeActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         isClockRunning = false
+        // MÁGICA AQUI: Quando a tela fecha, o Job cancela todos os downloads fantasmas!
+        activityJob.cancel()
     }
 
     private fun carregarCatalogoDaAPI() {
-        CoroutineScope(Dispatchers.IO).launch {
+        // Agora usamos o activityScope em vez do CoroutineScope genérico
+        activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
@@ -549,7 +556,7 @@ class HomeActivity : Activity() {
         tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
         tvDesc.text = "Buscando informações..."
 
-        CoroutineScope(Dispatchers.IO).launch {
+        activityScope.launch {
             try {
                 val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
                 val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
@@ -573,7 +580,6 @@ class HomeActivity : Activity() {
         btnAssistirDestaque.visibility = View.VISIBLE
         btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
         
-        // CORTA O PESO DA IMAGEM PELA METADE USANDO RGB_565
         Glide.with(this)
             .load(filme.urlImagem)
             .apply(RequestOptions().format(DecodeFormat.PREFER_RGB_565))
@@ -649,7 +655,6 @@ class HomeActivity : Activity() {
     }
 
     private fun aplicarConfiguracoesDeTV(recycler: RecyclerView) {
-        // AS DUAS LINHAS DE OURO: Desligam os recálculos malucos do Android e engatam a caçamba compartilhada
         recycler.setHasFixedSize(true)
         recycler.setItemViewCacheSize(12)
         recycler.setRecycledViewPool(viewPoolCompartilhado)
