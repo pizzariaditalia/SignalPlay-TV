@@ -1,22 +1,15 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.app.AlertDialog
-import android.app.DownloadManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import android.net.Uri
-import android.os.Build
 import android.os.Bundle
-import android.os.Environment
 import android.os.Handler
 import android.os.Looper
 import android.text.TextUtils
@@ -31,7 +24,6 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.content.FileProvider
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -51,7 +43,6 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
-import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -64,20 +55,15 @@ class HomeActivity : Activity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var btnAssistirDestaque: Button
     
-    // Trailer Autoplay 
     private var trailerPlayer: ExoPlayer? = null
     private lateinit var heroPlayerView: PlayerView
     private lateinit var heroImage: ImageView
     private val trailerHandler = Handler(Looper.getMainLooper())
     private var trailerRunnable: Runnable? = null
     
-    // Status do Launcher
     private lateinit var tvClock: TextView
     private lateinit var tvNetworkStatus: TextView
     private var isClockRunning = true
-
-    // Controle de Download da Atualização
-    private var downloadId: Long = -1L
 
     private val suaveOvershoot = OvershootInterpolator(1.2f)
 
@@ -159,6 +145,14 @@ class HomeActivity : Activity() {
         recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerApps.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
+        aplicarConfiguracoesDeTV(recyclerContinuar)
+        aplicarConfiguracoesDeTV(recyclerFavoritos)
+        aplicarConfiguracoesDeTV(recyclerUltimos)
+        aplicarConfiguracoesDeTV(recyclerTopFilmes)
+        aplicarConfiguracoesDeTV(recyclerTopSeries)
+        aplicarConfiguracoesDeTV(recyclerSeriesAlta)
+        aplicarConfiguracoesDeTV(recyclerApps)
+
         val urlOriginal = intent.getStringExtra("URL") ?: ""
         urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
         userGlobal = intent.getStringExtra("USER") ?: ""
@@ -190,8 +184,6 @@ class HomeActivity : Activity() {
 
         inicializarTrailerPlayer()
         iniciarRelogioERede()
-        
-        verificarAtualizacao()
     }
 
     private fun inicializarTrailerPlayer() {
@@ -663,98 +655,6 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    private fun verificarAtualizacao() {
-        db.collection("configuracoes").document("app").get()
-            .addOnSuccessListener { doc ->
-                if (doc.exists()) {
-                    val versaoNuvem = doc.getLong("versao_atual") ?: 1L
-                    val linkApk = doc.getString("link_apk") ?: ""
-                    
-                    val versaoInstalada = try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            packageManager.getPackageInfo(packageName, 0).longVersionCode
-                        } else {
-                            @Suppress("DEPRECATION")
-                            packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
-                        }
-                    } catch (e: Exception) {
-                        1L
-                    }
-
-                    if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
-                        mostrarDialogoAtualizacaoObrigatoria(linkApk)
-                    }
-                }
-            }
-    }
-
-    private fun mostrarDialogoAtualizacaoObrigatoria(linkApk: String) {
-        pararTrailer()
-
-        AlertDialog.Builder(this, android.R.style.Theme_DeviceDefault_Dialog_Alert)
-            .setTitle("Atualização Disponível")
-            .setMessage("Uma nova versão do SignalPlay TV foi lançada com melhorias e novos recursos!\n\nVocê precisa atualizar para continuar assistindo.")
-            .setCancelable(false)
-            .setPositiveButton("BAIXAR AGORA") { _, _ ->
-                baixarEInstalarAtualizacao(linkApk)
-            }
-            .show()
-    }
-
-    private fun baixarEInstalarAtualizacao(url: String) {
-        Toast.makeText(this, "Iniciando download da atualização...", Toast.LENGTH_LONG).show()
-        
-        try {
-            val request = DownloadManager.Request(Uri.parse(url))
-            request.setTitle("Atualização SignalPlay TV")
-            request.setDescription("Baixando a versão mais recente do sistema...")
-            request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, "SignalPlay_Update.apk")
-            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE)
-
-            val fileAntigo = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
-            if (fileAntigo.exists()) fileAntigo.delete()
-
-            val manager = getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
-            downloadId = manager.enqueue(request)
-
-            val onComplete = object : BroadcastReceiver() {
-                override fun onReceive(context: Context?, intent: Intent?) {
-                    val id = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-                    if (id == downloadId) {
-                        instalarApk()
-                    }
-                }
-            }
-
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), Context.RECEIVER_EXPORTED)
-            } else {
-                registerReceiver(onComplete, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-            }
-        } catch (e: Exception) {
-            Toast.makeText(this, "Erro ao iniciar o download. Verifique as permissões de armazenamento.", Toast.LENGTH_LONG).show()
-        }
-    }
-
-    private fun instalarApk() {
-        val file = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), "SignalPlay_Update.apk")
-
-        if (file.exists()) {
-            val uri = FileProvider.getUriForFile(this, "${applicationContext.packageName}.provider", file)
-
-            val intent = Intent(Intent.ACTION_VIEW)
-            intent.setDataAndType(uri, "application/vnd.android.package-archive")
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-
-            try {
-                startActivity(intent)
-            } catch (e: Exception) {
-                Toast.makeText(this, "A TV Box bloqueou a instalação automática. Vá na pasta Downloads para instalar.", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -784,5 +684,29 @@ class HomeActivity : Activity() {
             holder.itemView.setOnClickListener { onClick(item) }
         }
         override fun getItemCount(): Int = list.size
+    }
+
+    inner class EspacamentoItemDecoration(private val espaco: Int) : RecyclerView.ItemDecoration() {
+        override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+            outRect.right = espaco
+            outRect.bottom = espaco
+        }
+    }
+
+    private fun aplicarConfiguracoesDeTV(recycler: RecyclerView) {
+        recycler.addItemDecoration(EspacamentoItemDecoration(16))
+        
+        recycler.setOnKeyListener { v, keyCode, event ->
+            if (event.action == android.view.KeyEvent.ACTION_DOWN && keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
+                val focus = v.findFocus()
+                if (focus != null) {
+                    val pos = recycler.getChildAdapterPosition(focus)
+                    if (pos == recycler.adapter!!.itemCount - 1) {
+                        return@setOnKeyListener true
+                    }
+                }
+            }
+            false
+        }
     }
 }
