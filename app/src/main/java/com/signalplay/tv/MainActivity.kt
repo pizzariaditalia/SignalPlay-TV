@@ -34,7 +34,6 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
 
-    // Essas variáveis não podem sumir!
     private lateinit var edtUrl: EditText
     private lateinit var edtUser: EditText
     private lateinit var edtPass: EditText
@@ -58,7 +57,6 @@ class MainActivity : Activity() {
         progressBarLogin = findViewById(R.id.progressBarLogin)
         tvVersion = findViewById(R.id.tvVersion)
         
-        // Pega a versão do app de forma segura (sem usar o problemático BuildConfig)
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName
         } catch (e: Exception) {
