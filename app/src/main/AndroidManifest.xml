@@ -1,27 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"
-    package="com.signalplay.tv">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
-    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:ignore="ScopedStorage" />
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" />
+    
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
 
     <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
     <uses-feature android:name="android.software.leanback" android:required="false" />
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
-        android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
-        android:banner="@drawable/logo_oficial"
+        android:icon="@drawable/logo_oficial"
+        android:roundIcon="@drawable/logo_oficial"
+        android:banner="@drawable/banner_oficial"
+        android:label="SignalPlay TV"
+        android:theme="@android:style/Theme.DeviceDefault.NoActionBar" 
         android:supportsRtl="true"
-        android:theme="@style/Theme.SignalPlayTV"
         android:usesCleartextTraffic="true"
-        android:requestLegacyExternalStorage="true">
+        android:requestLegacyExternalStorage="true"> 
 
         <activity
             android:name=".MainActivity"
@@ -36,9 +37,9 @@
 
         <activity-alias
             android:name=".LauncherAlias"
-            android:targetActivity=".MainActivity"
             android:enabled="false"
-            android:exported="true">
+            android:exported="true"
+            android:targetActivity=".MainActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.HOME" />
@@ -47,17 +48,37 @@
         </activity-alias>
 
         <activity android:name=".HomeActivity" android:exported="false" android:screenOrientation="landscape" />
-        <activity android:name=".SearchActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".TvActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".VodActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".SeriesActivity" android:exported="false" android:screenOrientation="landscape" />
-        <activity android:name=".SportsActivity" android:exported="false" android:screenOrientation="landscape" />
+        <activity android:name=".SearchActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".DetailsActivity" android:exported="false" android:screenOrientation="landscape" />
-        <activity android:name=".PlayerTvActivity" android:exported="false" android:screenOrientation="landscape" />
-        <activity android:name=".PlayerVodActivity" android:exported="false" android:screenOrientation="landscape" />
-        
+        <activity android:name=".SportsActivity" android:exported="false" android:screenOrientation="landscape" />
+
         <activity android:name=".PixActivity" android:exported="false" android:screenOrientation="landscape" />
+
+        <activity 
+            android:name=".PlayerTvActivity" 
+            android:exported="false" 
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout" 
+            android:supportsPictureInPicture="true"
+            android:screenOrientation="landscape" />
+            
+        <activity 
+            android:name=".PlayerVodActivity" 
+            android:exported="false" 
+            android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout" 
+            android:supportsPictureInPicture="true"
+            android:screenOrientation="landscape" />
+
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.provider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data android:name="android.support.FILE_PROVIDER_PATHS" android:resource="@xml/provider_paths" />
+        </provider>
 
     </application>
 </manifest>
