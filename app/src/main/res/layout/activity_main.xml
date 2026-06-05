@@ -16,89 +16,101 @@
         android:layout_height="match_parent"
         android:background="@drawable/bg_details_gradient" />
 
-    <LinearLayout
-        android:layout_width="450dp"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:background="@drawable/bg_glass"
-        android:orientation="vertical"
-        android:padding="40dp"
-        android:gravity="center_horizontal"
-        android:elevation="10dp">
+    <ScrollView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:fillViewport="true">
 
-        <ImageView
-            android:layout_width="200dp"
-            android:layout_height="80dp"
-            android:src="@drawable/logo_oficial"
-            android:layout_marginBottom="32dp" />
-
-        <TextView
-            android:layout_width="wrap_content"
+        <RelativeLayout
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="Acesso Restrito"
-            android:textColor="#FFFFFF"
-            android:textSize="20sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="24dp" />
+            android:gravity="center">
 
-        <EditText
-            android:id="@+id/edtUrl"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#44000000"
-            android:hint="http://url-do-servidor.com"
-            android:textColorHint="#888888"
-            android:textColor="#FFFFFF"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:inputType="textUri"
-            android:layout_marginBottom="16dp" />
+            <LinearLayout
+                android:layout_width="400dp"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_glass"
+                android:orientation="vertical"
+                android:padding="24dp"
+                android:layout_centerInParent="true"
+                android:gravity="center_horizontal"
+                android:elevation="10dp">
 
-        <EditText
-            android:id="@+id/edtUser"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#44000000"
-            android:hint="Usuário"
-            android:textColorHint="#888888"
-            android:textColor="#FFFFFF"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:inputType="textNoSuggestions"
-            android:layout_marginBottom="16dp" />
+                <ImageView
+                    android:layout_width="150dp"
+                    android:layout_height="60dp"
+                    android:src="@drawable/logo_oficial"
+                    android:layout_marginBottom="16dp" />
 
-        <EditText
-            android:id="@+id/edtPass"
-            android:layout_width="match_parent"
-            android:layout_height="50dp"
-            android:background="#44000000"
-            android:hint="Senha"
-            android:textColorHint="#888888"
-            android:textColor="#FFFFFF"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:inputType="textPassword"
-            android:layout_marginBottom="32dp" />
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Acesso Restrito"
+                    android:textColor="#FFFFFF"
+                    android:textSize="18sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="16dp" />
 
-        <Button
-            android:id="@+id/btnLogin"
-            android:layout_width="match_parent"
-            android:layout_height="55dp"
-            android:backgroundTint="#FFC107"
-            android:text="ENTRAR"
-            android:textColor="#000000"
-            android:textStyle="bold"
-            android:textSize="18sp"
-            android:layout_marginBottom="16dp" />
+                <EditText
+                    android:id="@+id/edtUrl"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="#33FFFFFF"
+                    android:hint="http://url-do-servidor.com"
+                    android:textColorHint="#CCCCCC"
+                    android:textColor="#FFFFFF"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:inputType="textUri"
+                    android:layout_marginBottom="12dp" />
 
-        <ProgressBar
-            android:id="@+id/progressBarLogin"
-            android:layout_width="40dp"
-            android:layout_height="40dp"
-            android:indeterminateTint="#FFC107"
-            android:visibility="gone" />
+                <EditText
+                    android:id="@+id/edtUser"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="#33FFFFFF"
+                    android:hint="Usuário"
+                    android:textColorHint="#CCCCCC"
+                    android:textColor="#FFFFFF"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:inputType="textNoSuggestions"
+                    android:layout_marginBottom="12dp" />
 
-    </LinearLayout>
+                <EditText
+                    android:id="@+id/edtPass"
+                    android:layout_width="match_parent"
+                    android:layout_height="45dp"
+                    android:background="#33FFFFFF"
+                    android:hint="Senha"
+                    android:textColorHint="#CCCCCC"
+                    android:textColor="#FFFFFF"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:inputType="textPassword"
+                    android:layout_marginBottom="24dp" />
+
+                <Button
+                    android:id="@+id/btnLogin"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:backgroundTint="#FFC107"
+                    android:text="ENTRAR"
+                    android:textColor="#000000"
+                    android:textStyle="bold"
+                    android:textSize="16sp" />
+
+                <ProgressBar
+                    android:id="@+id/progressBarLogin"
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:indeterminateTint="#FFC107"
+                    android:layout_marginTop="8dp"
+                    android:visibility="gone" />
+
+            </LinearLayout>
+        </RelativeLayout>
+    </ScrollView>
 
     <TextView
         android:id="@+id/tvVersion"
@@ -106,7 +118,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_alignParentEnd="true"
-        android:layout_margin="24dp"
+        android:layout_margin="16dp"
         android:text="Versão: Aguarde..."
         android:textColor="#888888"
         android:textSize="14sp" />
