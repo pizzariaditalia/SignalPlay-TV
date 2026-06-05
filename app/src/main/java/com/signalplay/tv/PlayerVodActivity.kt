@@ -1,15 +1,11 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.app.PictureInPictureParams
-import android.content.res.Configuration
 import android.graphics.Color
-import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
-import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
 import android.widget.Button
@@ -21,7 +17,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -158,13 +153,13 @@ class PlayerVodActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
+        // COLEIRA DE MEMÓRIA: Mantém o buffer sob controle (VOD é mais pesado que TV)
         val loadControl = DefaultLoadControl.Builder()
-            .setAllocator(DefaultAllocator(true, 64 * 1024))
             .setBufferDurationsMs(
-                32000, 
-                120000,
-                2500,  
-                5000   
+                15000,  // Buffer mínimo de 15 segundos
+                30000,  // Limite máximo de 30 segundos (impede que o app engula a RAM e crashe)
+                2500,   // Tempo necessário para início rápido
+                5000    // Tempo necessário para retomada após buffering
             )
             .build()
 
@@ -284,33 +279,6 @@ class PlayerVodActivity : Activity() {
             }
     }
 
-    // =========================================================================
-    // MODO PICTURE IN PICTURE (PiP)
-    // =========================================================================
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .build()
-            enterPictureInPictureMode(params)
-        }
-    }
-
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        if (isInPictureInPictureMode) {
-            // Esconde tudo no modo PiP e remove o controle
-            painelEpisodios.visibility = View.GONE
-            overlayNextEpisode.visibility = View.GONE
-            btnSkipIntro.visibility = View.GONE
-            playerViewVod.useController = false
-        } else {
-            // Restaura o controle quando voltar pra tela cheia
-            playerViewVod.useController = true
-        }
-    }
-
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             
@@ -365,6 +333,9 @@ class PlayerVodActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
+    // =========================================================================
+    // MÁGICA: .UPDATE() COM PLANO B SE A PASTA NÃO EXISTIR
+    // =========================================================================
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
         if (username.isEmpty() || idToSave.isEmpty()) return
@@ -383,6 +354,7 @@ class PlayerVodActivity : Activity() {
                         
                         docRef.update("historico_vod.$idToSave", mapToSave)
                             .addOnFailureListener {
+                                // PLANO B: Cria o campo se ele ainda não existir no banco
                                 docRef.set(mapOf("historico_vod" to mapOf(idToSave to mapToSave)), SetOptions.merge())
                             }
                     }
@@ -392,15 +364,9 @@ class PlayerVodActivity : Activity() {
 
     override fun onPause() {
         super.onPause()
-        
-        // MÁGICA: Se o app foi minimizado para PiP, o vídeo DEVE continuar tocando
-        val inPip = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) isInPictureInPictureMode else false
-        
-        if (!inPip) {
-            salvarProgressoNoFirebase()
-            exoPlayer?.pause()
-            countDownTimer?.cancel()
-        }
+        salvarProgressoNoFirebase()
+        exoPlayer?.pause()
+        countDownTimer?.cancel()
     }
 
     override fun onStop() {
