@@ -93,6 +93,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="32dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:gravity="center_vertical"
@@ -127,6 +128,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:gravity="center_vertical"
@@ -150,6 +152,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="32dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:gravity="center_vertical"
@@ -177,35 +180,35 @@
                 android:layout_marginBottom="16dp"
                 android:layout_marginStart="8dp"/>
 
-            <LinearLayout android:id="@+id/btnFilterSD" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
+            <LinearLayout android:id="@+id/btnFilterSD" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:descendantFocusability="blocksDescendants" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais SD" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
                 </LinearLayout>
                 <Switch android:id="@+id/switchSD" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnFilterHD" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
+            <LinearLayout android:id="@+id/btnFilterHD" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:descendantFocusability="blocksDescendants" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais HD" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
                 </LinearLayout>
                 <Switch android:id="@+id/switchHD" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnFilterFHD" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
+            <LinearLayout android:id="@+id/btnFilterFHD" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:descendantFocusability="blocksDescendants" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais FHD" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
                 </LinearLayout>
                 <Switch android:id="@+id/switchFHD" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnFilterH265" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
+            <LinearLayout android:id="@+id/btnFilterH265" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="12dp" android:background="@drawable/bg_glass" android:descendantFocusability="blocksDescendants" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais H265 / HEVC" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
                 </LinearLayout>
                 <Switch android:id="@+id/switchH265" android:layout_width="wrap_content" android:layout_height="wrap_content" android:focusable="false" android:clickable="false" android:trackTint="#777777" android:thumbTint="#FFC107"/>
             </LinearLayout>
 
-            <LinearLayout android:id="@+id/btnFilter4K" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:background="@drawable/bg_glass" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
+            <LinearLayout android:id="@+id/btnFilter4K" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:background="@drawable/bg_glass" android:descendantFocusability="blocksDescendants" android:focusable="true" android:clickable="true" android:gravity="center_vertical" android:padding="20dp" android:orientation="horizontal">
                 <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
                     <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Ocultar Canais 4K" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
                 </LinearLayout>
@@ -222,13 +225,13 @@
                 android:layout_marginBottom="16dp"
                 android:layout_marginStart="8dp"/>
 
-            <!-- MÁGICA: TESTE DE VELOCIDADE -->
             <LinearLayout
                 android:id="@+id/btnSpeedTest"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:padding="20dp"
@@ -237,13 +240,13 @@
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Verifica a velocidade real de download na sua Box" android:textColor="#AAAAAA" android:textSize="14sp" />
             </LinearLayout>
 
-            <!-- MÁGICA: LIMPAR CACHE -->
             <LinearLayout
                 android:id="@+id/btnLimparCache"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:padding="20dp"
@@ -258,6 +261,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:padding="20dp"
@@ -272,6 +276,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="12dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:padding="20dp"
@@ -286,6 +291,7 @@
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="32dp"
                 android:background="@drawable/bg_glass"
+                android:descendantFocusability="blocksDescendants"
                 android:focusable="true"
                 android:clickable="true"
                 android:gravity="center_vertical"
