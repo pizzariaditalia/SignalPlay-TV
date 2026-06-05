@@ -222,6 +222,36 @@
                 android:layout_marginBottom="16dp"
                 android:layout_marginStart="8dp"/>
 
+            <!-- MÁGICA: TESTE DE VELOCIDADE -->
+            <LinearLayout
+                android:id="@+id/btnSpeedTest"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="20dp"
+                android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Teste de Velocidade" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Verifica a velocidade real de download na sua Box" android:textColor="#AAAAAA" android:textSize="14sp" />
+            </LinearLayout>
+
+            <!-- MÁGICA: LIMPAR CACHE -->
+            <LinearLayout
+                android:id="@+id/btnLimparCache"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp"
+                android:background="@drawable/bg_glass"
+                android:focusable="true"
+                android:clickable="true"
+                android:padding="20dp"
+                android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Otimizar e Limpar Cache" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Libera memória RAM e armazenamento do aparelho" android:textColor="#AAAAAA" android:textSize="14sp" />
+            </LinearLayout>
+
             <LinearLayout
                 android:id="@+id/btnLimparFavs"
                 android:layout_width="match_parent"
