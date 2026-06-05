@@ -109,15 +109,26 @@ class PlayerTvActivity : Activity() {
         iniciarCanal()
     }
 
-    private fun carregarCanaisDaCategoria() {
+        private fun carregarCanaisDaCategoria() {
         if (DataHolder.todasCategorias.isEmpty()) return
         val cat = DataHolder.todasCategorias[indiceCategoriaAtual]
         tvPainelTitulo.text = "Canais | ${cat.nome}"
         
-        DataHolder.canaisFiltrados = if (cat.id == "FAV") {
-            DataHolder.todosCanais.filter { DataHolder.favoritosIds.contains(it.id) }
+        if (cat.id == "FAV") {
+            // TRAVA DE ORDEM: Ordena os canais exatamente na mesma sequência em que os IDs foram favoritados
+            val canaisFavDesordenados = DataHolder.todosCanais.filter { DataHolder.favoritosIds.contains(it.id) }
+            val canaisFavOrdenados = mutableListOf<CanalItem>()
+            
+            for (idFav in DataHolder.favoritosIds) {
+                val canalEncontrado = canaisFavDesordenados.find { it.id == idFav }
+                if (canalEncontrado != null) {
+                    canaisFavOrdenados.add(canalEncontrado)
+                }
+            }
+            DataHolder.canaisFiltrados = canaisFavOrdenados
         } else {
-            DataHolder.todosCanais.filter { it.categoryId == cat.id }
+            // Se não for favoritos, mantém a ordem original padrão da categoria (sem forçar alfabeto)
+            DataHolder.canaisFiltrados = DataHolder.todosCanais.filter { it.categoryId == cat.id }
         }
 
         recyclerPainelCanais.adapter = CanalLinhaAdapter(DataHolder.canaisFiltrados) { canalClicado ->
@@ -130,6 +141,7 @@ class PlayerTvActivity : Activity() {
             }
         }
     }
+
 
     private fun inicializarPlayer() {
         // COLEIRA DE MEMÓRIA: Limita o buffer para poupar a TV Box
