@@ -25,6 +25,8 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DecodeFormat
+import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.CustomViewTarget
 import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
@@ -68,6 +70,9 @@ class HomeActivity : Activity() {
     
     private var listaIdsFavoritosGlobais = mutableListOf<String>()
     private var historicoMapGlobal: Map<String, Any> = emptyMap()
+
+    // O SEGREDO DO DESEMPENHO: Uma única caçamba de reciclagem para todas as listas
+    private val viewPoolCompartilhado = RecyclerView.RecycledViewPool()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -568,7 +573,11 @@ class HomeActivity : Activity() {
         btnAssistirDestaque.visibility = View.VISIBLE
         btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
         
-        Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(heroImage) {
+        // CORTA O PESO DA IMAGEM PELA METADE USANDO RGB_565
+        Glide.with(this)
+            .load(filme.urlImagem)
+            .apply(RequestOptions().format(DecodeFormat.PREFER_RGB_565))
+            .into(object : CustomViewTarget<ImageView, Drawable>(heroImage) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
             override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
@@ -640,6 +649,11 @@ class HomeActivity : Activity() {
     }
 
     private fun aplicarConfiguracoesDeTV(recycler: RecyclerView) {
+        // AS DUAS LINHAS DE OURO: Desligam os recálculos malucos do Android e engatam a caçamba compartilhada
+        recycler.setHasFixedSize(true)
+        recycler.setItemViewCacheSize(12)
+        recycler.setRecycledViewPool(viewPoolCompartilhado)
+        
         recycler.addItemDecoration(EspacamentoItemDecoration(16))
         
         recycler.setOnKeyListener { v, keyCode, event ->
