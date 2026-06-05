@@ -34,21 +34,6 @@
             android:layout_marginBottom="32dp" />
 
         <EditText
-            android:id="@+id/edtUrl"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:hint="URL do Servidor (http://...)"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#888888"
-            android:background="@drawable/bg_input_dark"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:layout_marginBottom="16dp"
-            android:singleLine="true"
-            android:textSize="16sp"
-            android:nextFocusDown="@+id/edtUser" />
-
-        <EditText
             android:id="@+id/edtUser"
             android:layout_width="match_parent"
             android:layout_height="60dp"
