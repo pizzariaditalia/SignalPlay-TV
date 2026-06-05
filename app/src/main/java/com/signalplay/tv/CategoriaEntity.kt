@@ -7,5 +7,6 @@ import androidx.room.PrimaryKey
 data class CategoriaEntity(
     @PrimaryKey val id: String,
     val nome: String,
-    val tipo: String // "live", "vod" ou "series"
+    val tipo: String,
+    val ordem: Int
 )
