@@ -34,7 +34,22 @@
             android:layout_marginBottom="32dp" />
 
         <EditText
-            android:id="@+id/edtUsuario"
+            android:id="@+id/edtUrl"
+            android:layout_width="match_parent"
+            android:layout_height="60dp"
+            android:hint="URL do Servidor (http://...)"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#888888"
+            android:background="@drawable/bg_input_dark"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:layout_marginBottom="16dp"
+            android:singleLine="true"
+            android:textSize="16sp"
+            android:nextFocusDown="@+id/edtUser" />
+
+        <EditText
+            android:id="@+id/edtUser"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:hint="Usuário"
@@ -46,10 +61,10 @@
             android:layout_marginBottom="16dp"
             android:singleLine="true"
             android:textSize="16sp"
-            android:nextFocusDown="@+id/edtSenha" />
+            android:nextFocusDown="@+id/edtPass" />
 
         <EditText
-            android:id="@+id/edtSenha"
+            android:id="@+id/edtPass"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:hint="Senha"
@@ -62,10 +77,10 @@
             android:singleLine="true"
             android:inputType="textPassword"
             android:textSize="16sp"
-            android:nextFocusDown="@+id/btnEntrar" />
+            android:nextFocusDown="@+id/btnLogin" />
 
         <Button
-            android:id="@+id/btnEntrar"
+            android:id="@+id/btnLogin"
             android:layout_width="match_parent"
             android:layout_height="60dp"
             android:text="Entrar"
@@ -89,13 +104,23 @@
             android:focusable="true" />
 
         <ProgressBar
-            android:id="@+id/progressBar"
+            android:id="@+id/progressBarLogin"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:layout_gravity="center"
             android:layout_marginTop="24dp"
             android:indeterminateTint="#FFC107"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvVersion"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Versão do App"
+            android:textColor="#888888"
+            android:textSize="14sp"
+            android:layout_marginTop="16dp"
+            android:layout_gravity="center_horizontal" />
 
     </LinearLayout>
 </RelativeLayout>
