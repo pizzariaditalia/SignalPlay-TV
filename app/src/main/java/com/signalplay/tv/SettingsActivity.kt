@@ -110,7 +110,6 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
-        // BUSCA O VENCIMENTO EXATAMENTE DO FIREBASE
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
@@ -149,9 +148,6 @@ class SettingsActivity : Activity() {
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         switchLauncher.isChecked = isLauncherEnabled
 
-        // =========================================================================================
-        // MÁGICA DO BUG VISUAL: Muda a cor do texto para Preto no Foco e Branco ao sair
-        // =========================================================================================
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
             val vg = v as? ViewGroup
             val tvTitulo = vg?.getChildAt(0) as? TextView
@@ -190,9 +186,6 @@ class SettingsActivity : Activity() {
             else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
         }
 
-        // =========================================================================================
-        // PULO DO GATO: VERIFICAÇÃO MANUAL DE ATUALIZAÇÃO
-        // =========================================================================================
         btnCheckUpdate?.setOnClickListener {
             Toast.makeText(this, "Procurando novas atualizações...", Toast.LENGTH_SHORT).show()
             db.collection("configuracoes").document("app").get()
@@ -211,12 +204,10 @@ class SettingsActivity : Activity() {
                         } catch (e: Exception) { 1L }
 
                         if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
-                            // Encontrou versão nova!
                             showCustomDialog("Nova Versão Encontrada!", "A versão $versaoNuvem está disponível. Deseja baixar e instalar agora?", false) {
                                 baixarEInstalarAtualizacao(linkApk)
                             }
                         } else {
-                            // Já está na última versão!
                             Toast.makeText(this, "O sistema já está atualizado com a versão mais recente!", Toast.LENGTH_LONG).show()
                         }
                     }
@@ -412,9 +403,6 @@ class SettingsActivity : Activity() {
         }
     }
 
-    // =========================================================================================
-    // LÓGICA DE DOWNLOAD E INSTALAÇÃO (Copiada da Tela Inicial)
-    // =========================================================================================
     private fun baixarEInstalarAtualizacao(urlLink: String) {
         Toast.makeText(this, "Iniciando download...", Toast.LENGTH_SHORT).show()
         try {
