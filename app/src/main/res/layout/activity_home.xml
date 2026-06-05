@@ -9,6 +9,8 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none"
+        android:clipChildren="false"
+        android:clipToPadding="false"
         android:fillViewport="true">
 
         <RelativeLayout
@@ -17,10 +19,13 @@
             android:clipChildren="false"
             android:clipToPadding="false">
 
+            <Space android:id="@+id/topoRespiro" android:layout_width="match_parent" android:layout_height="20dp" android:layout_alignParentTop="true"/>
+
             <RelativeLayout
                 android:id="@+id/heroSection"
                 android:layout_width="match_parent"
-                android:layout_height="450dp">
+                android:layout_height="450dp"
+                android:layout_below="@id/topoRespiro">
 
                 <androidx.media3.ui.PlayerView
                     android:id="@+id/heroPlayer"
@@ -38,14 +43,13 @@
                     android:scaleType="matrix"
                     android:src="#222222" />
 
-                <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="#44000000" />
                 <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_details_gradient" />
                 <View android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_hero_gradient" />
 
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="32dp">
+                    android:padding="24dp">
 
                     <LinearLayout
                         android:layout_width="wrap_content"
@@ -54,13 +58,13 @@
                         android:layout_alignParentStart="true"
                         android:gravity="center_vertical">
 
-                        <TextView android:id="@+id/menuPesquisar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pesquisar" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais de TV" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuEsportes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Esportes" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="16dp"/>
-                        <TextView android:id="@+id/menuConfig" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Configurações" android:textColor="#FFFFFF" android:textSize="18sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="20dp" android:paddingEnd="20dp" android:paddingTop="8dp" android:paddingBottom="8dp"/>
+                        <TextView android:id="@+id/menuPesquisar" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Pesquisar" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="8dp"/>
+                        <TextView android:id="@+id/menuInicio" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Início" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="8dp"/>
+                        <TextView android:id="@+id/menuCanais" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais de TV" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="8dp"/>
+                        <TextView android:id="@+id/menuFilmes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Filmes" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="8dp"/>
+                        <TextView android:id="@+id/menuSeries" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="8dp"/>
+                        <TextView android:id="@+id/menuEsportes" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Esportes" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp" android:layout_marginEnd="8dp"/>
+                        <TextView android:id="@+id/menuConfig" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Configurações" android:textColor="#FFFFFF" android:textSize="14sp" android:textStyle="bold" android:focusable="true" android:clickable="true" android:background="@drawable/bg_menu_focus" android:paddingStart="16dp" android:paddingEnd="16dp" android:paddingTop="8dp" android:paddingBottom="8dp"/>
                     </LinearLayout>
 
                     <LinearLayout
@@ -76,9 +80,9 @@
                             android:layout_height="wrap_content"
                             android:text="Conectado"
                             android:textColor="#2ED573"
-                            android:textSize="14sp"
+                            android:textSize="12sp"
                             android:textStyle="bold"
-                            android:layout_marginEnd="16dp"/>
+                            android:layout_marginEnd="12dp"/>
 
                         <TextView
                             android:id="@+id/tvClock"
@@ -86,7 +90,7 @@
                             android:layout_height="wrap_content"
                             android:text="00:00"
                             android:textColor="#FFFFFF"
-                            android:textSize="24sp"
+                            android:textSize="20sp"
                             android:textStyle="bold" />
                     </LinearLayout>
                 </RelativeLayout>
