@@ -17,7 +17,8 @@ interface CatalogoDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun inserirFilmesSeries(itens: List<FilmeEntity>)
 
-    @Query("SELECT * FROM categorias WHERE tipo = :tipo ORDER BY nome ASC")
+    // MÁGICA: Agora o banco devolve na ordem exata do servidor!
+    @Query("SELECT * FROM categorias WHERE tipo = :tipo ORDER BY ordem ASC")
     suspend fun getCategoriasPorTipo(tipo: String): List<CategoriaEntity>
 
     @Query("SELECT * FROM canais WHERE categoryId = :catId")
