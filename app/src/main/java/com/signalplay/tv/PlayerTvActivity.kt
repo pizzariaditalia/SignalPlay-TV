@@ -1,14 +1,10 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.app.PictureInPictureParams
-import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
-import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
 import android.widget.ImageView
@@ -20,7 +16,6 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.DefaultLoadControl
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.upstream.DefaultAllocator
 import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
@@ -137,13 +132,13 @@ class PlayerTvActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
+        // COLEIRA DE MEMÓRIA: Limita o buffer para poupar a TV Box
         val loadControl = DefaultLoadControl.Builder()
-            .setAllocator(DefaultAllocator(true, 64 * 1024))
             .setBufferDurationsMs(
-                15000,
-                50000,
-                1500,
-                3000
+                15000,  // Buffer mínimo de 15 segundos
+                30000,  // Buffer máximo de 30 segundos (evita devorar a RAM)
+                2500,   // Segundos necessários para começar a tocar rápido
+                5000    // Segundos necessários para retomar após um travamento
             )
             .build()
 
@@ -182,11 +177,15 @@ class PlayerTvActivity : Activity() {
         exoPlayer?.playWhenReady = true
     }
 
+    // =========================================================================
+    // FILTRO ANTI-LIXO (Decodificador Blindado UTF-8)
+    // =========================================================================
     private fun decodificarTexto(raw: String): String {
         if (raw.isEmpty()) return ""
         try {
             val decodedBytes = Base64.decode(raw, Base64.DEFAULT)
             val txt = String(decodedBytes, Charsets.UTF_8)
+            // Se tiver o símbolo de erro (), ignora e devolve o texto original
             if (txt.isNotBlank() && !txt.contains("")) {
                 return txt
             }
@@ -265,6 +264,7 @@ class PlayerTvActivity : Activity() {
                     for (i in 0 until listings.length()) {
                         val prog = listings.getJSONObject(i)
                         
+                        // USA O NOVO ESCUDO PARA O TÍTULO ATUAL
                         val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
 
                         val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
@@ -303,6 +303,7 @@ class PlayerTvActivity : Activity() {
                                 
                                 if (i + 1 < listings.length()) {
                                     val nextProg = listings.getJSONObject(i + 1)
+                                    // USA O MESMO ESCUDO PARA O PRÓXIMO PROGRAMA
                                     programaSeguinteTitulo = decodificarTexto(nextProg.optString("title", ""))
                                 }
                                 
@@ -341,29 +342,6 @@ class PlayerTvActivity : Activity() {
                     osdProgressContainer.visibility = View.GONE
                 }
             }
-        }
-    }
-
-    // =========================================================================
-    // MODO PICTURE IN PICTURE (PiP)
-    // =========================================================================
-    override fun onUserLeaveHint() {
-        super.onUserLeaveHint()
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(Rational(16, 9))
-                .build()
-            enterPictureInPictureMode(params)
-        }
-    }
-
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        if (isInPictureInPictureMode) {
-            // Esconde toda a interface gráfica para ficar só o vídeo limpo
-            osdContainer.visibility = View.GONE
-            painelCanais.visibility = View.GONE
-            painelEpg.visibility = View.GONE
         }
     }
 
