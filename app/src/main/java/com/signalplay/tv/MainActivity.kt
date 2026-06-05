@@ -27,6 +27,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
 import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
@@ -96,7 +99,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================================
-    // MOTOR DE LOGIN BLINDADO (FIREBASE -> PUXA CREDENCIAIS -> VALIDA XTREAM)
+    // MOTOR DE LOGIN COM BARREIRA INTELIGENTE DE PIX
     // =========================================================================
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
@@ -111,10 +114,21 @@ class MainActivity : Activity() {
 
                 val dadosFirebase = snapshot.documents[0]
                 val status = dadosFirebase.getString("status")?.lowercase() ?: ""
-                
-                if (status != "ativo" && status != "teste") {
-                    showError("Acesso Suspenso: Conta expirada ou bloqueada!")
-                    return@addOnSuccessListener
+                val vencimentoStr = dadosFirebase.getString("vencimento") ?: ""
+
+                // Verifica se a data de vencimento já passou
+                var isVencido = false
+                if (vencimentoStr.isNotEmpty() && vencimentoStr.lowercase() != "ilimitado") {
+                    try {
+                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
+                        val dataVencimento = sdf.parse(vencimentoStr)
+                        val dataAtual = Date()
+                        if (dataVencimento != null && dataAtual.after(dataVencimento)) {
+                            isVencido = true
+                        }
+                    } catch (e: Exception) {
+                        // Ignora erro de formatação e usa apenas o status
+                    }
                 }
 
                 val servidorId = dadosFirebase.getString("servidor_id")
@@ -136,8 +150,28 @@ class MainActivity : Activity() {
                         val masterPass = sData?.get("xtream_pass")?.toString() ?: ""
 
                         val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
+
+                        // =======================================================
+                        // BARREIRA DO PIX: Bloqueado ou Vencido cai direto aqui!
+                        // =======================================================
+                        if (status == "bloqueado" || isVencido) {
+                            btnLogin.isEnabled = true
+                            progressBarLogin.visibility = View.GONE
+                            
+                            val intent = Intent(this@MainActivity, PixActivity::class.java)
+                            intent.putExtra("USERNAME", userDigitado)
+                            intent.putExtra("SERVER_URL", cleanUrl) // Envia o endereço para a TV achar o PHP
+                            startActivity(intent)
+                            
+                            return@addOnSuccessListener
+                        }
+
+                        if (status != "ativo" && status != "teste") {
+                            showError("Acesso Suspenso: Status de conta inválido.")
+                            return@addOnSuccessListener
+                        }
                         
-                        // Valida as credenciais MASTER silenciosamente com a API
+                        // Conta Ativa: Valida as credenciais MASTER silenciosamente com a API
                         validarNoPainelXtream(cleanUrl, masterUser, masterPass, userDigitado, passDigitada)
                     }
                     .addOnFailureListener { showError("Erro ao buscar dados do servidor.") }
