@@ -10,8 +10,6 @@ import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
 import android.text.TextUtils
 import android.view.View
 import android.view.ViewGroup
@@ -24,10 +22,6 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.media3.common.MediaItem
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -54,12 +48,7 @@ class HomeActivity : Activity() {
 
     private lateinit var db: FirebaseFirestore
     private lateinit var btnAssistirDestaque: Button
-    
-    private var trailerPlayer: ExoPlayer? = null
-    private lateinit var heroPlayerView: PlayerView
     private lateinit var heroImage: ImageView
-    private val trailerHandler = Handler(Looper.getMainLooper())
-    private var trailerRunnable: Runnable? = null
     
     private lateinit var tvClock: TextView
     private lateinit var tvNetworkStatus: TextView
@@ -91,7 +80,6 @@ class HomeActivity : Activity() {
         db = FirebaseFirestore.getInstance()
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
         heroImage = findViewById(R.id.heroImage)
-        heroPlayerView = findViewById(R.id.heroPlayer)
         tvClock = findViewById(R.id.tvClock)
         tvNetworkStatus = findViewById(R.id.tvNetworkStatus)
 
@@ -182,26 +170,7 @@ class HomeActivity : Activity() {
                 }
             }
 
-        inicializarTrailerPlayer()
         iniciarRelogioERede()
-    }
-
-    private fun inicializarTrailerPlayer() {
-        trailerPlayer = ExoPlayer.Builder(this).build()
-        heroPlayerView.player = trailerPlayer
-        trailerPlayer?.volume = 0f 
-        trailerPlayer?.repeatMode = Player.REPEAT_MODE_ONE
-
-        trailerPlayer?.addListener(object : Player.Listener {
-            override fun onPlaybackStateChanged(playbackState: Int) {
-                if (playbackState == Player.STATE_READY) {
-                    heroImage.animate().alpha(0f).setDuration(500).start()
-                    heroPlayerView.visibility = View.VISIBLE
-                    heroPlayerView.alpha = 0f
-                    heroPlayerView.animate().alpha(1f).setDuration(500).start()
-                }
-            }
-        })
     }
 
     private fun iniciarRelogioERede() {
@@ -244,22 +213,9 @@ class HomeActivity : Activity() {
         if (listFilmesGlobais.isEmpty()) carregarCatalogoDaAPI()
     }
 
-    override fun onPause() {
-        super.onPause()
-        pararTrailer()
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         isClockRunning = false
-        trailerPlayer?.release()
-    }
-
-    private fun pararTrailer() {
-        trailerRunnable?.let { trailerHandler.removeCallbacks(it) }
-        trailerPlayer?.stop()
-        heroPlayerView.visibility = View.INVISIBLE
-        heroImage.alpha = 1f
     }
 
     private fun carregarCatalogoDaAPI() {
@@ -578,7 +534,6 @@ class HomeActivity : Activity() {
     }
 
     private fun atualizarBanner(filme: FilmeItem, mapCategorias: Map<String, String>) {
-        pararTrailer()
 
         val tvTitle = findViewById<TextView>(R.id.heroTitle)
         val tvBadge = findViewById<TextView>(R.id.heroBadge)
@@ -631,15 +586,6 @@ class HomeActivity : Activity() {
                 }
             }
         })
-
-        if (filme.tipo == "filme") {
-            trailerRunnable = Runnable {
-                trailerPlayer?.setMediaItem(MediaItem.fromUri(filme.streamUrl))
-                trailerPlayer?.prepare()
-                trailerPlayer?.playWhenReady = true
-            }
-            trailerHandler.postDelayed(trailerRunnable!!, 3000)
-        }
     }
 
     private fun abrirDetalhes(itemClicado: FilmeItem) {
