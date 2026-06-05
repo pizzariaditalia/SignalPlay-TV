@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#111114">
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@drawable/bg_details_gradient" />
+
+    <LinearLayout
+        android:layout_width="800dp"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:background="@drawable/bg_glass"
+        android:orientation="horizontal"
+        android:padding="32dp">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:paddingEnd="32dp"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Renovação de Acesso"
+                android:textColor="#FFC107"
+                android:textSize="28sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <TextView
+                android:id="@+id/tvPixMessage"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Seu plano expirou ou está prestes a vencer. Escaneie o QR Code ao lado pelo aplicativo do seu banco para renovar automaticamente."
+                android:textColor="#E0E0E0"
+                android:textSize="16sp"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginBottom="24dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Valor do Plano:"
+                android:textColor="#888888"
+                android:textSize="14sp" />
+
+            <TextView
+                android:id="@+id/tvPixValor"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="R$ 35,00"
+                android:textColor="#2ED573"
+                android:textSize="36sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="24dp" />
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="32dp">
+
+                <ProgressBar
+                    android:layout_width="24dp"
+                    android:layout_height="24dp"
+                    android:indeterminateTint="#0091EA"
+                    android:layout_marginEnd="12dp" />
+
+                <TextView
+                    android:id="@+id/tvPixStatus"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Aguardando pagamento..."
+                    android:textColor="#0091EA"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+            <Button
+                android:id="@+id/btnPixVoltar"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="VOLTAR AO INÍCIO"
+                android:textColor="#FFFFFF"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:backgroundTint="#333333"
+                android:paddingStart="24dp"
+                android:paddingEnd="24dp"
+                android:focusable="true"
+                android:clickable="true" />
+        </LinearLayout>
+
+        <LinearLayout
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="#FFFFFF"
+            android:padding="16dp"
+            android:elevation="8dp">
+
+            <ImageView
+                android:id="@+id/imgQrCode"
+                android:layout_width="260dp"
+                android:layout_height="260dp"
+                android:scaleType="fitCenter" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Pague pelo app do seu Banco"
+                android:textColor="#000000"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:layout_marginTop="12dp" />
+            
+            <ImageView
+                android:layout_width="80dp"
+                android:layout_height="30dp"
+                android:src="@drawable/logo_oficial" 
+                android:layout_marginTop="8dp" />
+        </LinearLayout>
+    </LinearLayout>
+</RelativeLayout>
