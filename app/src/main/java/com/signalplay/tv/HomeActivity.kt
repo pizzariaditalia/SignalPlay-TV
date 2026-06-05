@@ -7,7 +7,11 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.drawable.Drawable
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.text.TextUtils
 import android.view.View
 import android.view.ViewGroup
@@ -20,6 +24,10 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
+import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.ui.PlayerView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -35,6 +43,9 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
@@ -44,6 +55,18 @@ class HomeActivity : Activity() {
     private lateinit var db: FirebaseFirestore
     private lateinit var btnAssistirDestaque: Button
     
+    // Trailer Autoplay 
+    private var trailerPlayer: ExoPlayer? = null
+    private lateinit var heroPlayerView: PlayerView
+    private lateinit var heroImage: ImageView
+    private val trailerHandler = Handler(Looper.getMainLooper())
+    private var trailerRunnable: Runnable? = null
+    
+    // Status do Launcher
+    private lateinit var tvClock: TextView
+    private lateinit var tvNetworkStatus: TextView
+    private var isClockRunning = true
+
     private val suaveOvershoot = OvershootInterpolator(1.2f)
 
     private var urlGlobal = ""
@@ -69,6 +92,11 @@ class HomeActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
+        heroImage = findViewById(R.id.heroImage)
+        heroPlayerView = findViewById(R.id.heroPlayer)
+        tvClock = findViewById(R.id.tvClock)
+        tvNetworkStatus = findViewById(R.id.tvNetworkStatus)
+
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
         btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
@@ -130,21 +158,15 @@ class HomeActivity : Activity() {
         menuFilmes.setOnClickListener { startActivity(Intent(this, VodActivity::class.java).apply { putExtras(intent) }) }
         menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
-        
-        // MÁGICA: O botão de esportes agora está limpo e elegante lá no topo!
-        menuEsportes.setOnClickListener {
-            startActivity(Intent(this, SportsActivity::class.java).apply { putExtra("URL_LIGA", "https://m.sofascore.com/pt/") })
-        }
+        menuEsportes.setOnClickListener { startActivity(Intent(this, SportsActivity::class.java).apply { putExtra("URL_LIGA", "https://m.sofascore.com/pt/") }) }
 
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error == null && snapshot != null && !snapshot.isEmpty) {
                     val doc = snapshot.documents[0]
-                    
                     val favs = doc.get("favoritos") as? List<*>
                     listaIdsFavoritosGlobais.clear()
                     favs?.forEach { listaIdsFavoritosGlobais.add(it.toString()) }
-                    
                     historicoMapGlobal = doc.get("historico_vod") as? Map<String, Any> ?: emptyMap()
                     
                     runOnUiThread {
@@ -153,12 +175,85 @@ class HomeActivity : Activity() {
                     }
                 }
             }
+
+        inicializarTrailerPlayer()
+        iniciarRelogioERede()
+    }
+
+    private fun inicializarTrailerPlayer() {
+        trailerPlayer = ExoPlayer.Builder(this).build()
+        heroPlayerView.player = trailerPlayer
+        trailerPlayer?.volume = 0f 
+        trailerPlayer?.repeatMode = Player.REPEAT_MODE_ONE
+
+        trailerPlayer?.addListener(object : Player.Listener {
+            override fun onPlaybackStateChanged(playbackState: Int) {
+                if (playbackState == Player.STATE_READY) {
+                    heroImage.animate().alpha(0f).setDuration(500).start()
+                    heroPlayerView.visibility = View.VISIBLE
+                    heroPlayerView.alpha = 0f
+                    heroPlayerView.animate().alpha(1f).setDuration(500).start()
+                }
+            }
+        })
+    }
+
+    private fun iniciarRelogioERede() {
+        Thread {
+            while (isClockRunning) {
+                val time = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
+                val cm = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+                val network = cm.activeNetwork
+                val capabilities = cm.getNetworkCapabilities(network)
+                
+                var netStatus = "Offline"
+                var netColor = "#FF4757"
+                
+                if (capabilities != null) {
+                    if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                        netStatus = "Wi-Fi"
+                        netColor = "#2ED573"
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)) {
+                        netStatus = "Cabo (LAN)"
+                        netColor = "#0091EA"
+                    } else if (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                        netStatus = "4G/5G"
+                        netColor = "#FFC107"
+                    }
+                }
+
+                runOnUiThread {
+                    tvClock.text = time
+                    tvNetworkStatus.text = netStatus
+                    tvNetworkStatus.setTextColor(Color.parseColor(netColor))
+                }
+                Thread.sleep(1000)
+            }
+        }.start()
     }
 
     override fun onResume() {
         super.onResume()
         carregarAplicativosDaTV()
         if (listFilmesGlobais.isEmpty()) carregarCatalogoDaAPI()
+    }
+
+    override fun onPause() {
+        super.onPause()
+        pararTrailer()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        isClockRunning = false
+        trailerPlayer?.release()
+    }
+
+    private fun pararTrailer() {
+        trailerRunnable?.let { trailerHandler.removeCallbacks(it) }
+        trailerPlayer?.stop()
+        heroPlayerView.visibility = View.INVISIBLE
+        heroImage.alpha = 1f
     }
 
     private fun carregarCatalogoDaAPI() {
@@ -201,27 +296,29 @@ class HomeActivity : Activity() {
                 val canaisParaSalvar = mutableListOf<CanalEntity>()
                 val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
 
+                // Lemos os índices reais da API e salvamos na coluna "ordem"
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        val isAdult = palavrasProibidas.any { catName.lowercase().contains(it) }
-                        if (!isParentalActive || !isAdult) categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live"))
+                        if (!isParentalActive || !palavrasProibidas.any { catName.lowercase().contains(it) }) {
+                            categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live", i))
+                        }
                     }
                 }
                 if (jsonVodCat.startsWith("[")) {
                     val arr = JSONArray(jsonVodCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "vod"))
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "vod", i))
                     }
                 }
                 if (jsonSeriesCat.startsWith("[")) {
                     val arr = JSONArray(jsonSeriesCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "series"))
+                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "series", i))
                     }
                 }
 
@@ -285,25 +382,15 @@ class HomeActivity : Activity() {
                 val mapVodCats = mutableMapOf<String, String>()
                 val mapSeriesCats = mutableMapOf<String, String>()
 
+                // O Banco agora garante a ordem certa!
                 val liveCats = mutableListOf<CategoriaItem>()
-                for (cat in categoriasParaSalvar) {
-                    val nLower = cat.nome.lowercase()
-                    if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
-                    
-                    if (cat.tipo == "live") {
-                        liveCats.add(CategoriaItem(cat.id, cat.nome))
-                        mapLiveCats[cat.id] = cat.nome
-                    } else if (cat.tipo == "vod") {
-                        mapVodCats[cat.id] = cat.nome
-                    } else if (cat.tipo == "series") {
-                        mapSeriesCats[cat.id] = cat.nome
-                    }
+                for (cat in dao.getCategoriasPorTipo("live")) {
+                    liveCats.add(CategoriaItem(cat.id, cat.nome))
+                    mapLiveCats[cat.id] = cat.nome
                 }
+                for (cat in dao.getCategoriasPorTipo("vod")) mapVodCats[cat.id] = cat.nome
+                for (cat in dao.getCategoriasPorTipo("series")) mapSeriesCats[cat.id] = cat.nome
 
-                liveCats.sortBy { 
-                    val n = it.nome.lowercase()
-                    if (n.contains("jogos de hoje") || n.contains("casa do patrão") || n.contains("casa do patrao")) 1 else 0 
-                }
                 liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
                 liveCatsGlobal = liveCats
                 
@@ -365,10 +452,10 @@ class HomeActivity : Activity() {
                     val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
                     val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
 
-                    recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { abrirDetalhes(it) }
-                    recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { abrirDetalhes(it) }
-                    recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
-                    recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
+                    recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { atualizarBanner(it, mapVodCats) }
+                    recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { atualizarBanner(it, mapSeriesCats) }
+                    recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { atualizarBanner(it, mapVodCats) }
+                    recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { atualizarBanner(it, mapSeriesCats) }
 
                     if (listFilmesGlobais.isNotEmpty()) {
                         val mCat = mapVodCats.toMutableMap()
@@ -487,9 +574,12 @@ class HomeActivity : Activity() {
     }
 
     private fun atualizarBanner(filme: FilmeItem, mapCategorias: Map<String, String>) {
+        pararTrailer()
+
         val tvTitle = findViewById<TextView>(R.id.heroTitle)
         val tvBadge = findViewById<TextView>(R.id.heroBadge)
         val tvDesc = findViewById<TextView>(R.id.heroDesc)
+        
         tvTitle.text = filme.nome
         val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
         tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
@@ -518,9 +608,8 @@ class HomeActivity : Activity() {
 
         btnAssistirDestaque.visibility = View.VISIBLE
         btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
-        val imageView = findViewById<ImageView>(R.id.heroImage)
-        imageView.scaleType = ImageView.ScaleType.MATRIX
-        Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(imageView) {
+        
+        Glide.with(this).load(filme.urlImagem).into(object : CustomViewTarget<ImageView, Drawable>(heroImage) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
             override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
@@ -538,6 +627,16 @@ class HomeActivity : Activity() {
                 }
             }
         })
+
+        // MÁGICA DE AUTOPLAY: Se for filme, inicia o trailer após 3 segundos!
+        if (filme.tipo == "filme") {
+            trailerRunnable = Runnable {
+                trailerPlayer?.setMediaItem(MediaItem.fromUri(filme.streamUrl))
+                trailerPlayer?.prepare()
+                trailerPlayer?.playWhenReady = true
+            }
+            trailerHandler.postDelayed(trailerRunnable!!, 3000)
+        }
     }
 
     private fun abrirDetalhes(itemClicado: FilmeItem) {
