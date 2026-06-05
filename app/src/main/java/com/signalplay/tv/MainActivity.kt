@@ -34,7 +34,9 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
 
-    // SE ESSAS 7 LINHAS ABAIXO SUMIREM, O GITHUB DÁ ERRO!
+    // =======================================================
+    // ATENÇÃO: ESSAS VARIÁVEIS AQUI NÃO PODEM SUMIR!
+    // =======================================================
     private lateinit var edtUrl: EditText
     private lateinit var edtUser: EditText
     private lateinit var edtPass: EditText
