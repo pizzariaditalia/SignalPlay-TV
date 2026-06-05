@@ -140,7 +140,6 @@ class SettingsActivity : Activity() {
 
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
             if (hasFocus) {
-                v.bringToFront()
                 v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
                 v.setBackgroundResource(R.drawable.bg_menu_focus)
             } else {
