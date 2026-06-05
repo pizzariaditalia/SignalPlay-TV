@@ -12,13 +12,13 @@ import android.os.Bundle
 import android.os.Environment
 import android.view.View
 import android.widget.Button
+import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ProgressBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.SetOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -31,14 +31,14 @@ import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
 
-    private lateinit var edtUrl: EditText
     private lateinit var edtUser: EditText
     private lateinit var edtPass: EditText
     private lateinit var btnLogin: Button
+    private lateinit var chkLembrar: CheckBox
     private lateinit var progressBarLogin: ProgressBar
     private lateinit var tvVersion: TextView
-    private lateinit var db: FirebaseFirestore
     
+    private lateinit var db: FirebaseFirestore
     private var downloadId: Long = -1L
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -47,13 +47,14 @@ class MainActivity : Activity() {
 
         db = FirebaseFirestore.getInstance()
 
-        edtUrl = findViewById(R.id.edtUrl)
         edtUser = findViewById(R.id.edtUser)
         edtPass = findViewById(R.id.edtPass)
         btnLogin = findViewById(R.id.btnLogin)
+        chkLembrar = findViewById(R.id.chkLembrar)
         progressBarLogin = findViewById(R.id.progressBarLogin)
         tvVersion = findViewById(R.id.tvVersion)
         
+        // Pega a versão real do app instalada na Box
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName
         } catch (e: Exception) {
@@ -63,59 +64,88 @@ class MainActivity : Activity() {
 
         verificarAtualizacao()
 
+        // Auto-Login se o Lembre-se de mim estiver ativado
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-        val savedUrl = prefs.getString("URL", "")
-        val savedUser = prefs.getString("USER", "")
-        val savedPass = prefs.getString("PASS", "")
+        val savedFbUser = prefs.getString("FIREBASE_USER", "")
+        val savedFbPass = prefs.getString("FIREBASE_PASS", "")
 
-        if (!savedUrl.isNullOrEmpty() && !savedUser.isNullOrEmpty() && !savedPass.isNullOrEmpty()) {
-            edtUrl.setText(savedUrl)
-            edtUser.setText(savedUser)
-            edtPass.setText(savedPass)
-            fazerLogin(savedUrl, savedUser, savedPass)
+        if (!savedFbUser.isNullOrEmpty() && !savedFbPass.isNullOrEmpty()) {
+            edtUser.setText(savedFbUser)
+            edtPass.setText(savedFbPass)
+            chkLembrar.isChecked = true
+            fazerLogin(savedFbUser, savedFbPass)
         }
 
         btnLogin.setOnClickListener {
-            val url = edtUrl.text.toString().trim()
             val user = edtUser.text.toString().trim()
             val pass = edtPass.text.toString().trim()
 
-            if (url.isEmpty() || user.isEmpty() || pass.isEmpty()) {
-                Toast.makeText(this, "Preencha todos os campos!", Toast.LENGTH_SHORT).show()
+            if (user.isEmpty() || pass.isEmpty()) {
+                Toast.makeText(this, "Preencha o Usuário e a Senha!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
 
-            fazerLogin(url, user, pass)
+            fazerLogin(user, pass)
         }
     }
 
-    private fun fazerLogin(urlOriginal: String, user: String, pass: String) {
+    private fun showError(msg: String) {
+        Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
+        btnLogin.isEnabled = true
+        progressBarLogin.visibility = View.GONE
+    }
+
+    // =========================================================================
+    // MOTOR DE LOGIN BLINDADO (FIREBASE -> PUXA CREDENCIAIS -> VALIDA XTREAM)
+    // =========================================================================
+    private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
         progressBarLogin.visibility = View.VISIBLE
 
-        val url = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
-
-        db.collection("usuarios").whereEqualTo("usuario", user).get()
+        db.collection("usuarios").whereEqualTo("usuario", userDigitado).whereEqualTo("senha", passDigitada).get()
             .addOnSuccessListener { snapshot ->
-                if (!snapshot.isEmpty) {
-                    val doc = snapshot.documents[0]
-                    val status = doc.getString("status")?.uppercase() ?: "ATIVO"
-
-                    if (status == "BLOQUEADO") {
-                        Toast.makeText(this@MainActivity, "Sua conta está bloqueada! Contate o suporte.", Toast.LENGTH_LONG).show()
-                        btnLogin.isEnabled = true
-                        progressBarLogin.visibility = View.GONE
-                        return@addOnSuccessListener
-                    }
+                if (snapshot.isEmpty) {
+                    showError("Usuário ou senha inválidos.")
+                    return@addOnSuccessListener
                 }
-                validarNoPainelXtream(url, user, pass)
+
+                val dadosFirebase = snapshot.documents[0]
+                val status = dadosFirebase.getString("status")?.lowercase() ?: ""
+                
+                if (status != "ativo" && status != "teste") {
+                    showError("Acesso Suspenso: Conta expirada ou bloqueada!")
+                    return@addOnSuccessListener
+                }
+
+                val servidorId = dadosFirebase.getString("servidor_id")
+                if (servidorId.isNullOrEmpty()) {
+                    showError("Nenhum servidor associado no painel.")
+                    return@addOnSuccessListener
+                }
+
+                db.collection("servidores").document(servidorId).get()
+                    .addOnSuccessListener { serverDoc ->
+                        if (!serverDoc.exists()) {
+                            showError("O servidor vinculado foi excluído.")
+                            return@addOnSuccessListener
+                        }
+                        
+                        val sData = serverDoc.data
+                        val urlServidor = sData?.get("url")?.toString() ?: ""
+                        val masterUser = sData?.get("xtream_user")?.toString() ?: ""
+                        val masterPass = sData?.get("xtream_pass")?.toString() ?: ""
+
+                        val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
+                        
+                        // Valida as credenciais MASTER silenciosamente com a API
+                        validarNoPainelXtream(cleanUrl, masterUser, masterPass, userDigitado, passDigitada)
+                    }
+                    .addOnFailureListener { showError("Erro ao buscar dados do servidor.") }
             }
-            .addOnFailureListener {
-                validarNoPainelXtream(url, user, pass)
-            }
+            .addOnFailureListener { showError("Erro de conexão com o banco de dados.") }
     }
 
-    private fun validarNoPainelXtream(url: String, user: String, pass: String) {
+    private fun validarNoPainelXtream(url: String, masterUser: String, masterPass: String, firebaseUser: String, firebasePass: String) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient.Builder()
@@ -124,7 +154,7 @@ class MainActivity : Activity() {
                     .build()
 
                 val req = Request.Builder()
-                    .url("$url/player_api.php?username=$user&password=$pass")
+                    .url("$url/player_api.php?username=$masterUser&password=$masterPass")
                     .build()
 
                 val res = client.newCall(req).execute()
@@ -136,49 +166,52 @@ class MainActivity : Activity() {
                         val userInfo = json.optJSONObject("user_info")
 
                         if (userInfo != null && userInfo.optInt("auth", 0) == 1) {
-                            val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
-                            prefs.edit()
-                                .putString("URL", url)
-                                .putString("USER", user)
-                                .putString("PASS", pass)
-                                .putString("USERNAME", user)
-                                .apply()
-
-                            // A MÁGICA AQUI: Só atualiza o usuário e status, não mexe na data.
-                            val userData = hashMapOf(
-                                "usuario" to user,
-                                "status" to "ATIVO"
-                            )
-                            db.collection("usuarios").document(user).set(userData, SetOptions.merge())
-
-                            val intent = Intent(this@MainActivity, HomeActivity::class.java)
-                            intent.putExtra("URL", url)
-                            intent.putExtra("USER", user)
-                            intent.putExtra("PASS", pass)
-                            intent.putExtra("USERNAME", user)
-                            startActivity(intent)
-                            finish()
+                            iniciarApp(url, masterUser, masterPass, firebaseUser, firebasePass)
                         } else {
-                            Toast.makeText(this@MainActivity, "Usuário ou Senha inválidos!", Toast.LENGTH_LONG).show()
-                            btnLogin.isEnabled = true
-                            progressBarLogin.visibility = View.GONE
+                            showError("O Servidor IPTV recusou a conexão mestre.")
                         }
                     } else {
-                        Toast.makeText(this@MainActivity, "Erro no servidor. Verifique a URL.", Toast.LENGTH_LONG).show()
-                        btnLogin.isEnabled = true
-                        progressBarLogin.visibility = View.GONE
+                        showError("Erro no servidor IPTV. Verifique a URL do painel Firebase.")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    Toast.makeText(this@MainActivity, "Falha de conexão. Verifique sua internet.", Toast.LENGTH_LONG).show()
-                    btnLogin.isEnabled = true
-                    progressBarLogin.visibility = View.GONE
+                    showError("O servidor de canais não está respondendo.")
                 }
             }
         }
     }
 
+    private fun iniciarApp(url: String, masterUser: String, masterPass: String, firebaseUser: String, firebasePass: String) {
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        
+        // Se a caixinha "Lembre-se de mim" estiver marcada, salva para o Auto-Login
+        if (chkLembrar.isChecked) {
+            prefs.edit()
+                .putString("FIREBASE_USER", firebaseUser)
+                .putString("FIREBASE_PASS", firebasePass)
+                .putString("URL", url)
+                .putString("USER", masterUser)
+                .putString("PASS", masterPass)
+                .putString("USERNAME", firebaseUser)
+                .apply()
+        } else {
+            prefs.edit().clear().apply()
+        }
+
+        // Passa os dados MASTER para o HomeActivity carregar os canais, mas exibe o nome do cliente!
+        val intent = Intent(this@MainActivity, HomeActivity::class.java)
+        intent.putExtra("URL", url)
+        intent.putExtra("USER", masterUser)
+        intent.putExtra("PASS", masterPass)
+        intent.putExtra("USERNAME", firebaseUser)
+        startActivity(intent)
+        finish()
+    }
+
+    // =========================================================================
+    // SISTEMA DE ATUALIZAÇÃO AUTOMÁTICA OBRIGATÓRIA
+    // =========================================================================
     private fun verificarAtualizacao() {
         db.collection("configuracoes").document("app").get()
             .addOnSuccessListener { doc ->
@@ -201,9 +234,9 @@ class MainActivity : Activity() {
                         Toast.makeText(this, "Atualização Obrigatória Encontrada! Baixando...", Toast.LENGTH_LONG).show()
                         btnLogin.isEnabled = false
                         btnLogin.text = "BAIXANDO ATUALIZAÇÃO..."
-                        edtUrl.isEnabled = false
                         edtUser.isEnabled = false
                         edtPass.isEnabled = false
+                        chkLembrar.isEnabled = false
                         
                         baixarEInstalarAtualizacao(linkApk)
                     }
