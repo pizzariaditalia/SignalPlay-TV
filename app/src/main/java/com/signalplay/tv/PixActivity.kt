@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.app.AlertDialog
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
@@ -29,7 +28,6 @@ class PixActivity : Activity() {
     private lateinit var btnPixVoltar: Button
     private lateinit var db: FirebaseFirestore
     private var username = ""
-    private var serverUrl = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -40,8 +38,8 @@ class PixActivity : Activity() {
         btnPixVoltar = findViewById(R.id.btnPixVoltar)
         db = FirebaseFirestore.getInstance()
 
+        // Recebe o nome do utilizador vindo da tela de login
         username = intent.getStringExtra("USERNAME") ?: ""
-        serverUrl = intent.getStringExtra("SERVER_URL") ?: "" 
 
         btnPixVoltar.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
@@ -52,7 +50,7 @@ class PixActivity : Activity() {
             finish()
         }
 
-        if (username.isNotEmpty() && serverUrl.isNotEmpty()) {
+        if (username.isNotEmpty()) {
             gerarCobrancaPix()
             iniciarRadarDePagamento()
         } else {
@@ -61,23 +59,23 @@ class PixActivity : Activity() {
         }
     }
 
-    // =========================================================================
-    // GERADOR DE PIX - COM DIAGNÓSTICO RAIO-X INCLUÍDO
-    // =========================================================================
     private fun gerarCobrancaPix() {
         tvPixStatus.text = "Gerando QR Code..."
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Força a troca do espaço por Underline (_) como você sugeriu que o PHP aceita!
+                // Substitui espaços por underline (_) conforme exigido pela sua API PHP
                 val usuarioFormatado = username.replace(" ", "_")
-                val urlCompleta = "$serverUrl/gerar_pix.php?usuario=$usuarioFormatado"
+                
+                // CORREÇÃO DEFINITIVA DA URL: Agora aponta diretamente para o seu site estável
+                val urlCompleta = "http://signalplay.pro/gerar_pix.php?usuario=$usuarioFormatado"
 
                 val client = OkHttpClient()
                 val req = Request.Builder().url(urlCompleta).build()
                 val res = client.newCall(req).execute()
                 val jsonStrBruto = res.body?.string() ?: ""
 
+                // Limpa quaisquer impurezas ou textos extras fora do objeto JSON
                 val startIndex = jsonStrBruto.indexOf("{")
                 val endIndex = jsonStrBruto.lastIndexOf("}")
 
@@ -91,7 +89,9 @@ class PixActivity : Activity() {
                             val base64Qr = json.optString("qr_code_base64", "")
                             
                             if (sucesso && base64Qr.isNotEmpty()) {
+                                // Remove quebras de linha acidentais do Base64
                                 val cleanBase64 = base64Qr.replace("\n", "").replace("\r", "")
+                                
                                 val decodedString: ByteArray = Base64.decode(cleanBase64, Base64.DEFAULT)
                                 val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
                                 imgQrCode.setImageBitmap(decodedByte)
@@ -101,35 +101,23 @@ class PixActivity : Activity() {
                             } else {
                                 tvPixStatus.text = "O servidor não conseguiu gerar a cobrança."
                                 tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
-                                exibirDebug("Falha na Resposta", "O PHP até retornou um formato válido, mas o sucesso foi FALSE ou veio sem o Base64.\n\nJSON Lido:\n$jsonLimpo")
                             }
                         } catch (e: Exception) {
                             tvPixStatus.text = "Erro na leitura dos dados do Banco."
                             tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
-                            exibirDebug("Erro no Formato JSON", "O aplicativo não conseguiu traduzir os dados que o seu site enviou.\n\nTexto recebido:\n$jsonLimpo")
                         }
                     } else {
                         tvPixStatus.text = "Resposta inválida do servidor."
                         tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
-                        exibirDebug("Página Vazia ou Erro 404", "O aplicativo chamou o seu PHP, mas não encontrou o bloco { } do JSON na página.\n\nURL Tentada:\n$urlCompleta\n\nTexto Bruto do Servidor:\n$jsonStrBruto")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     tvPixStatus.text = "Erro de conexão com o servidor."
                     tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757"))
-                    exibirDebug("Falha de Rede", "A TV não conseguiu alcançar o site. Pode ser o https ou falta de internet.\n\nErro interno: ${e.message}")
                 }
             }
         }
-    }
-
-    private fun exibirDebug(titulo: String, mensagem: String) {
-        AlertDialog.Builder(this@PixActivity)
-            .setTitle("🐛 DIAGNÓSTICO DO PIX: $titulo")
-            .setMessage(mensagem)
-            .setPositiveButton("FECHAR", null)
-            .show()
     }
 
     private fun iniciarRadarDePagamento() {
@@ -173,6 +161,7 @@ class PixActivity : Activity() {
                     }
                 }
 
+                // O Radar só liberta o utilizador se o status for ATIVO e não estiver com data vencida
                 if (status == "ATIVO" && !isVencido) {
                     tvPixStatus.text = "PAGAMENTO APROVADO!"
                     tvPixStatus.setTextColor(android.graphics.Color.parseColor("#2ED573")) 
