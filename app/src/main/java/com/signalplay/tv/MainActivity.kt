@@ -19,6 +19,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Source
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -97,13 +98,17 @@ class MainActivity : Activity() {
     }
 
     // =========================================================================
-    // MOTOR DE LOGIN - COM DEDO-DURO PARA DATAS
+    // MOTOR DE LOGIN - AGORA FORÇANDO ATUALIZAÇÃO DIRETO DO SERVIDOR
     // =========================================================================
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
         progressBarLogin.visibility = View.VISIBLE
 
-        db.collection("usuarios").whereEqualTo("usuario", userDigitado).whereEqualTo("senha", passDigitada).get()
+        // A MÁGICA AQUI: get(Source.SERVER) destrói o cache antigo e lê o Firebase em tempo real!
+        db.collection("usuarios")
+            .whereEqualTo("usuario", userDigitado)
+            .whereEqualTo("senha", passDigitada)
+            .get(Source.SERVER)
             .addOnSuccessListener { snapshot ->
                 if (snapshot.isEmpty) {
                     showError("Usuário ou senha inválidos.")
@@ -113,9 +118,6 @@ class MainActivity : Activity() {
                 val dadosFirebase = snapshot.documents[0]
                 val status = dadosFirebase.getString("status")?.lowercase() ?: ""
                 
-                // =======================================================
-                // TRADUTOR E INVESTIGADOR DE DATA
-                // =======================================================
                 var isVencido = false
                 val vencObj = dadosFirebase.get("vencimento")
 
@@ -139,11 +141,8 @@ class MainActivity : Activity() {
                             }
                         }
                     } catch (e: Exception) {
-                        // O "Dedo-Duro": Mostra na tela o que veio do banco que quebrou o código
                         Toast.makeText(this, "ALERTA: Erro na formatação da data: $vencObj", Toast.LENGTH_LONG).show()
                     }
-                } else {
-                    Toast.makeText(this, "ALERTA: O campo 'vencimento' não foi encontrado ou está vazio!", Toast.LENGTH_LONG).show()
                 }
 
                 val servidorId = dadosFirebase.getString("servidor_id")
@@ -152,7 +151,7 @@ class MainActivity : Activity() {
                     return@addOnSuccessListener
                 }
 
-                db.collection("servidores").document(servidorId).get()
+                db.collection("servidores").document(servidorId).get(Source.SERVER)
                     .addOnSuccessListener { serverDoc ->
                         if (!serverDoc.exists()) {
                             showError("O servidor vinculado foi excluído.")
@@ -256,7 +255,7 @@ class MainActivity : Activity() {
     }
 
     private fun verificarAtualizacao() {
-        db.collection("configuracoes").document("app").get(com.google.firebase.firestore.Source.SERVER)
+        db.collection("configuracoes").document("app").get(Source.SERVER)
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
                     try {
