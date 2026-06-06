@@ -20,17 +20,33 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
 
-      # Essa é a mágica: força o GitHub a usar a versão correta do motor
+      # Essa é a mágica original: força o GitHub a usar a versão correta do motor
       - name: Instalar Gradle Compatível
         uses: gradle/actions/setup-gradle@v3
         with:
           gradle-version: '8.2'
 
-      - name: Construir o APK
-        run: gradle assembleDebug
+      # Agora gera a versão Release (Otimizada, leve e profissional)
+      - name: Construir o APK (Release)
+        run: gradle assembleRelease
 
-      - name: Disponibilizar APK para Download
+      # =========================================================================
+      # PASSO DE ASSINATURA: Usa a chave oficial e os Secrets do seu GitHub
+      # =========================================================================
+      - name: Assinar APK Oficial
+        uses: r0adkll/sign-android-release@v1
+        id: sign_app
+        with:
+          releaseDirectory: app/build/outputs/apk/release
+          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
+          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
+
+      - name: Disponibilizar APK Assinado para Download
         uses: actions/upload-artifact@v4
         with:
-          name: SignalPlay-TV-APK
-          path: app/build/outputs/apk/debug/app-debug.apk
+          name: SignalPlay-TV-Oficial-Assinado
+          # Pega automaticamente o arquivo carimbado gerado no passo anterior
+          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          
