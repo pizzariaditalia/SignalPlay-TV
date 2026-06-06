@@ -57,7 +57,6 @@ class MainActivity : Activity() {
         progressBarLogin = findViewById(R.id.progressBarLogin)
         tvVersion = findViewById(R.id.tvVersion)
         
-        // Pega a versão real do app instalada na Box
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName
         } catch (e: Exception) {
@@ -67,7 +66,6 @@ class MainActivity : Activity() {
 
         verificarAtualizacao()
 
-        // Auto-Login se o Lembre-se de mim estiver ativado
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val savedFbUser = prefs.getString("FIREBASE_USER", "")
         val savedFbPass = prefs.getString("FIREBASE_PASS", "")
@@ -99,7 +97,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================================
-    // MOTOR DE LOGIN COM BARREIRA INTELIGENTE DE PIX
+    // MOTOR DE LOGIN COM BARREIRA INTELIGENTE DE PIX E DATA BLINDADA
     // =========================================================================
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
@@ -114,20 +112,33 @@ class MainActivity : Activity() {
 
                 val dadosFirebase = snapshot.documents[0]
                 val status = dadosFirebase.getString("status")?.lowercase() ?: ""
-                val vencimentoStr = dadosFirebase.getString("vencimento") ?: ""
-
-                // Verifica se a data de vencimento já passou
+                
+                // =======================================================
+                // TRADUTOR UNIVERSAL DE DATA
+                // =======================================================
                 var isVencido = false
-                if (vencimentoStr.isNotEmpty() && vencimentoStr.lowercase() != "ilimitado") {
+                val vencObj = dadosFirebase.get("vencimento")
+
+                if (vencObj != null) {
                     try {
-                        val sdf = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault())
-                        val dataVencimento = sdf.parse(vencimentoStr)
-                        val dataAtual = Date()
-                        if (dataVencimento != null && dataAtual.after(dataVencimento)) {
-                            isVencido = true
+                        val dataVencimento: Date? = when (vencObj) {
+                            is com.google.firebase.Timestamp -> vencObj.toDate()
+                            is String -> {
+                                if (vencObj.lowercase(Locale.getDefault()) == "ilimitado") null
+                                else SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(vencObj)
+                            }
+                            else -> null
+                        }
+
+                        if (dataVencimento != null) {
+                            val dataAtual = Date()
+                            // Se a data de hoje for DEPOIS da data de vencimento, bloqueia!
+                            if (dataAtual.after(dataVencimento)) {
+                                isVencido = true
+                            }
                         }
                     } catch (e: Exception) {
-                        // Ignora erro de formatação e usa apenas o status
+                        // Ignora formatação de data corrompida e confia no status manual
                     }
                 }
 
@@ -151,16 +162,14 @@ class MainActivity : Activity() {
 
                         val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
 
-                        // =======================================================
                         // BARREIRA DO PIX: Bloqueado ou Vencido cai direto aqui!
-                        // =======================================================
                         if (status == "bloqueado" || isVencido) {
                             btnLogin.isEnabled = true
                             progressBarLogin.visibility = View.GONE
                             
                             val intent = Intent(this@MainActivity, PixActivity::class.java)
                             intent.putExtra("USERNAME", userDigitado)
-                            intent.putExtra("SERVER_URL", cleanUrl) // Envia o endereço para a TV achar o PHP
+                            intent.putExtra("SERVER_URL", cleanUrl) 
                             startActivity(intent)
                             
                             return@addOnSuccessListener
@@ -171,7 +180,6 @@ class MainActivity : Activity() {
                             return@addOnSuccessListener
                         }
                         
-                        // Conta Ativa: Valida as credenciais MASTER silenciosamente com a API
                         validarNoPainelXtream(cleanUrl, masterUser, masterPass, userDigitado, passDigitada)
                     }
                     .addOnFailureListener { showError("Erro ao buscar dados do servidor.") }
@@ -219,7 +227,6 @@ class MainActivity : Activity() {
     private fun iniciarApp(url: String, masterUser: String, masterPass: String, firebaseUser: String, firebasePass: String) {
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         
-        // Se a caixinha "Lembre-se de mim" estiver marcada, salva para o Auto-Login
         if (chkLembrar.isChecked) {
             prefs.edit()
                 .putString("FIREBASE_USER", firebaseUser)
@@ -233,7 +240,6 @@ class MainActivity : Activity() {
             prefs.edit().clear().apply()
         }
 
-        // Passa os dados MASTER para o HomeActivity carregar os canais, mas exibe o nome do cliente!
         val intent = Intent(this@MainActivity, HomeActivity::class.java)
         intent.putExtra("URL", url)
         intent.putExtra("USER", masterUser)
@@ -247,33 +253,42 @@ class MainActivity : Activity() {
     // SISTEMA DE ATUALIZAÇÃO AUTOMÁTICA OBRIGATÓRIA
     // =========================================================================
     private fun verificarAtualizacao() {
-        db.collection("configuracoes").document("app").get()
+        // Usando Source.SERVER igual fizemos nas configs para ignorar o cache!
+        db.collection("configuracoes").document("app").get(com.google.firebase.firestore.Source.SERVER)
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
-                    val versaoNuvem = doc.getLong("versao_atual") ?: 1L
-                    val linkApk = doc.getString("link_apk") ?: ""
-                    
-                    val versaoInstalada = try {
-                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                            packageManager.getPackageInfo(packageName, 0).longVersionCode
-                        } else {
-                            @Suppress("DEPRECATION")
-                            packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                    try {
+                        val objVersao = doc.get("versao_atual")
+                        val versaoNuvem: Long = when (objVersao) {
+                            is Number -> objVersao.toLong()
+                            is String -> objVersao.substringBefore(".").toLongOrNull() ?: 1L
+                            else -> 1L
                         }
-                    } catch (e: Exception) {
-                        1L
-                    }
 
-                    if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
-                        Toast.makeText(this, "Atualização Obrigatória Encontrada! Baixando...", Toast.LENGTH_LONG).show()
-                        btnLogin.isEnabled = false
-                        btnLogin.text = "BAIXANDO ATUALIZAÇÃO..."
-                        edtUser.isEnabled = false
-                        edtPass.isEnabled = false
-                        chkLembrar.isEnabled = false
+                        val linkApk = doc.getString("link_apk") ?: ""
                         
-                        baixarEInstalarAtualizacao(linkApk)
-                    }
+                        val versaoInstalada = try {
+                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                packageManager.getPackageInfo(packageName, 0).longVersionCode
+                            } else {
+                                @Suppress("DEPRECATION")
+                                packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
+                            }
+                        } catch (e: Exception) {
+                            1L
+                        }
+
+                        if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
+                            Toast.makeText(this, "Atualização Obrigatória Encontrada! Baixando...", Toast.LENGTH_LONG).show()
+                            btnLogin.isEnabled = false
+                            btnLogin.text = "BAIXANDO ATUALIZAÇÃO..."
+                            edtUser.isEnabled = false
+                            edtPass.isEnabled = false
+                            chkLembrar.isEnabled = false
+                            
+                            baixarEInstalarAtualizacao(linkApk)
+                        }
+                    } catch (e: Exception) { }
                 }
             }
     }
