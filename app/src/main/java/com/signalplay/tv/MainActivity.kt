@@ -97,9 +97,6 @@ class MainActivity : Activity() {
         progressBarLogin.visibility = View.GONE
     }
 
-    // =========================================================================
-    // MOTOR DE LOGIN - COM DIAGNÓSTICO RAIO-X NA TELA
-    // =========================================================================
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
         progressBarLogin.visibility = View.VISIBLE
@@ -119,16 +116,24 @@ class MainActivity : Activity() {
                 
                 var isVencido = false
                 val vencObj = dadosFirebase.get("vencimento")
-                var dataVencimento: Date? = null
 
                 if (vencObj != null) {
                     try {
+                        var dataVencimento: Date? = null
+
                         if (vencObj is com.google.firebase.Timestamp) {
                             dataVencimento = vencObj.toDate()
                         } else {
-                            val strData = vencObj.toString().trim().replace("-", "/")
+                            val strData = vencObj.toString().trim()
                             if (strData.lowercase() != "ilimitado" && strData.isNotEmpty()) {
-                                dataVencimento = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(strData)
+                                // O TRADUTOR INTELIGENTE: Lê tanto 2026-06-16 quanto 16/06/2026
+                                dataVencimento = try {
+                                    if (strData.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(strData)
+                                    } else {
+                                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(strData.replace("-", "/"))
+                                    }
+                                } catch (e: Exception) { null }
                             }
                         }
 
@@ -139,7 +144,7 @@ class MainActivity : Activity() {
                             }
                         }
                     } catch (e: Exception) {
-                        Toast.makeText(this, "ALERTA: Erro na formatação da data: $vencObj", Toast.LENGTH_LONG).show()
+                        isVencido = true // Segurança extra em caso de erro crítico
                     }
                 }
 
@@ -163,24 +168,7 @@ class MainActivity : Activity() {
 
                         val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
 
-                        // =======================================================
-                        // BARREIRA DO PIX COM RAIO-X
-                        // =======================================================
                         if (status == "bloqueado" || isVencido) {
-                            
-                            // Formata as datas para o Raio-X
-                            val dataLidaFormatada = dataVencimento?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "NULA ou ERRO"
-                            val hojeNoAparelho = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                            
-                            // EXIBE O MOTIVO EXATO DO BLOQUEIO NA TELA
-                            val motivo = "🔎 DIAGNÓSTICO DE BLOQUEIO:\n" +
-                                         "Status Firebase: '$status'\n" +
-                                         "Venc Firebase: $dataLidaFormatada\n" +
-                                         "Hoje na TV: $hojeNoAparelho\n" +
-                                         "Motivo => Status Bloqueado? ${status == "bloqueado"} | Vencido? $isVencido"
-                            
-                            Toast.makeText(this@MainActivity, motivo, Toast.LENGTH_LONG).show()
-                            
                             btnLogin.isEnabled = true
                             progressBarLogin.visibility = View.GONE
                             
