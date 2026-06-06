@@ -18,6 +18,9 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 class PixActivity : Activity() {
 
@@ -37,9 +40,8 @@ class PixActivity : Activity() {
         btnPixVoltar = findViewById(R.id.btnPixVoltar)
         db = FirebaseFirestore.getInstance()
 
-        // Recebe os dados de quem chamou a tela
         username = intent.getStringExtra("USERNAME") ?: ""
-        serverUrl = intent.getStringExtra("SERVER_URL") ?: "" // Link de onde estão seus PHPs
+        serverUrl = intent.getStringExtra("SERVER_URL") ?: "" 
 
         btnPixVoltar.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(150).start()
@@ -47,7 +49,6 @@ class PixActivity : Activity() {
         }
 
         btnPixVoltar.setOnClickListener {
-            // Fecha a tela e volta pra onde estava
             finish()
         }
 
@@ -66,7 +67,6 @@ class PixActivity : Activity() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient()
-                // Pede o PIX pro seu servidor PHP
                 val req = Request.Builder().url("$serverUrl/gerar_pix.php?usuario=$username").build()
                 val res = client.newCall(req).execute()
                 val jsonStr = res.body?.string() ?: ""
@@ -77,17 +77,16 @@ class PixActivity : Activity() {
                         val base64Qr = json.optString("qr_code_base64", "")
                         
                         if (base64Qr.isNotEmpty()) {
-                            // Transforma a resposta do PHP em uma imagem na tela!
                             val decodedString: ByteArray = Base64.decode(base64Qr, Base64.DEFAULT)
                             val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
                             imgQrCode.setImageBitmap(decodedByte)
                             
                             tvPixStatus.text = "Aguardando pagamento..."
-                            tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FFC107")) // Amarelo
+                            tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FFC107")) 
                         }
                     } else {
                         tvPixStatus.text = "Erro ao gerar PIX com o Banco."
-                        tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) // Vermelho
+                        tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
                     }
                 }
             } catch (e: Exception) {
@@ -100,7 +99,6 @@ class PixActivity : Activity() {
     }
 
     private fun iniciarRadarDePagamento() {
-        // Fica de olho mágico no Firebase
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
                 if (error != null || snapshot == null || snapshot.isEmpty) return@addSnapshotListener
@@ -108,14 +106,41 @@ class PixActivity : Activity() {
                 val doc = snapshot.documents[0]
                 val status = doc.getString("status")?.uppercase() ?: ""
                 
-                // Se o Webhook lá no servidor PHP mudou o status pra ATIVO, a TV reage na hora!
-                if (status == "ATIVO") {
+                // Analisa a data exatamente igual à tela de Login
+                var isVencido = false
+                val vencObj = doc.get("vencimento")
+
+                if (vencObj != null) {
+                    try {
+                        var dataVencimento: Date? = null
+
+                        if (vencObj is com.google.firebase.Timestamp) {
+                            dataVencimento = vencObj.toDate()
+                        } else {
+                            val strData = vencObj.toString().trim().replace("-", "/")
+                            if (strData.lowercase() != "ilimitado" && strData.isNotEmpty()) {
+                                dataVencimento = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(strData)
+                            }
+                        }
+
+                        if (dataVencimento != null) {
+                            val dataAtual = Date()
+                            if (dataAtual.after(dataVencimento)) {
+                                isVencido = true
+                            }
+                        }
+                    } catch (e: Exception) {
+                        isVencido = true // Se der erro na leitura da data, assume que tá vencido por segurança
+                    }
+                }
+
+                // A MÁGICA: O Radar agora só aprova se o status for ATIVO E a conta NÃO estiver vencida!
+                if (status == "ATIVO" && !isVencido) {
                     tvPixStatus.text = "PAGAMENTO APROVADO!"
-                    tvPixStatus.setTextColor(android.graphics.Color.parseColor("#2ED573")) // Verde
+                    tvPixStatus.setTextColor(android.graphics.Color.parseColor("#2ED573")) 
                     
                     Toast.makeText(this@PixActivity, "Acesso Renovado! Aproveite.", Toast.LENGTH_LONG).show()
                     
-                    // Espera 3 segundos pra pessoa ver a mensagem feliz, e fecha a tela
                     imgQrCode.postDelayed({
                         finish()
                     }, 3000)
