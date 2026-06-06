@@ -29,26 +29,28 @@ jobs:
         run: gradle assembleRelease
 
       # =========================================================================
-      # ASSINATURA RAIZ: Fazendo o trabalho sujo direto no terminal do servidor!
+      # ASSINATURA RAIZ: Com tradutor de criptografia do Java 21 para o Android!
       # =========================================================================
       - name: Assinar APK Oficial (Modo Terminal)
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # 1. Transforma o seu texto Base64 de volta no arquivo .jks
-          echo $KEYSTORE_BASE64 | base64 --decode > blindagem.jks
+          # 1. Descompacta o seu texto Base64
+          echo "$KEYSTORE_BASE64" | base64 --decode > blindagem_original.jks
           
-          # 2. Caça a ferramenta mais nova do Android escondida no servidor
+          # 2. TRADUTOR DE CHAVES: Rebaixa a chave super-criptografada do PC do Arthur para o formato clássico JKS que o Android ama!
+          keytool -importkeystore -srckeystore blindagem_original.jks -srcstorepass "$KEYSTORE_PASSWORD" -destkeystore blindagem.jks -deststoretype JKS -deststorepass "$KEYSTORE_PASSWORD" -keypass "$KEY_PASSWORD"
+          
+          # 3. Pega a ferramenta Android mais atualizada
           BUILD_TOOLS=$(ls -d /usr/local/lib/android/sdk/build-tools/* | tail -1)
           
-          # 3. Otimiza a memória do aplicativo (Zipalign obrigatório do Android)
+          # 4. Alinha a memória do APK (Otimização obrigatória do Android)
           $BUILD_TOOLS/zipalign -v -p 4 app/build/outputs/apk/release/app-release-unsigned.apk app-release-aligned.apk
           
-          # 4. Bate o carimbo final com a chave do Arthur!
-          $BUILD_TOOLS/apksigner sign --ks blindagem.jks --ks-key-alias $KEY_ALIAS --ks-pass pass:$KEYSTORE_PASSWORD --key-pass pass:$KEY_PASSWORD --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
+          # 5. Assina com a chave traduzida (forçando o alias 'key0' para evitar espaços indesejados)
+          $BUILD_TOOLS/apksigner sign --ks blindagem.jks --ks-key-alias "key0" --ks-pass "pass:$KEYSTORE_PASSWORD" --key-pass "pass:$KEY_PASSWORD" --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
 
       - name: Disponibilizar APK Assinado para Download
         uses: actions/upload-artifact@v4
