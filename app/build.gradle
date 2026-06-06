@@ -20,15 +20,17 @@ android {
         multiDexEnabled true
     }
 
-        buildTypes {
+    buildTypes {
         release {
             // ATIVA O TRITURADOR DE CÓDIGO INÚTIL
             minifyEnabled true 
             shrinkResources true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            
+            // DESATIVA A COMPRESSÃO DE PNGs PARA EVITAR O ERRO DA LOGO
+            crunchPngs false
         }
     }
-
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
