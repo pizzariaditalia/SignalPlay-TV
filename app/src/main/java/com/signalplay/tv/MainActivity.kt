@@ -97,7 +97,7 @@ class MainActivity : Activity() {
     }
 
     // =========================================================================
-    // MOTOR DE LOGIN COM BARREIRA INTELIGENTE DE PIX E DATA BLINDADA
+    // MOTOR DE LOGIN - COM DEDO-DURO PARA DATAS
     // =========================================================================
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
@@ -114,32 +114,36 @@ class MainActivity : Activity() {
                 val status = dadosFirebase.getString("status")?.lowercase() ?: ""
                 
                 // =======================================================
-                // TRADUTOR UNIVERSAL DE DATA
+                // TRADUTOR E INVESTIGADOR DE DATA
                 // =======================================================
                 var isVencido = false
                 val vencObj = dadosFirebase.get("vencimento")
 
                 if (vencObj != null) {
                     try {
-                        val dataVencimento: Date? = when (vencObj) {
-                            is com.google.firebase.Timestamp -> vencObj.toDate()
-                            is String -> {
-                                if (vencObj.lowercase(Locale.getDefault()) == "ilimitado") null
-                                else SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(vencObj)
+                        var dataVencimento: Date? = null
+
+                        if (vencObj is com.google.firebase.Timestamp) {
+                            dataVencimento = vencObj.toDate()
+                        } else {
+                            val strData = vencObj.toString().trim().replace("-", "/")
+                            if (strData.lowercase() != "ilimitado" && strData.isNotEmpty()) {
+                                dataVencimento = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(strData)
                             }
-                            else -> null
                         }
 
                         if (dataVencimento != null) {
                             val dataAtual = Date()
-                            // Se a data de hoje for DEPOIS da data de vencimento, bloqueia!
                             if (dataAtual.after(dataVencimento)) {
                                 isVencido = true
                             }
                         }
                     } catch (e: Exception) {
-                        // Ignora formatação de data corrompida e confia no status manual
+                        // O "Dedo-Duro": Mostra na tela o que veio do banco que quebrou o código
+                        Toast.makeText(this, "ALERTA: Erro na formatação da data: $vencObj", Toast.LENGTH_LONG).show()
                     }
+                } else {
+                    Toast.makeText(this, "ALERTA: O campo 'vencimento' não foi encontrado ou está vazio!", Toast.LENGTH_LONG).show()
                 }
 
                 val servidorId = dadosFirebase.getString("servidor_id")
@@ -162,8 +166,10 @@ class MainActivity : Activity() {
 
                         val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
 
-                        // BARREIRA DO PIX: Bloqueado ou Vencido cai direto aqui!
+                        // BARREIRA DO PIX
                         if (status == "bloqueado" || isVencido) {
+                            Toast.makeText(this, "Conta Vencida ou Bloqueada! Redirecionando...", Toast.LENGTH_SHORT).show()
+                            
                             btnLogin.isEnabled = true
                             progressBarLogin.visibility = View.GONE
                             
@@ -249,11 +255,7 @@ class MainActivity : Activity() {
         finish()
     }
 
-    // =========================================================================
-    // SISTEMA DE ATUALIZAÇÃO AUTOMÁTICA OBRIGATÓRIA
-    // =========================================================================
     private fun verificarAtualizacao() {
-        // Usando Source.SERVER igual fizemos nas configs para ignorar o cache!
         db.collection("configuracoes").document("app").get(com.google.firebase.firestore.Source.SERVER)
             .addOnSuccessListener { doc ->
                 if (doc.exists()) {
