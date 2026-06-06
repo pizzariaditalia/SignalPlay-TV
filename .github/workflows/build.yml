@@ -29,21 +29,29 @@ jobs:
         run: gradle assembleRelease
 
       # =========================================================================
-      # PASSO DE ASSINATURA: Agora forçando a versão 34.0.0 das ferramentas
+      # ASSINATURA RAIZ: Fazendo o trabalho sujo direto no terminal do servidor!
       # =========================================================================
-      - name: Assinar APK Oficial
-        uses: r0adkll/sign-android-release@v1
-        id: sign_app
-        with:
-          releaseDirectory: app/build/outputs/apk/release
-          signingKeyBase64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
-          alias: ${{ secrets.ANDROID_KEY_ALIAS }}
-          keyStorePassword: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          keyPassword: ${{ secrets.ANDROID_KEY_PASSWORD }}
-          buildToolsVersion: 34.0.0
+      - name: Assinar APK Oficial (Modo Terminal)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          # 1. Transforma o seu texto Base64 de volta no arquivo .jks
+          echo $KEYSTORE_BASE64 | base64 --decode > blindagem.jks
+          
+          # 2. Caça a ferramenta mais nova do Android escondida no servidor
+          BUILD_TOOLS=$(ls -d /usr/local/lib/android/sdk/build-tools/* | tail -1)
+          
+          # 3. Otimiza a memória do aplicativo (Zipalign obrigatório do Android)
+          $BUILD_TOOLS/zipalign -v -p 4 app/build/outputs/apk/release/app-release-unsigned.apk app-release-aligned.apk
+          
+          # 4. Bate o carimbo final com a chave do Arthur!
+          $BUILD_TOOLS/apksigner sign --ks blindagem.jks --ks-key-alias $KEY_ALIAS --ks-pass pass:$KEYSTORE_PASSWORD --key-pass pass:$KEY_PASSWORD --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
 
       - name: Disponibilizar APK Assinado para Download
         uses: actions/upload-artifact@v4
         with:
           name: SignalPlay-TV-Oficial-Assinado
-          path: ${{steps.sign_app.outputs.signedReleaseFile}}
+          path: SignalPlay-TV-Oficial.apk
