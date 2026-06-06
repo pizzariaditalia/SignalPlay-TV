@@ -1,7 +1,6 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.content.Intent
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
@@ -18,6 +17,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -66,26 +66,47 @@ class PixActivity : Activity() {
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // TRADUTOR DE ESPAÇOS: Transforma "Bruno Resende" em "Bruno%20Resende" automaticamente
+                val usuarioCodificado = URLEncoder.encode(username, "UTF-8")
+                
                 val client = OkHttpClient()
-                val req = Request.Builder().url("$serverUrl/gerar_pix.php?usuario=$username").build()
+                val req = Request.Builder().url("$serverUrl/gerar_pix.php?usuario=$usuarioCodificado").build()
                 val res = client.newCall(req).execute()
-                val jsonStr = res.body?.string() ?: ""
+                val jsonStrBruto = res.body?.string() ?: ""
+
+                // EXTRATOR BLINDADO DE JSON (Ignora qualquer texto/HTML que o servidor jogar antes ou depois)
+                val startIndex = jsonStrBruto.indexOf("{")
+                val endIndex = jsonStrBruto.lastIndexOf("}")
 
                 withContext(Dispatchers.Main) {
-                    if (jsonStr.contains("\"sucesso\":true") || jsonStr.contains("\"sucesso\": true")) {
-                        val json = JSONObject(jsonStr)
-                        val base64Qr = json.optString("qr_code_base64", "")
+                    if (startIndex != -1 && endIndex != -1 && startIndex <= endIndex) {
+                        val jsonLimpo = jsonStrBruto.substring(startIndex, endIndex + 1)
                         
-                        if (base64Qr.isNotEmpty()) {
-                            val decodedString: ByteArray = Base64.decode(base64Qr, Base64.DEFAULT)
-                            val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
-                            imgQrCode.setImageBitmap(decodedByte)
+                        try {
+                            val json = JSONObject(jsonLimpo)
+                            val sucesso = json.optBoolean("sucesso", false)
+                            val base64Qr = json.optString("qr_code_base64", "")
                             
-                            tvPixStatus.text = "Aguardando pagamento..."
-                            tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FFC107")) 
+                            if (sucesso && base64Qr.isNotEmpty()) {
+                                // Limpa quebras de linha que possam vir no Base64
+                                val cleanBase64 = base64Qr.replace("\n", "").replace("\r", "")
+                                
+                                val decodedString: ByteArray = Base64.decode(cleanBase64, Base64.DEFAULT)
+                                val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
+                                imgQrCode.setImageBitmap(decodedByte)
+                                
+                                tvPixStatus.text = "Aguardando pagamento..."
+                                tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FFC107")) 
+                            } else {
+                                tvPixStatus.text = "O servidor não conseguiu gerar a cobrança."
+                                tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
+                            }
+                        } catch (e: Exception) {
+                            tvPixStatus.text = "Erro na leitura dos dados do Banco."
+                            tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
                         }
                     } else {
-                        tvPixStatus.text = "Erro ao gerar PIX com o Banco."
+                        tvPixStatus.text = "Resposta inválida do servidor."
                         tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
                     }
                 }
@@ -106,7 +127,6 @@ class PixActivity : Activity() {
                 val doc = snapshot.documents[0]
                 val status = doc.getString("status")?.uppercase() ?: ""
                 
-                // Analisa a data exatamente igual à tela de Login
                 var isVencido = false
                 val vencObj = doc.get("vencimento")
 
@@ -130,11 +150,10 @@ class PixActivity : Activity() {
                             }
                         }
                     } catch (e: Exception) {
-                        isVencido = true // Se der erro na leitura da data, assume que tá vencido por segurança
+                        isVencido = true 
                     }
                 }
 
-                // A MÁGICA: O Radar agora só aprova se o status for ATIVO E a conta NÃO estiver vencida!
                 if (status == "ATIVO" && !isVencido) {
                     tvPixStatus.text = "PAGAMENTO APROVADO!"
                     tvPixStatus.setTextColor(android.graphics.Color.parseColor("#2ED573")) 
