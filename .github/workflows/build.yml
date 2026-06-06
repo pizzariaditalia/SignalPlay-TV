@@ -29,15 +29,14 @@ jobs:
         run: gradle assembleRelease
 
       # =========================================================================
-      # ASSINATURA BLINDADA: Tratamento de espaços no Base64 e Senhas Especiais!
+      # ASSINATURA BLINDADA: Injetando a senha de forma direta e unificada!
       # =========================================================================
       - name: Assinar APK Oficial (Modo Seguro)
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
-          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: |
-          # 1. Limpa QUALQUER espaço ou quebra de linha acidental do seu Base64
+          # 1. Reconstrói o arquivo da chave limpo
           echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 --decode > blindagem.jks
           
           # 2. Pega a ferramenta Android mais atualizada
@@ -46,8 +45,8 @@ jobs:
           # 3. Alinha a memória do APK
           $BUILD_TOOLS/zipalign -v -p 4 app/build/outputs/apk/release/app-release-unsigned.apk app-release-aligned.apk
           
-          # 4. Assina o APK injetando a senha direto da memória (ignora caracteres especiais)
-          $BUILD_TOOLS/apksigner sign --ks blindagem.jks --ks-key-alias "key0" --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
+          # 4. Assina o APK (Como o Arthur usou a mesma senha para tudo, omitimos a segunda senha para evitar conflitos!)
+          $BUILD_TOOLS/apksigner sign --ks blindagem.jks --ks-key-alias "key0" --ks-pass "pass:${KEYSTORE_PASSWORD}" --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
 
       - name: Disponibilizar APK Assinado para Download
         uses: actions/upload-artifact@v4
