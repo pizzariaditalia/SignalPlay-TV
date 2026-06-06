@@ -1,6 +1,7 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
@@ -17,7 +18,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
-import java.net.URLEncoder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -61,20 +61,23 @@ class PixActivity : Activity() {
         }
     }
 
+    // =========================================================================
+    // GERADOR DE PIX - COM DIAGNÓSTICO RAIO-X INCLUÍDO
+    // =========================================================================
     private fun gerarCobrancaPix() {
         tvPixStatus.text = "Gerando QR Code..."
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // TRADUTOR DE ESPAÇOS: Transforma "Bruno Resende" em "Bruno%20Resende" automaticamente
-                val usuarioCodificado = URLEncoder.encode(username, "UTF-8")
-                
+                // Força a troca do espaço por Underline (_) como você sugeriu que o PHP aceita!
+                val usuarioFormatado = username.replace(" ", "_")
+                val urlCompleta = "$serverUrl/gerar_pix.php?usuario=$usuarioFormatado"
+
                 val client = OkHttpClient()
-                val req = Request.Builder().url("$serverUrl/gerar_pix.php?usuario=$usuarioCodificado").build()
+                val req = Request.Builder().url(urlCompleta).build()
                 val res = client.newCall(req).execute()
                 val jsonStrBruto = res.body?.string() ?: ""
 
-                // EXTRATOR BLINDADO DE JSON (Ignora qualquer texto/HTML que o servidor jogar antes ou depois)
                 val startIndex = jsonStrBruto.indexOf("{")
                 val endIndex = jsonStrBruto.lastIndexOf("}")
 
@@ -88,9 +91,7 @@ class PixActivity : Activity() {
                             val base64Qr = json.optString("qr_code_base64", "")
                             
                             if (sucesso && base64Qr.isNotEmpty()) {
-                                // Limpa quebras de linha que possam vir no Base64
                                 val cleanBase64 = base64Qr.replace("\n", "").replace("\r", "")
-                                
                                 val decodedString: ByteArray = Base64.decode(cleanBase64, Base64.DEFAULT)
                                 val decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.size)
                                 imgQrCode.setImageBitmap(decodedByte)
@@ -100,23 +101,35 @@ class PixActivity : Activity() {
                             } else {
                                 tvPixStatus.text = "O servidor não conseguiu gerar a cobrança."
                                 tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
+                                exibirDebug("Falha na Resposta", "O PHP até retornou um formato válido, mas o sucesso foi FALSE ou veio sem o Base64.\n\nJSON Lido:\n$jsonLimpo")
                             }
                         } catch (e: Exception) {
                             tvPixStatus.text = "Erro na leitura dos dados do Banco."
                             tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
+                            exibirDebug("Erro no Formato JSON", "O aplicativo não conseguiu traduzir os dados que o seu site enviou.\n\nTexto recebido:\n$jsonLimpo")
                         }
                     } else {
                         tvPixStatus.text = "Resposta inválida do servidor."
                         tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757")) 
+                        exibirDebug("Página Vazia ou Erro 404", "O aplicativo chamou o seu PHP, mas não encontrou o bloco { } do JSON na página.\n\nURL Tentada:\n$urlCompleta\n\nTexto Bruto do Servidor:\n$jsonStrBruto")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     tvPixStatus.text = "Erro de conexão com o servidor."
                     tvPixStatus.setTextColor(android.graphics.Color.parseColor("#FF4757"))
+                    exibirDebug("Falha de Rede", "A TV não conseguiu alcançar o site. Pode ser o https ou falta de internet.\n\nErro interno: ${e.message}")
                 }
             }
         }
+    }
+
+    private fun exibirDebug(titulo: String, mensagem: String) {
+        AlertDialog.Builder(this@PixActivity)
+            .setTitle("🐛 DIAGNÓSTICO DO PIX: $titulo")
+            .setMessage(mensagem)
+            .setPositiveButton("FECHAR", null)
+            .show()
     }
 
     private fun iniciarRadarDePagamento() {
@@ -137,9 +150,15 @@ class PixActivity : Activity() {
                         if (vencObj is com.google.firebase.Timestamp) {
                             dataVencimento = vencObj.toDate()
                         } else {
-                            val strData = vencObj.toString().trim().replace("-", "/")
+                            val strData = vencObj.toString().trim()
                             if (strData.lowercase() != "ilimitado" && strData.isNotEmpty()) {
-                                dataVencimento = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(strData)
+                                dataVencimento = try {
+                                    if (strData.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
+                                        SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(strData)
+                                    } else {
+                                        SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).parse(strData.replace("-", "/"))
+                                    }
+                                } catch (e: Exception) { null }
                             }
                         }
 
