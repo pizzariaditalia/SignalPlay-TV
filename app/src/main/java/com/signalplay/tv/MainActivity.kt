@@ -98,13 +98,12 @@ class MainActivity : Activity() {
     }
 
     // =========================================================================
-    // MOTOR DE LOGIN - AGORA FORÇANDO ATUALIZAÇÃO DIRETO DO SERVIDOR
+    // MOTOR DE LOGIN - COM DIAGNÓSTICO RAIO-X NA TELA
     // =========================================================================
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
         progressBarLogin.visibility = View.VISIBLE
 
-        // A MÁGICA AQUI: get(Source.SERVER) destrói o cache antigo e lê o Firebase em tempo real!
         db.collection("usuarios")
             .whereEqualTo("usuario", userDigitado)
             .whereEqualTo("senha", passDigitada)
@@ -120,11 +119,10 @@ class MainActivity : Activity() {
                 
                 var isVencido = false
                 val vencObj = dadosFirebase.get("vencimento")
+                var dataVencimento: Date? = null
 
                 if (vencObj != null) {
                     try {
-                        var dataVencimento: Date? = null
-
                         if (vencObj is com.google.firebase.Timestamp) {
                             dataVencimento = vencObj.toDate()
                         } else {
@@ -165,9 +163,23 @@ class MainActivity : Activity() {
 
                         val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
 
-                        // BARREIRA DO PIX
+                        // =======================================================
+                        // BARREIRA DO PIX COM RAIO-X
+                        // =======================================================
                         if (status == "bloqueado" || isVencido) {
-                            Toast.makeText(this, "Conta Vencida ou Bloqueada! Redirecionando...", Toast.LENGTH_SHORT).show()
+                            
+                            // Formata as datas para o Raio-X
+                            val dataLidaFormatada = dataVencimento?.let { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(it) } ?: "NULA ou ERRO"
+                            val hojeNoAparelho = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                            
+                            // EXIBE O MOTIVO EXATO DO BLOQUEIO NA TELA
+                            val motivo = "🔎 DIAGNÓSTICO DE BLOQUEIO:\n" +
+                                         "Status Firebase: '$status'\n" +
+                                         "Venc Firebase: $dataLidaFormatada\n" +
+                                         "Hoje na TV: $hojeNoAparelho\n" +
+                                         "Motivo => Status Bloqueado? ${status == "bloqueado"} | Vencido? $isVencido"
+                            
+                            Toast.makeText(this@MainActivity, motivo, Toast.LENGTH_LONG).show()
                             
                             btnLogin.isEnabled = true
                             progressBarLogin.visibility = View.GONE
