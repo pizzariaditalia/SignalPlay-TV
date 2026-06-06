@@ -29,15 +29,15 @@ jobs:
         run: gradle assembleRelease
 
       # =========================================================================
-      # ASSINATURA BLINDADA: Passando as duas chaves na linguagem nativa do Android
+      # ASSINATURA FINAL: Formato PKCS#12 exige apenas UMA senha!
       # =========================================================================
-      - name: Assinar APK Oficial (Modo Seguro)
+      - name: Assinar APK Oficial (Modo PKCS12)
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
           KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
         run: |
-          # 1. Limpa o texto Base64 e recria o arquivo da chave
-          echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 --decode > blindagem.jks
+          # 1. Limpa o Base64 e salva com a extensão correta (p12)
+          echo "$KEYSTORE_BASE64" | tr -d '\n\r ' | base64 --decode > blindagem.p12
           
           # 2. Pega a ferramenta Android mais atualizada
           BUILD_TOOLS=$(ls -d /usr/local/lib/android/sdk/build-tools/* | tail -1)
@@ -45,8 +45,8 @@ jobs:
           # 3. Alinha a memória do APK
           $BUILD_TOOLS/zipalign -v -p 4 app/build/outputs/apk/release/app-release-unsigned.apk app-release-aligned.apk
           
-          # 4. A MÁGICA: Passa a senha nativamente (env:) para o Cofre (--ks-pass) E para a Chave (--key-pass)
-          $BUILD_TOOLS/apksigner sign --ks blindagem.jks --ks-key-alias "key0" --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEYSTORE_PASSWORD --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
+          # 4. Assina informando que é PKCS12 e usando APENAS a senha do cofre!
+          $BUILD_TOOLS/apksigner sign --ks blindagem.p12 --ks-type pkcs12 --ks-key-alias "key0" --ks-pass env:KEYSTORE_PASSWORD --out SignalPlay-TV-Oficial.apk app-release-aligned.apk
 
       - name: Disponibilizar APK Assinado para Download
         uses: actions/upload-artifact@v4
