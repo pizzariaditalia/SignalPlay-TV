@@ -31,6 +31,7 @@ import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 class MainActivity : Activity() {
@@ -44,6 +45,9 @@ class MainActivity : Activity() {
     
     private lateinit var db: FirebaseFirestore
     private var downloadId: Long = -1L
+    
+    // Novo: Guarda o ID da sessão atual
+    private var currentSessionId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -112,6 +116,7 @@ class MainActivity : Activity() {
                 }
 
                 val dadosFirebase = snapshot.documents[0]
+                val docId = dadosFirebase.id
                 val status = dadosFirebase.getString("status")?.lowercase() ?: ""
                 
                 var isVencido = false
@@ -126,7 +131,6 @@ class MainActivity : Activity() {
                         } else {
                             val strData = vencObj.toString().trim()
                             if (strData.lowercase() != "ilimitado" && strData.isNotEmpty()) {
-                                // O TRADUTOR INTELIGENTE: Lê tanto 2026-06-16 quanto 16/06/2026
                                 dataVencimento = try {
                                     if (strData.matches(Regex("\\d{4}-\\d{2}-\\d{2}"))) {
                                         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).parse(strData)
@@ -138,15 +142,56 @@ class MainActivity : Activity() {
                         }
 
                         if (dataVencimento != null) {
-                            val dataAtual = Date()
-                            if (dataAtual.after(dataVencimento)) {
-                                isVencido = true
-                            }
+                            if (Date().after(dataVencimento)) isVencido = true
                         }
-                    } catch (e: Exception) {
-                        isVencido = true // Segurança extra em caso de erro crítico
+                    } catch (e: Exception) { isVencido = true }
+                }
+
+                // =========================================================================
+                // 🔐 FISCAL DE TELAS SIMULTÂNEAS E BLOQUEIOS
+                // =========================================================================
+                val maxTelas = dadosFirebase.getLong("telas")?.toInt() ?: 1
+                val sessoes = dadosFirebase.get("sessoes") as? Map<String, Long> ?: emptyMap()
+                val agora = System.currentTimeMillis()
+                
+                var contagemAtivas = 0
+                val sessoesValidas = mutableMapOf<String, Long>()
+
+                for ((idSessao, ultimoPing) in sessoes) {
+                    // Limpa sessões fantasmas que não respondem há mais de 2 minutos
+                    if (agora - ultimoPing < 120000) {
+                        sessoesValidas[idSessao] = ultimoPing
+                        contagemAtivas++
                     }
                 }
+
+                if (contagemAtivas >= maxTelas) {
+                    showError("Limite de $maxTelas tela(s) excedido! Feche o app em outro aparelho.")
+                    return@addOnSuccessListener
+                }
+
+                // Cria uma nova sessão para esta TV
+                currentSessionId = "tv_${UUID.randomUUID().toString().substring(0, 8)}"
+                sessoesValidas[currentSessionId] = agora
+                
+                // Mapeamento das pastas bloqueadas pelo ADM
+                val bloqueios = dadosFirebase.get("bloqueios") as? Map<String, List<String>>
+                val bCanais = bloqueios?.get("canais")?.joinToString(",") ?: ""
+                val bFilmes = bloqueios?.get("filmes")?.joinToString(",") ?: ""
+                val bSeries = bloqueios?.get("series")?.joinToString(",") ?: ""
+
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                prefs.edit()
+                    .putString("SESSION_ID", currentSessionId)
+                    .putString("USER_DOC_ID", docId)
+                    .putString("BLOQUEIOS_CANAIS", bCanais)
+                    .putString("BLOQUEIOS_FILMES", bFilmes)
+                    .putString("BLOQUEIOS_SERIES", bSeries)
+                    .apply()
+
+                db.collection("usuarios").document(docId).update("sessoes", sessoesValidas)
+
+                // =========================================================================
 
                 val servidorId = dadosFirebase.getString("servidor_id")
                 if (servidorId.isNullOrEmpty()) {
@@ -168,15 +213,13 @@ class MainActivity : Activity() {
 
                         val cleanUrl = if (urlServidor.endsWith("/")) urlServidor.dropLast(1) else urlServidor
 
-                        if (status == "bloqueado" || isVencido) {
+                        if (status == "bloqueado" || status == "pendente_pagamento" || isVencido) {
                             btnLogin.isEnabled = true
                             progressBarLogin.visibility = View.GONE
-                            
                             val intent = Intent(this@MainActivity, PixActivity::class.java)
                             intent.putExtra("USERNAME", userDigitado)
                             intent.putExtra("SERVER_URL", cleanUrl) 
                             startActivity(intent)
-                            
                             return@addOnSuccessListener
                         }
 
@@ -242,7 +285,14 @@ class MainActivity : Activity() {
                 .putString("USERNAME", firebaseUser)
                 .apply()
         } else {
-            prefs.edit().clear().apply()
+            // Se ele não quer lembrar, apagamos as infos vitais do shared prefs
+            prefs.edit().remove("FIREBASE_USER").remove("FIREBASE_PASS").apply()
+            prefs.edit()
+                .putString("URL", url)
+                .putString("USER", masterUser)
+                .putString("PASS", masterPass)
+                .putString("USERNAME", firebaseUser)
+                .apply()
         }
 
         val intent = Intent(this@MainActivity, HomeActivity::class.java)
@@ -275,9 +325,7 @@ class MainActivity : Activity() {
                                 @Suppress("DEPRECATION")
                                 packageManager.getPackageInfo(packageName, 0).versionCode.toLong()
                             }
-                        } catch (e: Exception) {
-                            1L
-                        }
+                        } catch (e: Exception) { 1L }
 
                         if (versaoNuvem > versaoInstalada && linkApk.isNotEmpty()) {
                             Toast.makeText(this, "Atualização Obrigatória Encontrada! Baixando...", Toast.LENGTH_LONG).show()
