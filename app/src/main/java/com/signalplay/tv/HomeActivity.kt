@@ -34,6 +34,8 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -74,9 +76,10 @@ class HomeActivity : Activity() {
 
     private val viewPoolCompartilhado = RecyclerView.RecycledViewPool()
 
-    // O ESCUDO ANTI-VAZAMENTO: Tudo que rodar em background será atrelado a este Job
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
+    
+    private var heartbeatJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -180,6 +183,29 @@ class HomeActivity : Activity() {
             }
 
         iniciarRelogioERede()
+        iniciarBatimentoCardiaco()
+    }
+    
+    // =========================================================================
+    // 📡 BATIMENTO CARDÍACO (Fiscal de Telas da TV)
+    // =========================================================================
+    private fun iniciarBatimentoCardiaco() {
+        heartbeatJob?.cancel()
+        heartbeatJob = activityScope.launch {
+            val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+            val sessionId = prefs.getString("SESSION_ID", "") ?: ""
+            val docId = prefs.getString("USER_DOC_ID", "") ?: ""
+            
+            if (sessionId.isNotEmpty() && docId.isNotEmpty()) {
+                while (isActive) {
+                    try {
+                        db.collection("usuarios").document(docId)
+                            .update("sessoes.$sessionId", System.currentTimeMillis())
+                    } catch (e: Exception) {}
+                    delay(45000) // Avisa a nuvem a cada 45 segundos
+                }
+            }
+        }
     }
 
     private fun iniciarRelogioERede() {
@@ -225,12 +251,10 @@ class HomeActivity : Activity() {
     override fun onDestroy() {
         super.onDestroy()
         isClockRunning = false
-        // MÁGICA AQUI: Quando a tela fecha, o Job cancela todos os downloads fantasmas!
         activityJob.cancel()
     }
 
     private fun carregarCatalogoDaAPI() {
-        // Agora usamos o activityScope em vez do CoroutineScope genérico
         activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -241,6 +265,11 @@ class HomeActivity : Activity() {
                 val filterH265 = prefs.getBoolean("FILTER_H265", false)
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
+
+                // RESGATANDO AS PASTAS BLOQUEADAS DO FIREBASE
+                val bloqueadosCanais = prefs.getString("BLOQUEIOS_CANAIS", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
+                val bloqueadosFilmes = prefs.getString("BLOQUEIOS_FILMES", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
+                val bloqueadosSeries = prefs.getString("BLOQUEIOS_SERIES", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
 
                 val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
                 val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
@@ -270,28 +299,52 @@ class HomeActivity : Activity() {
                 val canaisParaSalvar = mutableListOf<CanalEntity>()
                 val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
 
+                // Ocultando Categorias (Cão de Guarda atuando)
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        if (!isParentalActive || !palavrasProibidas.any { catName.lowercase().contains(it) }) {
+                        val catNameLower = catName.lowercase()
+                        
+                        val isBlockedByParental = isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }
+                        val isBlockedByFirebase = bloqueadosCanais.contains(catNameLower)
+                        
+                        if (!isBlockedByParental && !isBlockedByFirebase) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live", i))
                         }
                     }
                 }
+                
                 if (jsonVodCat.startsWith("[")) {
                     val arr = JSONArray(jsonVodCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "vod", i))
+                        val catName = obj.optString("category_name", "")
+                        val catNameLower = catName.lowercase()
+                        
+                        val isBlockedByParental = isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }
+                        val isBlockedByFirebase = bloqueadosFilmes.contains(catNameLower)
+                        
+                        if (!isBlockedByParental && !isBlockedByFirebase) {
+                            categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "vod", i))
+                        }
                     }
                 }
+                
                 if (jsonSeriesCat.startsWith("[")) {
                     val arr = JSONArray(jsonSeriesCat)
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
-                        categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), obj.optString("category_name", ""), "series", i))
+                        val catName = obj.optString("category_name", "")
+                        val catNameLower = catName.lowercase()
+                        
+                        val isBlockedByParental = isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }
+                        val isBlockedByFirebase = bloqueadosSeries.contains(catNameLower)
+                        
+                        if (!isBlockedByParental && !isBlockedByFirebase) {
+                            categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "series", i))
+                        }
                     }
                 }
 
@@ -368,9 +421,11 @@ class HomeActivity : Activity() {
                 
                 val canaisFiltrados = mutableListOf<CanalItem>()
                 for (canal in canaisParaSalvar) {
-                    val catNameLower = mapLiveCats[canal.categoryId]?.lowercase() ?: ""
+                    val catNameLower = mapLiveCats[canal.categoryId]?.lowercase()
+                    if (catNameLower == null) continue // Ignora canais sem categoria existente (Filtro Firebase atuando)
+                    
                     val nLower = canal.nome.lowercase()
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
                     
                     val nUp = canal.nome.uppercase()
                     val isExplicitSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
@@ -402,9 +457,11 @@ class HomeActivity : Activity() {
                 
                 for (media in filmesSeriesParaSalvar) {
                     val mapCorreto = if (media.tipo == "filme") mapVodCats else mapSeriesCats
-                    val catNameLower = mapCorreto[media.categoryId]?.lowercase() ?: ""
+                    val catNameLower = mapCorreto[media.categoryId]?.lowercase()
+                    if (catNameLower == null) continue // Se for nulo, a categoria foi apagada no filtro Firebase. Pula.
+                    
                     val nLower = media.nome.lowercase()
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
                     
                     if (media.tipo == "filme") fFiltrados.add(FilmeItem(media.id, media.nome, media.urlImagem, media.streamUrl, media.tipo, media.categoryId, 0))
                     else sFiltradas.add(FilmeItem(media.id, media.nome, media.urlImagem, media.streamUrl, media.tipo, media.categoryId, 0))
