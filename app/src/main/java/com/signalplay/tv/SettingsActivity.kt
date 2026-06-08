@@ -86,6 +86,9 @@ class SettingsActivity : Activity() {
         val btnParental = findViewById<LinearLayout>(R.id.btnParental)
         val switchParental = findViewById<Switch>(R.id.switchParental)
         
+        val btnLowEndMode = findViewById<LinearLayout>(R.id.btnLowEndMode)
+        val switchLowEnd = findViewById<Switch>(R.id.switchLowEnd)
+        
         val btnFilterSD = findViewById<LinearLayout>(R.id.btnFilterSD)
         val switchSD = findViewById<Switch>(R.id.switchSD)
         val btnFilterHD = findViewById<LinearLayout>(R.id.btnFilterHD)
@@ -110,14 +113,12 @@ class SettingsActivity : Activity() {
 
         tvNomeUsuario.text = "Olá, $username!"
 
-        // BUSCA UNIVERSAL DA DATA NO FIREBASE
         db.collection("usuarios").whereEqualTo("usuario", username).get()
             .addOnSuccessListener { snapshot ->
                 if (!snapshot.isEmpty) {
                     val doc = snapshot.documents[0]
                     val status = doc.getString("status")?.uppercase() ?: "DESCONHECIDO"
                     
-                    // Extrai a data, seja em texto ou como campo Timestamp
                     val vencObj = doc.get("vencimento")
                     val vencimentoTexto = when (vencObj) {
                         is String -> vencObj
@@ -142,6 +143,8 @@ class SettingsActivity : Activity() {
         tvStatusEpg.text = "Última atualização: ${prefs.getString("LAST_EPG_UPDATE", "Nunca")}"
 
         isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+        val isLowEnd = prefs.getBoolean("LOW_END_MODE", false)
+        
         filterSD = prefs.getBoolean("FILTER_SD", false)
         filterHD = prefs.getBoolean("FILTER_HD", false)
         filterFHD = prefs.getBoolean("FILTER_FHD", false)
@@ -149,6 +152,7 @@ class SettingsActivity : Activity() {
         filter4K = prefs.getBoolean("FILTER_4K", false)
 
         switchParental.isChecked = isParentalActive
+        switchLowEnd.isChecked = isLowEnd
         switchSD.isChecked = filterSD
         switchHD.isChecked = filterHD
         switchFHD.isChecked = filterFHD
@@ -159,7 +163,6 @@ class SettingsActivity : Activity() {
         var isLauncherEnabled = packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_ENABLED
         switchLauncher.isChecked = isLauncherEnabled
 
-        // VARREDURA RECURSIVA DE CORES
         val focusListener = View.OnFocusChangeListener { v, hasFocus ->
             if (hasFocus) {
                 v.animate().scaleX(1.03f).scaleY(1.03f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start()
@@ -176,6 +179,7 @@ class SettingsActivity : Activity() {
         btnAtualizarEPG.onFocusChangeListener = focusListener
         btnHideApps.onFocusChangeListener = focusListener
         btnParental.onFocusChangeListener = focusListener
+        btnLowEndMode.onFocusChangeListener = focusListener
         btnFilterSD.onFocusChangeListener = focusListener
         btnFilterHD.onFocusChangeListener = focusListener
         btnFilterFHD.onFocusChangeListener = focusListener
@@ -199,7 +203,6 @@ class SettingsActivity : Activity() {
                 .addOnSuccessListener { doc ->
                     if (doc.exists()) {
                         try {
-                            // O TRADUTOR BLINDADO DE VERSÃO
                             val objVersao = doc.get("versao_atual")
                             val versaoNuvem: Long = when (objVersao) {
                                 is Number -> objVersao.toLong()
@@ -246,6 +249,14 @@ class SettingsActivity : Activity() {
         }
 
         btnHideApps.setOnClickListener { abrirDialogoOcultarApps() }
+        
+        btnLowEndMode.setOnClickListener { 
+            val novoStatus = !switchLowEnd.isChecked
+            prefs.edit().putBoolean("LOW_END_MODE", novoStatus).apply()
+            switchLowEnd.isChecked = novoStatus
+            Toast.makeText(this, "Modo Desempenho " + if(novoStatus) "ATIVADO" else "DESATIVADO", Toast.LENGTH_SHORT).show()
+        }
+
         btnFilterSD.setOnClickListener { filterSD = !switchSD.isChecked; prefs.edit().putBoolean("FILTER_SD", filterSD).apply(); switchSD.isChecked = filterSD }
         btnFilterHD.setOnClickListener { filterHD = !switchHD.isChecked; prefs.edit().putBoolean("FILTER_HD", filterHD).apply(); switchHD.isChecked = filterHD }
         btnFilterFHD.setOnClickListener { filterFHD = !switchFHD.isChecked; prefs.edit().putBoolean("FILTER_FHD", filterFHD).apply(); switchFHD.isChecked = filterFHD }
