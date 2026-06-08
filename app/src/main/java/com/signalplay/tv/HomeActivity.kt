@@ -11,6 +11,7 @@ import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.text.TextUtils
+import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -65,6 +66,9 @@ class HomeActivity : Activity() {
     private var userGlobal = ""
     private var passGlobal = ""
     private var username = ""
+    
+    // Variável que guarda se a TV Box é fraca
+    private var isLowEndMode = false
 
     private var listFilmesGlobais = listOf<FilmeItem>()
     private var listSeriesGlobais = listOf<FilmeItem>()
@@ -85,6 +89,9 @@ class HomeActivity : Activity() {
         actionBar?.hide()
         
         setContentView(R.layout.activity_home)
+        
+        val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        isLowEndMode = prefs.getBoolean("LOW_END_MODE", false)
 
         db = FirebaseFirestore.getInstance()
         btnAssistirDestaque = findViewById(R.id.btnAssistirDestaque)
@@ -95,8 +102,13 @@ class HomeActivity : Activity() {
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
         btnAssistirDestaque.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
-            else v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
+            if (hasFocus) {
+                if(!isLowEndMode) v.animate().scaleX(1.05f).scaleY(1.05f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
+                else v.setBackgroundColor(Color.parseColor("#FFC107"))
+            } else {
+                if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
+                else v.setBackgroundResource(R.drawable.bg_btn_white)
+            }
         }
 
         val menuPesquisar = findViewById<TextView>(R.id.menuPesquisar)
@@ -111,10 +123,12 @@ class HomeActivity : Activity() {
             val txt = v as TextView
             if (hasFocus) {
                 txt.setTextColor(Color.BLACK)
-                v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
+                if(!isLowEndMode) v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
+                else v.setBackgroundColor(Color.WHITE)
             } else {
                 txt.setTextColor(Color.WHITE)
-                v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
+                if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(suaveOvershoot).start()
+                else v.setBackgroundResource(R.drawable.bg_menu_focus)
             }
         }
         
@@ -480,7 +494,6 @@ class HomeActivity : Activity() {
                     val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
                     val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
 
-                    // COLOQUEI PARA O CLIQUE ABRIR OS DETALHES DIRETAMENTE
                     recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { abrirDetalhes(it) }
                     recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { abrirDetalhes(it) }
                     recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
@@ -639,7 +652,9 @@ class HomeActivity : Activity() {
         
         Glide.with(this)
             .load(filme.urlImagem)
-            .apply(RequestOptions().format(DecodeFormat.PREFER_RGB_565))
+            .apply(RequestOptions()
+                .format(DecodeFormat.PREFER_RGB_565)
+            )
             .into(object : CustomViewTarget<ImageView, Drawable>(heroImage) {
             override fun onLoadFailed(errorDrawable: Drawable?) {}
             override fun onResourceCleared(placeholder: Drawable?) {}
@@ -695,9 +710,16 @@ class HomeActivity : Activity() {
             val item = list[position]
             holder.txt.text = item.nome
             holder.img.setImageDrawable(item.icone)
+            
             holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) { v.bringToFront(); v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() } 
-                else { v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start() }
+                if (hasFocus) { 
+                    v.bringToFront()
+                    if(!isLowEndMode) v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() 
+                    else v.setBackgroundColor(Color.parseColor("#FFC107"))
+                } else { 
+                    if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
+                    else v.background = ContextCompat.getDrawable(v.context, R.drawable.bg_glass)
+                }
             }
             holder.itemView.setOnClickListener { onClick(item) }
         }
@@ -714,17 +736,21 @@ class HomeActivity : Activity() {
     private fun aplicarConfiguracoesDeTV(recycler: RecyclerView) {
         recycler.setHasFixedSize(true)
         recycler.setItemViewCacheSize(12)
-        // A "PISCINA" FOI REMOVIDA DAQUI
-        
         recycler.addItemDecoration(EspacamentoItemDecoration(16))
         
-        recycler.setOnKeyListener { v, keyCode, event ->
-            if (event.action == android.view.KeyEvent.ACTION_DOWN && keyCode == android.view.KeyEvent.KEYCODE_DPAD_RIGHT) {
-                val focus = v.findFocus()
-                if (focus != null) {
-                    val pos = recycler.getChildAdapterPosition(focus)
-                    if (pos == recycler.adapter!!.itemCount - 1) {
-                        return@setOnKeyListener true
+        // A MÁGICA DO SEQUESTRO DE FOCO (Impede que o cursor fuja da prateleira)
+        recycler.setOnKeyListener { _, keyCode, event ->
+            if (event.action == KeyEvent.ACTION_DOWN) {
+                val focusedChild = recycler.focusedChild
+                if (focusedChild != null) {
+                    val pos = recycler.getChildAdapterPosition(focusedChild)
+                    val totalItems = recycler.adapter?.itemCount ?: 0
+                    
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && pos == totalItems - 1) {
+                        return@setOnKeyListener true // Chegou no fim da direita? Engole a tecla e para.
+                    }
+                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && pos == 0) {
+                        return@setOnKeyListener true // Voltou tudo pra esquerda? Engole a tecla e para.
                     }
                 }
             }
