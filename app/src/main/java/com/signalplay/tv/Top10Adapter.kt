@@ -1,5 +1,7 @@
 package com.signalplay.tv
 
+import android.content.Context
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -8,6 +10,7 @@ import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
@@ -22,6 +25,7 @@ class Top10Adapter(
     class Top10ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
         val topNumber: TextView = view.findViewById(R.id.topNumber)
         val cardImage: ImageView = view.findViewById(R.id.cardImage)
+        val cardContainer: View = view.findViewById(R.id.cardContainer)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Top10ViewHolder {
@@ -33,16 +37,32 @@ class Top10Adapter(
         val item = listaItens[position]
         holder.topNumber.text = (position + 1).toString()
         
-        val options = RequestOptions().transform(CenterCrop(), RoundedCorners(8))
-        Glide.with(holder.itemView.context).load(item.urlImagem).apply(options).into(holder.cardImage)
+        val context = holder.itemView.context
+        val prefs = context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+        val isLowEndMode = prefs.getBoolean("LOW_END_MODE", false)
+        
+        // MÁGICA: Corta a resolução e o peso da imagem pela metade na memória RAM
+        val options = RequestOptions()
+            .transform(CenterCrop(), RoundedCorners(8))
+            .format(DecodeFormat.PREFER_RGB_565)
+            .override(250, 350) 
+            
+        Glide.with(context).load(item.urlImagem).apply(options).into(holder.cardImage)
 
-        // MÁGICA: Animação elástica 
         holder.itemView.setOnFocusChangeListener { view, hasFocus ->
             if (hasFocus) {
                 view.bringToFront()
-                view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(250).setInterpolator(interpolator).start()
+                if(!isLowEndMode) {
+                    view.animate().scaleX(1.12f).scaleY(1.12f).translationZ(20f).setDuration(250).setInterpolator(interpolator).start()
+                } else {
+                    holder.cardContainer.setBackgroundColor(Color.parseColor("#FFC107"))
+                }
             } else {
-                view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
+                if(!isLowEndMode) {
+                    view.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
+                } else {
+                    holder.cardContainer.setBackgroundResource(R.drawable.bg_card_focus)
+                }
             }
         }
 
