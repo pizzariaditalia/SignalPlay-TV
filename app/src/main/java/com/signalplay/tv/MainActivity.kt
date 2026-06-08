@@ -15,6 +15,7 @@ import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
 import android.widget.ProgressBar
+import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.FileProvider
@@ -42,6 +43,8 @@ class MainActivity : Activity() {
     private lateinit var chkLembrar: CheckBox
     private lateinit var progressBarLogin: ProgressBar
     private lateinit var tvVersion: TextView
+    private lateinit var loginOverlay: RelativeLayout
+    private lateinit var tvLoadingStatus: TextView
     
     private lateinit var db: FirebaseFirestore
     private var downloadId: Long = -1L
@@ -59,6 +62,8 @@ class MainActivity : Activity() {
         chkLembrar = findViewById(R.id.chkLembrar)
         progressBarLogin = findViewById(R.id.progressBarLogin)
         tvVersion = findViewById(R.id.tvVersion)
+        loginOverlay = findViewById(R.id.loginOverlay)
+        tvLoadingStatus = findViewById(R.id.tvLoadingStatus)
         
         val versionName = try {
             packageManager.getPackageInfo(packageName, 0).versionName
@@ -96,12 +101,14 @@ class MainActivity : Activity() {
     private fun showError(msg: String) {
         Toast.makeText(this, msg, Toast.LENGTH_LONG).show()
         btnLogin.isEnabled = true
-        progressBarLogin.visibility = View.GONE
+        loginOverlay.visibility = View.GONE
     }
 
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
-        progressBarLogin.visibility = View.VISIBLE
+        // Exibe o Banner de Intro imediatamente ao clicar
+        loginOverlay.visibility = View.VISIBLE
+        tvLoadingStatus.text = "Validando acesso..."
 
         db.collection("usuarios")
             .whereEqualTo("usuario", userDigitado)
@@ -145,7 +152,6 @@ class MainActivity : Activity() {
                     } catch (e: Exception) { isVencido = true }
                 }
 
-                // CONTROLE DE TELAS SIMULTÂNEAS
                 val maxTelas = dadosFirebase.getLong("telas")?.toInt() ?: 1
                 val sessoes = dadosFirebase.get("sessoes") as? Map<String, Long> ?: emptyMap()
                 val agora = System.currentTimeMillis()
@@ -168,13 +174,11 @@ class MainActivity : Activity() {
                 currentSessionId = "tv_${UUID.randomUUID().toString().substring(0, 8)}"
                 sessoesValidas[currentSessionId] = agora
                 
-                // Mapeamento das pastas bloqueadas pelo ADM / Automação
                 val bloqueios = dadosFirebase.get("bloqueios") as? Map<String, List<String>>
                 val bCanais = bloqueios?.get("canais")?.joinToString(",") ?: ""
                 val bFilmes = bloqueios?.get("filmes")?.joinToString(",") ?: ""
                 val bSeries = bloqueios?.get("series")?.joinToString(",") ?: ""
 
-                // CAPTURA DAS RESTRIÇÕES DE QUALIDADE DE IMAGEM DA CONTA
                 val ocultar4kForcado = dadosFirebase.getBoolean("ocultar_4k") ?: false
                 val ocultarFhdForcado = dadosFirebase.getBoolean("ocultar_fhd") ?: false
 
@@ -213,7 +217,7 @@ class MainActivity : Activity() {
 
                         if (status == "bloqueado" || status == "pendente_pagamento" || isVencido) {
                             btnLogin.isEnabled = true
-                            progressBarLogin.visibility = View.GONE
+                            loginOverlay.visibility = View.GONE
                             val intent = Intent(this@MainActivity, PixActivity::class.java)
                             intent.putExtra("USERNAME", userDigitado)
                             intent.putExtra("SERVER_URL", cleanUrl) 
@@ -234,6 +238,7 @@ class MainActivity : Activity() {
     }
 
     private fun validarNoPainelXtream(url: String, masterUser: String, masterPass: String, firebaseUser: String, firebasePass: String) {
+        tvLoadingStatus.text = "Conectando ao provedor..."
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val client = OkHttpClient.Builder()
@@ -254,6 +259,7 @@ class MainActivity : Activity() {
                         val userInfo = json.optJSONObject("user_info")
 
                         if (userInfo != null && userInfo.optInt("auth", 0) == 1) {
+                            tvLoadingStatus.text = "Abrindo aplicativo..."
                             iniciarApp(url, masterUser, masterPass, firebaseUser, firebasePass)
                         } else {
                             showError("O Servidor IPTV recusou a conexão mestre.")
