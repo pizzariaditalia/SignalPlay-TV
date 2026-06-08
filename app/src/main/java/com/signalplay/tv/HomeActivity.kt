@@ -78,7 +78,6 @@ class HomeActivity : Activity() {
 
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
-    
     private var heartbeatJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -186,9 +185,6 @@ class HomeActivity : Activity() {
         iniciarBatimentoCardiaco()
     }
     
-    // =========================================================================
-    // 📡 BATIMENTO CARDÍACO (Fiscal de Telas da TV)
-    // =========================================================================
     private fun iniciarBatimentoCardiaco() {
         heartbeatJob?.cancel()
         heartbeatJob = activityScope.launch {
@@ -202,7 +198,7 @@ class HomeActivity : Activity() {
                         db.collection("usuarios").document(docId)
                             .update("sessoes.$sessionId", System.currentTimeMillis())
                     } catch (e: Exception) {}
-                    delay(45000) // Avisa a nuvem a cada 45 segundos
+                    delay(45000)
                 }
             }
         }
@@ -266,7 +262,10 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
-                // RESGATANDO AS PASTAS BLOQUEADAS DO FIREBASE
+                // RESGATANDO AS TRAVAS EXCLUSIVAS DE QUALIDADE DO PAINEL AUTOMÁTICO
+                val forcedHide4K = prefs.getBoolean("SERVER_FORCED_HIDE_4K", false)
+                val forcedHideFHD = prefs.getBoolean("SERVER_FORCED_HIDE_FHD", false)
+
                 val bloqueadosCanais = prefs.getString("BLOQUEIOS_CANAIS", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
                 val bloqueadosFilmes = prefs.getString("BLOQUEIOS_FILMES", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
                 val bloqueadosSeries = prefs.getString("BLOQUEIOS_SERIES", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
@@ -299,7 +298,6 @@ class HomeActivity : Activity() {
                 val canaisParaSalvar = mutableListOf<CanalEntity>()
                 val filmesSeriesParaSalvar = mutableListOf<FilmeEntity>()
 
-                // Ocultando Categorias (Cão de Guarda atuando)
                 if (jsonLiveCat.startsWith("[")) {
                     val arr = JSONArray(jsonLiveCat)
                     for (i in 0 until arr.length()) {
@@ -422,7 +420,7 @@ class HomeActivity : Activity() {
                 val canaisFiltrados = mutableListOf<CanalItem>()
                 for (canal in canaisParaSalvar) {
                     val catNameLower = mapLiveCats[canal.categoryId]?.lowercase()
-                    if (catNameLower == null) continue // Ignora canais sem categoria existente (Filtro Firebase atuando)
+                    if (catNameLower == null) continue 
                     
                     val nLower = canal.nome.lowercase()
                     if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
@@ -435,6 +433,12 @@ class HomeActivity : Activity() {
                     val hasH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
                     
                     var shouldHide = false
+
+                    // 🛡️ MOTOR DE CRUZA DE QUALIDADE SERVER-SIDE FORÇADO
+                    if (forcedHide4K && has4K) shouldHide = true
+                    if (forcedHideFHD && hasFHD) shouldHide = true
+
+                    // Filtros locais normais selecionáveis
                     if (filterSD) {
                         if (isExplicitSD) shouldHide = true
                         else if (!hasHD && !hasFHD && !has4K && !hasH265) {
@@ -458,7 +462,7 @@ class HomeActivity : Activity() {
                 for (media in filmesSeriesParaSalvar) {
                     val mapCorreto = if (media.tipo == "filme") mapVodCats else mapSeriesCats
                     val catNameLower = mapCorreto[media.categoryId]?.lowercase()
-                    if (catNameLower == null) continue // Se for nulo, a categoria foi apagada no filtro Firebase. Pula.
+                    if (catNameLower == null) continue 
                     
                     val nLower = media.nome.lowercase()
                     if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
