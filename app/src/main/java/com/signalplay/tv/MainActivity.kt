@@ -45,8 +45,6 @@ class MainActivity : Activity() {
     
     private lateinit var db: FirebaseFirestore
     private var downloadId: Long = -1L
-    
-    // Novo: Guarda o ID da sessão atual
     private var currentSessionId: String = ""
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -147,9 +145,7 @@ class MainActivity : Activity() {
                     } catch (e: Exception) { isVencido = true }
                 }
 
-                // =========================================================================
-                // 🔐 FISCAL DE TELAS SIMULTÂNEAS E BLOQUEIOS
-                // =========================================================================
+                // CONTROLE DE TELAS SIMULTÂNEAS
                 val maxTelas = dadosFirebase.getLong("telas")?.toInt() ?: 1
                 val sessoes = dadosFirebase.get("sessoes") as? Map<String, Long> ?: emptyMap()
                 val agora = System.currentTimeMillis()
@@ -158,7 +154,6 @@ class MainActivity : Activity() {
                 val sessoesValidas = mutableMapOf<String, Long>()
 
                 for ((idSessao, ultimoPing) in sessoes) {
-                    // Limpa sessões fantasmas que não respondem há mais de 2 minutos
                     if (agora - ultimoPing < 120000) {
                         sessoesValidas[idSessao] = ultimoPing
                         contagemAtivas++
@@ -170,15 +165,18 @@ class MainActivity : Activity() {
                     return@addOnSuccessListener
                 }
 
-                // Cria uma nova sessão para esta TV
                 currentSessionId = "tv_${UUID.randomUUID().toString().substring(0, 8)}"
                 sessoesValidas[currentSessionId] = agora
                 
-                // Mapeamento das pastas bloqueadas pelo ADM
+                // Mapeamento das pastas bloqueadas pelo ADM / Automação
                 val bloqueios = dadosFirebase.get("bloqueios") as? Map<String, List<String>>
                 val bCanais = bloqueios?.get("canais")?.joinToString(",") ?: ""
                 val bFilmes = bloqueios?.get("filmes")?.joinToString(",") ?: ""
                 val bSeries = bloqueios?.get("series")?.joinToString(",") ?: ""
+
+                // CAPTURA DAS RESTRIÇÕES DE QUALIDADE DE IMAGEM DA CONTA
+                val ocultar4kForcado = dadosFirebase.getBoolean("ocultar_4k") ?: false
+                val ocultarFhdForcado = dadosFirebase.getBoolean("ocultar_fhd") ?: false
 
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 prefs.edit()
@@ -187,11 +185,11 @@ class MainActivity : Activity() {
                     .putString("BLOQUEIOS_CANAIS", bCanais)
                     .putString("BLOQUEIOS_FILMES", bFilmes)
                     .putString("BLOQUEIOS_SERIES", bSeries)
+                    .putBoolean("SERVER_FORCED_HIDE_4K", ocultar4kForcado)
+                    .putBoolean("SERVER_FORCED_HIDE_FHD", ocultarFhdForcado)
                     .apply()
 
                 db.collection("usuarios").document(docId).update("sessoes", sessoesValidas)
-
-                // =========================================================================
 
                 val servidorId = dadosFirebase.getString("servidor_id")
                 if (servidorId.isNullOrEmpty()) {
@@ -285,7 +283,6 @@ class MainActivity : Activity() {
                 .putString("USERNAME", firebaseUser)
                 .apply()
         } else {
-            // Se ele não quer lembrar, apagamos as infos vitais do shared prefs
             prefs.edit().remove("FIREBASE_USER").remove("FIREBASE_PASS").apply()
             prefs.edit()
                 .putString("URL", url)
