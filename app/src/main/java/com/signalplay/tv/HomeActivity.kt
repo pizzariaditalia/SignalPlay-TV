@@ -74,8 +74,6 @@ class HomeActivity : Activity() {
     private var listaIdsFavoritosGlobais = mutableListOf<String>()
     private var historicoMapGlobal: Map<String, Any> = emptyMap()
 
-    private val viewPoolCompartilhado = RecyclerView.RecycledViewPool()
-
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
     private var heartbeatJob: Job? = null
@@ -262,7 +260,6 @@ class HomeActivity : Activity() {
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
                 val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
-                // RESGATANDO AS TRAVAS EXCLUSIVAS DE QUALIDADE DO PAINEL AUTOMÁTICO
                 val forcedHide4K = prefs.getBoolean("SERVER_FORCED_HIDE_4K", false)
                 val forcedHideFHD = prefs.getBoolean("SERVER_FORCED_HIDE_FHD", false)
 
@@ -434,11 +431,9 @@ class HomeActivity : Activity() {
                     
                     var shouldHide = false
 
-                    // 🛡️ MOTOR DE CRUZA DE QUALIDADE SERVER-SIDE FORÇADO
                     if (forcedHide4K && has4K) shouldHide = true
                     if (forcedHideFHD && hasFHD) shouldHide = true
 
-                    // Filtros locais normais selecionáveis
                     if (filterSD) {
                         if (isExplicitSD) shouldHide = true
                         else if (!hasHD && !hasFHD && !has4K && !hasH265) {
@@ -485,10 +480,11 @@ class HomeActivity : Activity() {
                     val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
                     val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
 
-                    recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { atualizarBanner(it, mapVodCats) }
-                    recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { atualizarBanner(it, mapSeriesCats) }
-                    recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { atualizarBanner(it, mapVodCats) }
-                    recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { atualizarBanner(it, mapSeriesCats) }
+                    // COLOQUEI PARA O CLIQUE ABRIR OS DETALHES DIRETAMENTE
+                    recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { abrirDetalhes(it) }
+                    recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { abrirDetalhes(it) }
+                    recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
+                    recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
 
                     if (listFilmesGlobais.isNotEmpty()) {
                         val mCat = mapVodCats.toMutableMap()
@@ -718,7 +714,7 @@ class HomeActivity : Activity() {
     private fun aplicarConfiguracoesDeTV(recycler: RecyclerView) {
         recycler.setHasFixedSize(true)
         recycler.setItemViewCacheSize(12)
-        recycler.setRecycledViewPool(viewPoolCompartilhado)
+        // A "PISCINA" FOI REMOVIDA DAQUI
         
         recycler.addItemDecoration(EspacamentoItemDecoration(16))
         
