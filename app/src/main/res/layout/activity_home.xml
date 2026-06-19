@@ -114,6 +114,84 @@
                 android:clipChildren="false"
                 android:clipToPadding="false">
 
+                <LinearLayout
+                    android:id="@+id/cardRetomar"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="32dp"
+                    android:layout_marginEnd="48dp"
+                    android:background="@drawable/bg_glass"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:visibility="gone"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/imgRetomar"
+                        android:layout_width="100dp"
+                        android:layout_height="150dp"
+                        android:scaleType="centerCrop"
+                        android:background="#222222" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical"
+                        android:layout_marginStart="24dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="⏱ RETOMAR CONTEÚDO"
+                            android:textColor="#FF4757"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/tvRetomarTitulo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Nome do Filme"
+                            android:textColor="#FFFFFF"
+                            android:textSize="22sp"
+                            android:textStyle="bold"
+                            android:layout_marginTop="4dp"
+                            android:maxLines="1"
+                            android:ellipsize="end" />
+
+                        <TextView
+                            android:id="@+id/tvRetomarInfo"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Faltam X min"
+                            android:textColor="#AAAAAA"
+                            android:textSize="14sp"
+                            android:layout_marginTop="4dp" />
+
+                        <ProgressBar
+                            android:id="@+id/progressRetomar"
+                            style="?android:attr/progressBarStyleHorizontal"
+                            android:layout_width="match_parent"
+                            android:layout_height="6dp"
+                            android:layout_marginTop="16dp"
+                            android:layout_marginEnd="48dp"
+                            android:max="100"
+                            android:progressTint="#FF4757"
+                            android:progressBackgroundTint="#44FFFFFF" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:layout_marginEnd="24dp"
+                        android:src="@android:drawable/ic_media_play"
+                        android:background="@drawable/bg_btn_yellow"
+                        android:padding="16dp" />
+                </LinearLayout>
+
                 <TextView android:id="@+id/tvAppsTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Seus Aplicativos" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerApps" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
 
