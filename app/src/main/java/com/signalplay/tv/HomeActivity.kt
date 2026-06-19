@@ -67,7 +67,6 @@ class HomeActivity : Activity() {
     private var passGlobal = ""
     private var username = ""
     
-    // Variável que guarda se a TV Box é fraca
     private var isLowEndMode = false
 
     private var listFilmesGlobais = listOf<FilmeItem>()
@@ -272,7 +271,6 @@ class HomeActivity : Activity() {
                 val filterFHD = prefs.getBoolean("FILTER_FHD", false)
                 val filterH265 = prefs.getBoolean("FILTER_H265", false)
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
                 val forcedHide4K = prefs.getBoolean("SERVER_FORCED_HIDE_4K", false)
                 val forcedHideFHD = prefs.getBoolean("SERVER_FORCED_HIDE_FHD", false)
@@ -314,12 +312,9 @@ class HomeActivity : Activity() {
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        val catNameLower = catName.lowercase()
                         
-                        val isBlockedByParental = isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }
-                        val isBlockedByFirebase = bloqueadosCanais.contains(catNameLower)
-                        
-                        if (!isBlockedByParental && !isBlockedByFirebase) {
+                        // CORREÇÃO PONTO 1: Filtro Limpo
+                        if (!ContentFilterUtils.isContentBlocked("", catName, isParentalActive, false, false, false, false, false, false, false, bloqueadosCanais)) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live", i))
                         }
                     }
@@ -330,12 +325,9 @@ class HomeActivity : Activity() {
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        val catNameLower = catName.lowercase()
                         
-                        val isBlockedByParental = isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }
-                        val isBlockedByFirebase = bloqueadosFilmes.contains(catNameLower)
-                        
-                        if (!isBlockedByParental && !isBlockedByFirebase) {
+                        // CORREÇÃO PONTO 1: Filtro Limpo
+                        if (!ContentFilterUtils.isContentBlocked("", catName, isParentalActive, false, false, false, false, false, false, false, bloqueadosFilmes)) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "vod", i))
                         }
                     }
@@ -346,12 +338,9 @@ class HomeActivity : Activity() {
                     for (i in 0 until arr.length()) {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
-                        val catNameLower = catName.lowercase()
                         
-                        val isBlockedByParental = isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }
-                        val isBlockedByFirebase = bloqueadosSeries.contains(catNameLower)
-                        
-                        if (!isBlockedByParental && !isBlockedByFirebase) {
+                        // CORREÇÃO PONTO 1: Filtro Limpo
+                        if (!ContentFilterUtils.isContentBlocked("", catName, isParentalActive, false, false, false, false, false, false, false, bloqueadosSeries)) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "series", i))
                         }
                     }
@@ -430,35 +419,16 @@ class HomeActivity : Activity() {
                 
                 val canaisFiltrados = mutableListOf<CanalItem>()
                 for (canal in canaisParaSalvar) {
-                    val catNameLower = mapLiveCats[canal.categoryId]?.lowercase()
-                    if (catNameLower == null) continue 
+                    val nomeCategoria = mapLiveCats[canal.categoryId] ?: continue 
                     
-                    val nLower = canal.nome.lowercase()
-                    if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
-                    
-                    val nUp = canal.nome.uppercase()
-                    val isExplicitSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                    val hasFHD = nUp.contains(" FHD ") || nUp.endsWith(" FHD") || nUp.startsWith("FHD ") || nUp.contains("(FHD)") || nUp.contains("[FHD]") || nUp.contains("|FHD|") || nUp.contains("- FHD") || nUp == "FHD"
-                    val hasHD = (nUp.contains(" HD ") || nUp.endsWith(" HD") || nUp.startsWith("HD ") || nUp.contains("(HD)") || nUp.contains("[HD]") || nUp.contains("|HD|") || nUp.contains("- HD") || nUp == "HD") && !hasFHD
-                    val has4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                    val hasH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                    
-                    var shouldHide = false
-
-                    if (forcedHide4K && has4K) shouldHide = true
-                    if (forcedHideFHD && hasFHD) shouldHide = true
-
-                    if (filterSD) {
-                        if (isExplicitSD) shouldHide = true
-                        else if (!hasHD && !hasFHD && !has4K && !hasH265) {
-                            val isSafeCat = catNameLower.contains("24h") || catNameLower.contains("24 horas") || catNameLower.contains("infantil") || catNameLower.contains("kids") || catNameLower.contains("desenho") || catNameLower.contains("religi") || catNameLower.contains("notícia") || catNameLower.contains("news") || catNameLower.contains("document") || catNameLower.contains("educa") || catNameLower.contains("música") || catNameLower.contains("rádio")
-                            if (!isSafeCat) shouldHide = true
-                        }
-                    }
-                    if (filterHD && hasHD) shouldHide = true
-                    if (filterFHD && hasFHD) shouldHide = true
-                    if (filterH265 && hasH265) shouldHide = true
-                    if (filter4K && has4K) shouldHide = true
+                    // CORREÇÃO PONTO 1: Filtro Limpo
+                    val shouldHide = ContentFilterUtils.isContentBlocked(
+                        nomeItem = canal.nome,
+                        nomeCategoria = nomeCategoria,
+                        isParentalActive = isParentalActive,
+                        filterSD = filterSD, filterHD = filterHD, filterFHD = filterFHD, filterH265 = filterH265, filter4K = filter4K,
+                        forcedHide4K = forcedHide4K, forcedHideFHD = forcedHideFHD
+                    )
                     
                     if (shouldHide) continue
                     canaisFiltrados.add(CanalItem(canal.id, canal.nome, canal.urlImagem, canal.categoryId, canal.streamUrl))
@@ -470,11 +440,17 @@ class HomeActivity : Activity() {
                 
                 for (media in filmesSeriesParaSalvar) {
                     val mapCorreto = if (media.tipo == "filme") mapVodCats else mapSeriesCats
-                    val catNameLower = mapCorreto[media.categoryId]?.lowercase()
-                    if (catNameLower == null) continue 
+                    val nomeCategoria = mapCorreto[media.categoryId] ?: continue
                     
-                    val nLower = media.nome.lowercase()
-                    if (isParentalActive && palavrasProibidas.any { nLower.contains(it) }) continue
+                    // CORREÇÃO PONTO 1: Filtro Limpo
+                    val shouldHide = ContentFilterUtils.isContentBlocked(
+                        nomeItem = media.nome,
+                        nomeCategoria = nomeCategoria,
+                        isParentalActive = isParentalActive,
+                        filterSD = false, filterHD = false, filterFHD = false, filterH265 = false, filter4K = false
+                    )
+                    
+                    if (shouldHide) continue
                     
                     if (media.tipo == "filme") fFiltrados.add(FilmeItem(media.id, media.nome, media.urlImagem, media.streamUrl, media.tipo, media.categoryId, 0))
                     else sFiltradas.add(FilmeItem(media.id, media.nome, media.urlImagem, media.streamUrl, media.tipo, media.categoryId, 0))
@@ -738,7 +714,6 @@ class HomeActivity : Activity() {
         recycler.setItemViewCacheSize(12)
         recycler.addItemDecoration(EspacamentoItemDecoration(16))
         
-        // A MÁGICA DO SEQUESTRO DE FOCO (Impede que o cursor fuja da prateleira)
         recycler.setOnKeyListener { _, keyCode, event ->
             if (event.action == KeyEvent.ACTION_DOWN) {
                 val focusedChild = recycler.focusedChild
@@ -747,10 +722,10 @@ class HomeActivity : Activity() {
                     val totalItems = recycler.adapter?.itemCount ?: 0
                     
                     if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && pos == totalItems - 1) {
-                        return@setOnKeyListener true // Chegou no fim da direita? Engole a tecla e para.
+                        return@setOnKeyListener true 
                     }
                     if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && pos == 0) {
-                        return@setOnKeyListener true // Voltou tudo pra esquerda? Engole a tecla e para.
+                        return@setOnKeyListener true 
                     }
                 }
             }
