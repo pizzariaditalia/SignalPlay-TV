@@ -19,6 +19,7 @@ import android.view.animation.OvershootInterpolator
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
+import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -27,6 +28,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DecodeFormat
+import com.bumptech.glide.load.resource.bitmap.CenterCrop
+import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.CustomViewTarget
 import com.bumptech.glide.request.transition.Transition
@@ -49,6 +52,9 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
+
+// NOVIDADE: Estrutura local para organizar o histórico
+data class FilmeContinuar(val filme: FilmeItem, val progressoPerc: Int, val timestamp: Long, val restanteMinutos: Int)
 
 class HomeActivity : Activity() {
 
@@ -473,7 +479,6 @@ class HomeActivity : Activity() {
                     recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
 
-                    // INÍCIO DO CARROSSEL
                     if (listFilmesGlobais.isNotEmpty()) {
                         val mCat = mapVodCats.toMutableMap()
                         mCat.putAll(mapSeriesCats)
@@ -491,31 +496,81 @@ class HomeActivity : Activity() {
     }
 
     private fun renderizarContinuarAssistindo() {
-        val listContinuar = mutableListOf<FilmeItem>()
+        val listContinuar = mutableListOf<FilmeContinuar>()
+        
         val processarItem = { item: FilmeItem ->
             val progData = historicoMapGlobal[item.id] as? Map<String, Any>
             if (progData != null) {
                 val pos = progData["posicao"]?.toString()?.toLongOrNull() ?: 0L
                 val dur = progData["duracao"]?.toString()?.toLongOrNull() ?: 0L
+                val ts = progData["timestamp"]?.toString()?.toLongOrNull() ?: 0L
+                
                 if (dur > 0L && pos > 5000L) {
                     var perc = ((pos.toDouble() / dur.toDouble()) * 100).toInt()
                     if (perc <= 0) perc = 1 
                     if (perc > 99) perc = 99
-                    listContinuar.add(FilmeItem(item.id, item.nome, item.urlImagem, item.streamUrl, item.tipo, item.categoryId, perc))
+                    
+                    val faltamMs = dur - pos
+                    val faltamMin = (faltamMs / 60000).toInt()
+                    
+                    listContinuar.add(FilmeContinuar(item, perc, ts, faltamMin))
                 }
             }
         }
+        
         listFilmesGlobais.forEach(processarItem)
         listSeriesGlobais.forEach(processarItem)
+        
+        val cardRetomar = findViewById<LinearLayout>(R.id.cardRetomar)
+        val tvRetomarTitulo = findViewById<TextView>(R.id.tvRetomarTitulo)
+        val tvRetomarInfo = findViewById<TextView>(R.id.tvRetomarInfo)
+        val imgRetomar = findViewById<ImageView>(R.id.imgRetomar)
+        val progressRetomar = findViewById<ProgressBar>(R.id.progressRetomar)
         
         val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
         val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
         
         if (listContinuar.isNotEmpty()) {
-            tvContinuarTitulo.visibility = View.VISIBLE
-            recyclerContinuar.visibility = View.VISIBLE
-            recyclerContinuar.adapter = CardAdapter(listContinuar.sortedByDescending { it.progresso }) { abrirDetalhes(it) }
+            // NOVIDADE: Ordena por data (timestamp), pega o mais recente e remove da lista geral!
+            val listOrdenada = listContinuar.sortedByDescending { it.timestamp }.toMutableList()
+            val destaque = listOrdenada.removeAt(0)
+            
+            cardRetomar.visibility = View.VISIBLE
+            tvRetomarTitulo.text = destaque.filme.nome
+            tvRetomarInfo.text = "Faltam ${destaque.restanteMinutos} min"
+            progressRetomar.progress = destaque.progressoPerc
+
+            val options = RequestOptions().transform(CenterCrop(), RoundedCorners(16))
+            Glide.with(this).load(destaque.filme.urlImagem).apply(options).into(imgRetomar)
+
+            cardRetomar.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
+                    v.setBackgroundResource(R.drawable.bg_menu_focus)
+                } else {
+                    if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
+                    v.setBackgroundResource(R.drawable.bg_glass)
+                }
+            }
+            
+            cardRetomar.setOnClickListener { abrirDetalhes(destaque.filme) }
+            
+            // O que sobrar da lista (antigos), vai para a prateleira normal
+            if (listOrdenada.isNotEmpty()) {
+                tvContinuarTitulo.visibility = View.VISIBLE
+                recyclerContinuar.visibility = View.VISIBLE
+                
+                val filmesRestantes = listOrdenada.map { 
+                    FilmeItem(it.filme.id, it.filme.nome, it.filme.urlImagem, it.filme.streamUrl, it.filme.tipo, it.filme.categoryId, it.progressoPerc) 
+                }
+                recyclerContinuar.adapter = CardAdapter(filmesRestantes) { abrirDetalhes(it) }
+            } else {
+                tvContinuarTitulo.visibility = View.GONE
+                recyclerContinuar.visibility = View.GONE
+            }
+            
         } else {
+            cardRetomar.visibility = View.GONE
             tvContinuarTitulo.visibility = View.GONE
             recyclerContinuar.visibility = View.GONE
         }
