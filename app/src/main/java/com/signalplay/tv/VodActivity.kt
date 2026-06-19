@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -32,6 +33,10 @@ class VodActivity : Activity() {
     private var user = ""
     private var pass = ""
     private var username = ""
+
+    // CORREÇÃO: Job para proteger a memória da Activity
+    private val activityJob = Job()
+    private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -51,11 +56,10 @@ class VodActivity : Activity() {
         pass = intent.getStringExtra("PASS") ?: ""
         username = intent.getStringExtra("USERNAME") ?: ""
 
-        CoroutineScope(Dispatchers.IO).launch {
+        activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
                 var historicoMap: Map<String, Map<String, Long>>? = null
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
@@ -79,13 +83,12 @@ class VodActivity : Activity() {
                 }
 
                 val dao = AppDatabase.getDatabase(this@VodActivity).catalogoDao()
-                
                 val categoriasEntity = dao.getCategoriasPorTipo("vod")
                 val catMap = mutableMapOf<String, String>()
                 
                 for (cat in categoriasEntity) {
-                    val catNameLower = cat.nome.lowercase()
-                    if (isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }) continue
+                    // CORREÇÃO: Utilizando a nova classe utilitária (Filmes não filtram resolução pelo nome, só parental)
+                    if (ContentFilterUtils.isContentBlocked("", cat.nome, isParentalActive, false, false, false, false, false)) continue
                     
                     todasCategorias.add(CategoriaItem(cat.id, cat.nome))
                     catMap[cat.id] = cat.nome
@@ -93,10 +96,10 @@ class VodActivity : Activity() {
 
                 val filmesEntity = dao.getTodosFilmes()
                 for (filme in filmesEntity) {
-                    val catNameLower = catMap[filme.categoryId]?.lowercase() ?: ""
-                    val nLower = filme.nome.lowercase()
+                    val catName = catMap[filme.categoryId] ?: ""
                     
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    // CORREÇÃO: Filtro compacto
+                    if (ContentFilterUtils.isContentBlocked(filme.nome, catName, isParentalActive, false, false, false, false, false)) continue
                     
                     todosFilmes.add(FilmeItem(
                         id = filme.id,
@@ -156,5 +159,10 @@ class VodActivity : Activity() {
             intentDet.putExtra("MEDIA_CAPA", filmeClicado.urlImagem)
             startActivity(intentDet)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        activityJob.cancel()
     }
 }
