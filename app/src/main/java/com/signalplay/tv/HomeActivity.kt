@@ -80,6 +80,8 @@ class HomeActivity : Activity() {
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
     private var heartbeatJob: Job? = null
+    
+    private var carrosselJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -259,6 +261,7 @@ class HomeActivity : Activity() {
         super.onDestroy()
         isClockRunning = false
         activityJob.cancel()
+        carrosselJob?.cancel()
     }
 
     private fun carregarCatalogoDaAPI() {
@@ -313,7 +316,6 @@ class HomeActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         
-                        // CORREÇÃO PONTO 1: Filtro Limpo
                         if (!ContentFilterUtils.isContentBlocked("", catName, isParentalActive, false, false, false, false, false, false, false, bloqueadosCanais)) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "live", i))
                         }
@@ -326,7 +328,6 @@ class HomeActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         
-                        // CORREÇÃO PONTO 1: Filtro Limpo
                         if (!ContentFilterUtils.isContentBlocked("", catName, isParentalActive, false, false, false, false, false, false, false, bloqueadosFilmes)) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "vod", i))
                         }
@@ -339,7 +340,6 @@ class HomeActivity : Activity() {
                         val obj = arr.getJSONObject(i)
                         val catName = obj.optString("category_name", "")
                         
-                        // CORREÇÃO PONTO 1: Filtro Limpo
                         if (!ContentFilterUtils.isContentBlocked("", catName, isParentalActive, false, false, false, false, false, false, false, bloqueadosSeries)) {
                             categoriasParaSalvar.add(CategoriaEntity(obj.optString("category_id"), catName, "series", i))
                         }
@@ -421,7 +421,6 @@ class HomeActivity : Activity() {
                 for (canal in canaisParaSalvar) {
                     val nomeCategoria = mapLiveCats[canal.categoryId] ?: continue 
                     
-                    // CORREÇÃO PONTO 1: Filtro Limpo
                     val shouldHide = ContentFilterUtils.isContentBlocked(
                         nomeItem = canal.nome,
                         nomeCategoria = nomeCategoria,
@@ -442,7 +441,6 @@ class HomeActivity : Activity() {
                     val mapCorreto = if (media.tipo == "filme") mapVodCats else mapSeriesCats
                     val nomeCategoria = mapCorreto[media.categoryId] ?: continue
                     
-                    // CORREÇÃO PONTO 1: Filtro Limpo
                     val shouldHide = ContentFilterUtils.isContentBlocked(
                         nomeItem = media.nome,
                         nomeCategoria = nomeCategoria,
@@ -475,10 +473,12 @@ class HomeActivity : Activity() {
                     recyclerTopFilmes.adapter = Top10Adapter(listFilmesGlobais.take(10)) { abrirDetalhes(it) }
                     recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
 
+                    // INÍCIO DO CARROSSEL
                     if (listFilmesGlobais.isNotEmpty()) {
                         val mCat = mapVodCats.toMutableMap()
                         mCat.putAll(mapSeriesCats)
-                        atualizarBanner(listFilmesGlobais.random(), mCat)
+                        val destaques = listFilmesGlobais.shuffled().take(5)
+                        iniciarCarrossel(destaques, mCat)
                     }
                 }
             } catch (e: Exception) {
@@ -587,6 +587,25 @@ class HomeActivity : Activity() {
                 val launchIntent = pm.getLaunchIntentForPackage(app.pacote)
                 if (launchIntent != null) startActivity(launchIntent)
                 else Toast.makeText(this, "Não foi possível abrir.", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun iniciarCarrossel(destaques: List<FilmeItem>, mapCategorias: Map<String, String>) {
+        carrosselJob?.cancel() 
+        if (destaques.isEmpty()) return
+
+        carrosselJob = activityScope.launch {
+            var index = 0
+            while (isActive) {
+                val filmeAtual = destaques[index]
+                
+                withContext(Dispatchers.Main) {
+                    atualizarBanner(filmeAtual, mapCategorias)
+                }
+                
+                delay(8000) 
+                index = (index + 1) % destaques.size
             }
         }
     }
