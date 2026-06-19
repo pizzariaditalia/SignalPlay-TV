@@ -15,6 +15,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -30,6 +31,10 @@ class SeriesActivity : Activity() {
     private var user = ""
     private var pass = ""
     private var username = ""
+
+    // CORREÇÃO: Job para proteger a memória da Activity
+    private val activityJob = Job()
+    private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -47,11 +52,10 @@ class SeriesActivity : Activity() {
         pass = intent.getStringExtra("PASS") ?: ""
         username = intent.getStringExtra("USERNAME") ?: ""
 
-        CoroutineScope(Dispatchers.IO).launch {
+        activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
                 val dao = AppDatabase.getDatabase(this@SeriesActivity).catalogoDao()
 
@@ -59,8 +63,7 @@ class SeriesActivity : Activity() {
                 val catMap = mutableMapOf<String, String>()
                 
                 for (cat in categoriasEntity) {
-                    val catNameLower = cat.nome.lowercase()
-                    if (isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }) continue
+                    if (ContentFilterUtils.isContentBlocked("", cat.nome, isParentalActive, false, false, false, false, false)) continue
                     
                     todasCategorias.add(CategoriaItem(cat.id, cat.nome))
                     catMap[cat.id] = cat.nome
@@ -68,10 +71,9 @@ class SeriesActivity : Activity() {
 
                 val seriesEntity = dao.getTodasSeries()
                 for (serie in seriesEntity) {
-                    val catNameLower = catMap[serie.categoryId]?.lowercase() ?: ""
-                    val nLower = serie.nome.lowercase()
+                    val catName = catMap[serie.categoryId] ?: ""
                     
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
+                    if (ContentFilterUtils.isContentBlocked(serie.nome, catName, isParentalActive, false, false, false, false, false)) continue
                     
                     todasSeries.add(FilmeItem(
                         id = serie.id,
@@ -131,5 +133,10 @@ class SeriesActivity : Activity() {
             intentDet.putExtra("MEDIA_CAPA", serieClicada.urlImagem)
             startActivity(intentDet)
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        activityJob.cancel()
     }
 }
