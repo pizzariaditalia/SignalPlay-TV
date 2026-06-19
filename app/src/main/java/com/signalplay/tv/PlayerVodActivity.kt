@@ -153,14 +153,8 @@ class PlayerVodActivity : Activity() {
     }
 
     private fun inicializarPlayer() {
-        // COLEIRA DE MEMÓRIA: Mantém o buffer sob controle (VOD é mais pesado que TV)
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15000,  // Buffer mínimo de 15 segundos
-                30000,  // Limite máximo de 30 segundos (impede que o app engula a RAM e crashe)
-                2500,   // Tempo necessário para início rápido
-                5000    // Tempo necessário para retomada após buffering
-            )
+            .setBufferDurationsMs(15000, 30000, 2500, 5000)
             .build()
 
         exoPlayer = ExoPlayer.Builder(this)
@@ -333,9 +327,6 @@ class PlayerVodActivity : Activity() {
         return super.dispatchKeyEvent(event)
     }
 
-    // =========================================================================
-    // MÁGICA: .UPDATE() COM PLANO B SE A PASTA NÃO EXISTIR
-    // =========================================================================
     private fun salvarProgressoNoFirebase() {
         val idToSave = if (tipoMedia == "serie") parentSeriesId else mediaId
         if (username.isEmpty() || idToSave.isEmpty()) return
@@ -350,11 +341,15 @@ class PlayerVodActivity : Activity() {
                         val docId = snapshot.documents[0].id
                         val docRef = db.collection("usuarios").document(docId)
                         
-                        val mapToSave = mapOf("posicao" to position, "duracao" to duration)
+                        // NOVIDADE: Salvando o timestamp!
+                        val mapToSave = mapOf(
+                            "posicao" to position, 
+                            "duracao" to duration,
+                            "timestamp" to System.currentTimeMillis()
+                        )
                         
                         docRef.update("historico_vod.$idToSave", mapToSave)
                             .addOnFailureListener {
-                                // PLANO B: Cria o campo se ele ainda não existir no banco
                                 docRef.set(mapOf("historico_vod" to mapOf(idToSave to mapToSave)), SetOptions.merge())
                             }
                     }
