@@ -16,6 +16,7 @@ import androidx.recyclerview.widget.RecyclerView
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -33,6 +34,10 @@ class TvActivity : Activity() {
     private lateinit var tvTituloCategoria: TextView
     private var username: String = ""
 
+    // CORREÇÃO PONTO 3: Controle rígido do ciclo de vida das Coroutines
+    private val activityJob = Job()
+    private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_tv)
@@ -48,7 +53,8 @@ class TvActivity : Activity() {
 
         username = intent.getStringExtra("USERNAME") ?: ""
 
-        CoroutineScope(Dispatchers.IO).launch {
+        // Usando o escopo atrelado ao Job desta Activity
+        activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
@@ -57,7 +63,6 @@ class TvActivity : Activity() {
                 val filterFHD = prefs.getBoolean("FILTER_FHD", false)
                 val filterH265 = prefs.getBoolean("FILTER_H265", false)
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
                 db.collection("usuarios").whereEqualTo("usuario", username).get()
                     .addOnSuccessListener { snapshot ->
@@ -72,8 +77,14 @@ class TvActivity : Activity() {
                 val catMap = mutableMapOf<String, String>()
                 
                 for (cat in categoriasEntity) {
-                    val catNameLower = cat.nome.lowercase()
-                    if (isParentalActive && palavrasProibidas.any { catNameLower.contains(it) }) continue
+                    val isBlocked = ContentFilterUtils.isContentBlocked(
+                        nomeItem = "",
+                        nomeCategoria = cat.nome,
+                        isParentalActive = isParentalActive,
+                        filterSD = false, filterHD = false, filterFHD = false, filterH265 = false, filter4K = false
+                    )
+                    
+                    if (isBlocked) continue
                     
                     todasCategorias.add(CategoriaItem(cat.id, cat.nome))
                     catMap[cat.id] = cat.nome
@@ -86,30 +97,19 @@ class TvActivity : Activity() {
 
                 val canaisEntity = dao.getTodosCanais()
                 for (canal in canaisEntity) {
-                    val catNameLower = catMap[canal.categoryId]?.lowercase() ?: ""
-                    val nLower = canal.nome.lowercase()
+                    val nomeCategoria = catMap[canal.categoryId] ?: ""
                     
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
-                    
-                    val nUp = canal.nome.uppercase()
-                    val isExplicitSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                    val hasFHD = nUp.contains(" FHD ") || nUp.endsWith(" FHD") || nUp.startsWith("FHD ") || nUp.contains("(FHD)") || nUp.contains("[FHD]") || nUp.contains("|FHD|") || nUp.contains("- FHD") || nUp == "FHD"
-                    val hasHD = (nUp.contains(" HD ") || nUp.endsWith(" HD") || nUp.startsWith("HD ") || nUp.contains("(HD)") || nUp.contains("[HD]") || nUp.contains("|HD|") || nUp.contains("- HD") || nUp == "HD") && !hasFHD
-                    val has4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                    val hasH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                    
-                    var shouldHide = false
-                    if (filterSD) {
-                        if (isExplicitSD) shouldHide = true
-                        else if (!hasHD && !hasFHD && !has4K && !hasH265) {
-                            val isSafeCat = catNameLower.contains("24h") || catNameLower.contains("24 horas") || catNameLower.contains("infantil") || catNameLower.contains("kids") || catNameLower.contains("desenho") || catNameLower.contains("religi") || catNameLower.contains("notícia") || catNameLower.contains("news") || catNameLower.contains("document") || catNameLower.contains("educa") || catNameLower.contains("música") || catNameLower.contains("rádio")
-                            if (!isSafeCat) shouldHide = true
-                        }
-                    }
-                    if (filterHD && hasHD) shouldHide = true
-                    if (filterFHD && hasFHD) shouldHide = true
-                    if (filterH265 && hasH265) shouldHide = true
-                    if (filter4K && has4K) shouldHide = true
+                    // CORREÇÃO PONTO 1: Chamando a mágica de apenas uma linha
+                    val shouldHide = ContentFilterUtils.isContentBlocked(
+                        nomeItem = canal.nome,
+                        nomeCategoria = nomeCategoria,
+                        isParentalActive = isParentalActive,
+                        filterSD = filterSD,
+                        filterHD = filterHD,
+                        filterFHD = filterFHD,
+                        filterH265 = filterH265,
+                        filter4K = filter4K
+                    )
                     
                     if (shouldHide) continue
 
@@ -175,5 +175,11 @@ class TvActivity : Activity() {
             }
             recyclerCanaisGrid.adapter?.notifyDataSetChanged()
         })
+    }
+
+    // CORREÇÃO PONTO 3: Se o usuário fechar a tela, cancelamos as buscas no banco para não travar o app
+    override fun onDestroy() {
+        super.onDestroy()
+        activityJob.cancel()
     }
 }
