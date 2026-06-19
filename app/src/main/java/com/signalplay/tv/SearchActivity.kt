@@ -21,6 +21,7 @@ import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.request.RequestOptions
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -36,6 +37,10 @@ class SearchActivity : Activity() {
     private var user = ""
     private var pass = ""
     private var username = ""
+
+    // CORREÇÃO: Job para proteger a memória da Activity
+    private val activityJob = Job()
+    private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -79,7 +84,7 @@ class SearchActivity : Activity() {
         }
         recycler.adapter = adapter
 
-        CoroutineScope(Dispatchers.IO).launch {
+        activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
@@ -88,7 +93,6 @@ class SearchActivity : Activity() {
                 val filterFHD = prefs.getBoolean("FILTER_FHD", false)
                 val filterH265 = prefs.getBoolean("FILTER_H265", false)
                 val filter4K = prefs.getBoolean("FILTER_4K", false)
-                val palavrasProibidas = listOf("adult", "+18", "18+", "xxx", "porn", "hachutv", "sensual", "sex", "playboy")
 
                 val dao = AppDatabase.getDatabase(this@SearchActivity).catalogoDao()
                 
@@ -101,43 +105,21 @@ class SearchActivity : Activity() {
                 val series = dao.getTodasSeries()
 
                 for (c in canais) {
-                    val catNameLower = mapLiveCats[c.categoryId]?.lowercase() ?: ""
-                    val nLower = c.nome.lowercase()
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { nLower.contains(it) })) continue
-                    
-                    val nUp = c.nome.uppercase()
-                    val isExplicitSD = nUp.contains(" SD ") || nUp.endsWith(" SD") || nUp.startsWith("SD ") || nUp.contains("(SD)") || nUp.contains("[SD]") || nUp.contains("|SD|") || nUp.contains("- SD") || nUp == "SD"
-                    val hasFHD = nUp.contains(" FHD ") || nUp.endsWith(" FHD") || nUp.startsWith("FHD ") || nUp.contains("(FHD)") || nUp.contains("[FHD]") || nUp.contains("|FHD|") || nUp.contains("- FHD") || nUp == "FHD"
-                    val hasHD = (nUp.contains(" HD ") || nUp.endsWith(" HD") || nUp.startsWith("HD ") || nUp.contains("(HD)") || nUp.contains("[HD]") || nUp.contains("|HD|") || nUp.contains("- HD") || nUp == "HD") && !hasFHD
-                    val has4K = nUp.contains(" 4K ") || nUp.endsWith(" 4K") || nUp.startsWith("4K ") || nUp.contains("(4K)") || nUp.contains("[4K]") || nUp.contains("|4K|") || nUp.contains("- 4K") || nUp.contains("UHD") || nUp == "4K"
-                    val hasH265 = nUp.contains("H265") || nUp.contains("HEVC") || nUp.contains("H.265")
-                    
-                    var shouldHide = false
-                    if (filterSD) {
-                        if (isExplicitSD) shouldHide = true
-                        else if (!hasHD && !hasFHD && !has4K && !hasH265) {
-                            val isSafeCat = catNameLower.contains("24h") || catNameLower.contains("24 horas") || catNameLower.contains("infantil") || catNameLower.contains("kids") || catNameLower.contains("desenho") || catNameLower.contains("religi") || catNameLower.contains("notícia") || catNameLower.contains("news") || catNameLower.contains("document") || catNameLower.contains("educa") || catNameLower.contains("música") || catNameLower.contains("rádio")
-                            if (!isSafeCat) shouldHide = true
-                        }
-                    }
-                    if (filterHD && hasHD) shouldHide = true
-                    if (filterFHD && hasFHD) shouldHide = true
-                    if (filterH265 && hasH265) shouldHide = true
-                    if (filter4K && has4K) shouldHide = true
-                    if (shouldHide) continue
-                    
+                    val nomeCategoria = mapLiveCats[c.categoryId] ?: ""
+                    // Filtro inteligente e compacto
+                    if (ContentFilterUtils.isContentBlocked(c.nome, nomeCategoria, isParentalActive, filterSD, filterHD, filterFHD, filterH265, filter4K)) continue
                     masterList.add(SearchItem(c.id, c.nome, c.urlImagem, "TV", c.streamUrl))
                 }
                 
                 for (f in filmes) {
-                    val catNameLower = mapVodCats[f.categoryId]?.lowercase() ?: ""
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { f.nome.lowercase().contains(it) })) continue
+                    val nomeCategoria = mapVodCats[f.categoryId] ?: ""
+                    if (ContentFilterUtils.isContentBlocked(f.nome, nomeCategoria, isParentalActive, false, false, false, false, false)) continue
                     masterList.add(SearchItem(f.id, f.nome, f.urlImagem, "FILME", f.streamUrl))
                 }
                 
                 for (s in series) {
-                    val catNameLower = mapSeriesCats[s.categoryId]?.lowercase() ?: ""
-                    if (isParentalActive && (palavrasProibidas.any { catNameLower.contains(it) } || palavrasProibidas.any { s.nome.lowercase().contains(it) })) continue
+                    val nomeCategoria = mapSeriesCats[s.categoryId] ?: ""
+                    if (ContentFilterUtils.isContentBlocked(s.nome, nomeCategoria, isParentalActive, false, false, false, false, false)) continue
                     masterList.add(SearchItem(s.id, s.nome, s.urlImagem, "SÉRIE", s.streamUrl))
                 }
 
@@ -215,5 +197,10 @@ class SearchActivity : Activity() {
             holder.itemView.setOnClickListener { onClick(item) }
         }
         override fun getItemCount(): Int = list.size
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        activityJob.cancel()
     }
 }
