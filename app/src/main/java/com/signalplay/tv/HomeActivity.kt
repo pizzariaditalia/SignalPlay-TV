@@ -22,7 +22,6 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -104,7 +103,8 @@ class HomeActivity : Activity() {
         tvClock = findViewById(R.id.tvClock)
         tvNetworkStatus = findViewById(R.id.tvNetworkStatus)
         
-        val mainScrollView = findViewById<NestedScrollView>(R.id.mainScrollView)
+        // VINCULANDO O NOVO MOTOR DE ROLAGEM
+        val mainScrollView = findViewById<TvScrollView>(R.id.mainScrollView)
 
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
