@@ -41,6 +41,7 @@ class EpgGuideActivity : Activity() {
 
     private val listaCanaisUnicos = mutableListOf<CanalItem>()
     private val mapaIdParaEpg = mutableMapOf<String, String>()
+    
     private val epgDataMap = mutableMapOf<String, JSONArray>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -136,7 +137,9 @@ class EpgGuideActivity : Activity() {
                             while (keys.hasNext()) {
                                 val key = keys.next()
                                 val arr = jsonObj.optJSONArray(key)
-                                if (arr != null) epgDataMap[key] = arr
+                                if (arr != null) {
+                                    epgDataMap[key] = arr
+                                }
                             }
                         }
                     }
@@ -168,6 +171,7 @@ class EpgGuideActivity : Activity() {
                     if (epgId.isEmpty()) continue
 
                     val nomeCategoria = catMap[canal.categoryId] ?: ""
+                    
                     val isBlocked = ContentFilterUtils.isContentBlocked(
                         canal.nome, nomeCategoria, isParentalActive, filterSD, filterHD, filterFHD, filterH265, filter4K
                     )
@@ -181,7 +185,9 @@ class EpgGuideActivity : Activity() {
                         val novoEhHD = nomeNovo.contains(" HD") || nomeNovo.contains("- HD") || nomeNovo.endsWith("HD")
                         val salvoEhHD = nomeSalvo.contains(" HD") || nomeSalvo.contains("- HD") || nomeSalvo.endsWith("HD")
 
-                        if (novoEhHD && !salvoEhHD) mapEpgToCanal[epgId] = canal
+                        if (novoEhHD && !salvoEhHD) {
+                            mapEpgToCanal[epgId] = canal
+                        }
                     } else {
                         mapEpgToCanal[epgId] = canal
                     }
@@ -194,8 +200,8 @@ class EpgGuideActivity : Activity() {
                         var temProgramacaoFutura = false
                         for (i in 0 until localList.length()) {
                             val prog = localList.getJSONObject(i)
-                            var stopTs = prog.optLong("stop_timestamp", 0)
                             
+                            var stopTs = prog.optLong("stop_timestamp", 0)
                             if (stopTs == 0L) {
                                 val endStr = prog.optString("end", "")
                                 if (endStr.isNotEmpty()) {
@@ -213,7 +219,9 @@ class EpgGuideActivity : Activity() {
                         }
 
                         if (temProgramacaoFutura) {
-                            val canalItem = CanalItem(canalEntity.id, canalEntity.nome, canalEntity.urlImagem, canalEntity.categoryId, canalEntity.streamUrl)
+                            val canalItem = CanalItem(
+                                canalEntity.id, canalEntity.nome, canalEntity.urlImagem, canalEntity.categoryId, canalEntity.streamUrl
+                            )
                             listaCanaisUnicos.add(canalItem)
                             mapaIdParaEpg[canalEntity.id] = epgId
                         }
@@ -227,20 +235,16 @@ class EpgGuideActivity : Activity() {
                     } else {
                         layoutGuia.visibility = View.VISIBLE
                         
-                        // CORREÇÃO: Usando o Adapter Exclusivo
-                        recyclerCanaisEpg.adapter = EpgGuideChannelAdapter(listaCanaisUnicos) { canalClicado ->
-                            abrirCanalNoPlayer(canalClicado)
-                        }
-
-                        recyclerCanaisEpg.viewTreeObserver.addOnGlobalFocusChangeListener { oldFocus, newFocus ->
-                            if (newFocus != null) {
-                                val pos = recyclerCanaisEpg.getChildAdapterPosition(newFocus)
-                                if (pos in 0 until listaCanaisUnicos.size) {
-                                    val canalFocado = listaCanaisUnicos[pos]
-                                    carregarProgramacaoDoCanal(canalFocado)
-                                }
+                        // NOVIDADE AQUI: O Adapter agora recebe o clique e o evento de FOCO com segurança.
+                        recyclerCanaisEpg.adapter = EpgGuideChannelAdapter(
+                            list = listaCanaisUnicos,
+                            onClick = { canalClicado ->
+                                abrirCanalNoPlayer(canalClicado)
+                            },
+                            onFocus = { canalFocado ->
+                                carregarProgramacaoDoCanal(canalFocado)
                             }
-                        }
+                        )
 
                         carregarProgramacaoDoCanal(listaCanaisUnicos[0])
                         recyclerCanaisEpg.requestFocus()
@@ -261,6 +265,7 @@ class EpgGuideActivity : Activity() {
             try {
                 val listaEpgExibir = mutableListOf<EpgItem>()
                 val agoraTs = System.currentTimeMillis() / 1000
+
                 val epgId = mapaIdParaEpg[canal.id] ?: ""
 
                 if (epgId.isNotEmpty()) {
@@ -269,6 +274,7 @@ class EpgGuideActivity : Activity() {
                         val futuros = mutableListOf<JSONObject>()
                         for (i in 0 until progList.length()) {
                             val prog = progList.getJSONObject(i)
+                            
                             var stopTs = prog.optLong("stop_timestamp", 0)
                             if (stopTs == 0L) {
                                 val endStr = prog.optString("end", "")
@@ -280,7 +286,9 @@ class EpgGuideActivity : Activity() {
                                 }
                             }
 
-                            if (stopTs > agoraTs) futuros.add(prog)
+                            if (stopTs > agoraTs) {
+                                futuros.add(prog)
+                            }
                         }
                         
                         futuros.sortBy { 
