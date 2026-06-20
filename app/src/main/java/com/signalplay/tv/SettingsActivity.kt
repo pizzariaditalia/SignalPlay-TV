@@ -64,6 +64,12 @@ class SettingsActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_settings)
 
         db = FirebaseFirestore.getInstance()
@@ -457,6 +463,14 @@ class SettingsActivity : Activity() {
             for (i in 0 until view.childCount) {
                 mudarCoresDosTextos(view.getChildAt(i), cor, isFocado)
             }
+        }
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
         }
     }
 
