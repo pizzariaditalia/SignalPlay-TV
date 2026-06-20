@@ -22,8 +22,7 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
+import androidx.leanback.widget.HorizontalGridView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
@@ -149,23 +148,15 @@ class HomeActivity : Activity() {
         menuEsportes.onFocusChangeListener = menuFocusListener
         menuConfig.onFocusChangeListener = menuFocusListener
 
-        val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
-        val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
-        val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
-        val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
-        val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
-        val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
-        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
+        val recyclerContinuar = findViewById<HorizontalGridView>(R.id.recyclerContinuar)
+        val recyclerFavoritos = findViewById<HorizontalGridView>(R.id.recyclerFavoritos)
+        val recyclerUltimos = findViewById<HorizontalGridView>(R.id.recyclerUltimos)
+        val recyclerTopFilmes = findViewById<HorizontalGridView>(R.id.recyclerTopFilmes)
+        val recyclerTopSeries = findViewById<HorizontalGridView>(R.id.recyclerTopSeries)
+        val recyclerSeriesAlta = findViewById<HorizontalGridView>(R.id.recyclerSeriesAlta)
+        val recyclerApps = findViewById<HorizontalGridView>(R.id.recyclerApps)
         
-        // APLICANDO O NOVO MOTOR HORIZONTAL DO GOOGLE TV NAS PRATELEIRAS
-        recyclerContinuar.layoutManager = TvLinearLayoutManager(this)
-        recyclerFavoritos.layoutManager = TvLinearLayoutManager(this)
-        recyclerUltimos.layoutManager = TvLinearLayoutManager(this)
-        recyclerTopFilmes.layoutManager = TvLinearLayoutManager(this)
-        recyclerTopSeries.layoutManager = TvLinearLayoutManager(this)
-        recyclerSeriesAlta.layoutManager = TvLinearLayoutManager(this)
-        recyclerApps.layoutManager = TvLinearLayoutManager(this)
-
+        // A MÁGICA LEANBACK: O Google TV faz o resto sozinho! Não precisamos setar LayoutManager
         TvNavigationUtils.configurarPrateleira(recyclerContinuar)
         TvNavigationUtils.configurarPrateleira(recyclerFavoritos)
         TvNavigationUtils.configurarPrateleira(recyclerUltimos)
@@ -289,7 +280,6 @@ class HomeActivity : Activity() {
         if (listFilmesGlobais.isEmpty()) {
             carregarCatalogoDaAPI()
         } else {
-            // Atualiza com 1 banner aleatório ao retornar
             carregarDestaqueAleatorio()
         }
     }
@@ -502,10 +492,10 @@ class HomeActivity : Activity() {
                     renderizarContinuarAssistindo()
                     renderizarFavoritos()
                     
-                    val recyclerUltimos = findViewById<RecyclerView>(R.id.recyclerUltimos)
-                    val recyclerTopFilmes = findViewById<RecyclerView>(R.id.recyclerTopFilmes)
-                    val recyclerTopSeries = findViewById<RecyclerView>(R.id.recyclerTopSeries)
-                    val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
+                    val recyclerUltimos = findViewById<HorizontalGridView>(R.id.recyclerUltimos)
+                    val recyclerTopFilmes = findViewById<HorizontalGridView>(R.id.recyclerTopFilmes)
+                    val recyclerTopSeries = findViewById<HorizontalGridView>(R.id.recyclerTopSeries)
+                    val recyclerSeriesAlta = findViewById<HorizontalGridView>(R.id.recyclerSeriesAlta)
 
                     recyclerUltimos.adapter = CardAdapter(listFilmesGlobais.reversed().take(30)) { abrirDetalhes(it) }
                     recyclerSeriesAlta.adapter = CardAdapter(listSeriesGlobais.reversed().take(30)) { abrirDetalhes(it) }
@@ -617,7 +607,7 @@ class HomeActivity : Activity() {
         val imgRetomar = findViewById<ImageView>(R.id.imgRetomar)
         val progressRetomar = findViewById<ProgressBar>(R.id.progressRetomar)
         
-        val recyclerContinuar = findViewById<RecyclerView>(R.id.recyclerContinuar)
+        val recyclerContinuar = findViewById<HorizontalGridView>(R.id.recyclerContinuar)
         val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
         
         if (listContinuar.isNotEmpty()) {
@@ -665,7 +655,7 @@ class HomeActivity : Activity() {
     }
 
     private fun renderizarFavoritos() {
-        val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
+        val recyclerFavoritos = findViewById<HorizontalGridView>(R.id.recyclerFavoritos)
         val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
         
         val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> listCanaisGlobais.find { it.id == favId } }
@@ -726,7 +716,7 @@ class HomeActivity : Activity() {
             if (settingsIcon != null) listaFinal.add(0, AppItem("Configurações", settingsIcon, settingsPkg))
         }
 
-        val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
+        val recyclerApps = findViewById<HorizontalGridView>(R.id.recyclerApps)
         recyclerApps.adapter = AppAdapter(listaFinal) { app ->
             if (app.pacote == "android.settings.SETTINGS") startActivity(Intent(android.provider.Settings.ACTION_SETTINGS))
             else {
