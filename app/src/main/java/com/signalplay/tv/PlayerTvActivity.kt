@@ -77,7 +77,6 @@ class PlayerTvActivity : Activity() {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         actionBar?.hide()
         
-        // NOVIDADE: Chama o modo tela cheia agressivo
         TvNavigationUtils.aplicarModoImersivo(this)
         
         setContentView(R.layout.activity_player_tv)
@@ -132,6 +131,10 @@ class PlayerTvActivity : Activity() {
                 }
             }
             DataHolder.canaisFiltrados = canaisFavOrdenados
+            
+        // NOVIDADE AQUI: O Player agora aceita canais do EPG e Pesquisa sem filtrar e esvaziar a lista!
+        } else if (cat.id == "EPG_GUIDE" || cat.id == "PESQUISA") {
+            DataHolder.canaisFiltrados = DataHolder.todosCanais
         } else {
             DataHolder.canaisFiltrados = DataHolder.todosCanais.filter { it.categoryId == cat.id }
         }
@@ -445,7 +448,6 @@ class PlayerTvActivity : Activity() {
         iniciarCanal()
     }
 
-    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
