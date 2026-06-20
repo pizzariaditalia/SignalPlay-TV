@@ -53,7 +53,6 @@ import java.util.concurrent.TimeUnit
 
 data class AppItem(val nome: String, val icone: Drawable, val pacote: String)
 
-// NOVIDADE: Estrutura local para organizar o histórico
 data class FilmeContinuar(val filme: FilmeItem, val progressoPerc: Int, val timestamp: Long, val restanteMinutos: Int)
 
 class HomeActivity : Activity() {
@@ -183,6 +182,23 @@ class HomeActivity : Activity() {
         menuSeries.setOnClickListener { startActivity(Intent(this, SeriesActivity::class.java).apply { putExtras(intent) }) }
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
         menuEsportes.setOnClickListener { startActivity(Intent(this, SportsActivity::class.java).apply { putExtra("URL_LIGA", "https://m.sofascore.com/pt/") }) }
+
+        // MÁGICA EPG: Configuração do clique e foco do Botão Guia de Programação
+        val btnGuiaEpg = findViewById<LinearLayout>(R.id.btnGuiaEpg)
+        if (btnGuiaEpg != null) {
+            btnGuiaEpg.setOnClickListener { 
+                startActivity(Intent(this, EpgGuideActivity::class.java).apply { putExtras(intent) }) 
+            }
+            btnGuiaEpg.setOnFocusChangeListener { v, hasFocus ->
+                if (hasFocus) {
+                    if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
+                    v.setBackgroundResource(R.drawable.bg_menu_focus)
+                } else {
+                    if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
+                    v.setBackgroundResource(R.drawable.bg_glass)
+                }
+            }
+        }
 
         db.collection("usuarios").whereEqualTo("usuario", username)
             .addSnapshotListener { snapshot, error ->
@@ -531,7 +547,6 @@ class HomeActivity : Activity() {
         val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
         
         if (listContinuar.isNotEmpty()) {
-            // NOVIDADE: Ordena por data (timestamp), pega o mais recente e remove da lista geral!
             val listOrdenada = listContinuar.sortedByDescending { it.timestamp }.toMutableList()
             val destaque = listOrdenada.removeAt(0)
             
@@ -555,7 +570,6 @@ class HomeActivity : Activity() {
             
             cardRetomar.setOnClickListener { abrirDetalhes(destaque.filme) }
             
-            // O que sobrar da lista (antigos), vai para a prateleira normal
             if (listOrdenada.isNotEmpty()) {
                 tvContinuarTitulo.visibility = View.VISIBLE
                 recyclerContinuar.visibility = View.VISIBLE
