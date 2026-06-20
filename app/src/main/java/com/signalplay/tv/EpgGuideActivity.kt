@@ -1,0 +1,271 @@
+package com.signalplay.tv
+
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
+import android.os.Bundle
+import android.util.Base64
+import android.view.View
+import android.widget.Button
+import android.widget.LinearLayout
+import android.widget.ProgressBar
+import android.widget.TextView
+import android.widget.Toast
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import org.json.JSONObject
+import java.io.File
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
+class EpgGuideActivity : Activity() {
+
+    private lateinit var recyclerCanaisEpg: RecyclerView
+    private lateinit var recyclerProgramacao: RecyclerView
+    private lateinit var tvNomeCanalEpg: TextView
+    private lateinit var layoutGuia: LinearLayout
+    private lateinit var layoutEpgVazio: LinearLayout
+    private lateinit var progressLoadingEpg: ProgressBar
+
+    private val activityJob = Job()
+    private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
+
+    private val listaCanaisUnicos = mutableListOf<CanalItem>()
+    private val mapaIdParaEpg = mutableMapOf<String, String>()
+    private var epgDatabaseJson: JSONObject? = null
+
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(R.layout.activity_epg_guide)
+
+        recyclerCanaisEpg = findViewById(R.id.recyclerCanaisEpg)
+        recyclerProgramacao = findViewById(R.id.recyclerProgramacao)
+        tvNomeCanalEpg = findViewById(R.id.tvNomeCanalEpg)
+        layoutGuia = findViewById(R.id.layoutGuia)
+        layoutEpgVazio = findViewById(R.id.layoutEpgVazio)
+        progressLoadingEpg = findViewById(R.id.progressLoadingEpg)
+        val btnIrParaConfig = findViewById<Button>(R.id.btnIrParaConfig)
+
+        recyclerCanaisEpg.layoutManager = LinearLayoutManager(this)
+        recyclerProgramacao.layoutManager = LinearLayoutManager(this)
+
+        btnIrParaConfig.setOnClickListener {
+            val intentConfig = Intent(this, SettingsActivity::class.java)
+            intentConfig.putExtras(intent)
+            startActivity(intentConfig)
+            finish()
+        }
+
+        carregarGuia()
+    }
+
+    private fun decodificarTexto(raw: String): String {
+        if (raw.isEmpty()) return ""
+        try {
+            val decodedBytes = Base64.decode(raw, Base64.DEFAULT)
+            val txt = String(decodedBytes, Charsets.UTF_8)
+            if (txt.isNotBlank() && !txt.contains("")) {
+                return txt
+            }
+        } catch (e: Exception) {}
+        return raw
+    }
+
+    private fun carregarGuia() {
+        activityScope.launch {
+            try {
+                val file = File(filesDir, "epg_data.json")
+                if (!file.exists() || file.length() < 10) {
+                    withContext(Dispatchers.Main) {
+                        progressLoadingEpg.visibility = View.GONE
+                        layoutEpgVazio.visibility = View.VISIBLE
+                    }
+                    return@launch
+                }
+
+                val fileContent = file.readText()
+                epgDatabaseJson = JSONObject(fileContent)
+
+                val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
+                val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
+                val filterSD = prefs.getBoolean("FILTER_SD", false)
+                val filterHD = prefs.getBoolean("FILTER_HD", false)
+                val filterFHD = prefs.getBoolean("FILTER_FHD", false)
+                val filterH265 = prefs.getBoolean("FILTER_H265", false)
+                val filter4K = prefs.getBoolean("FILTER_4K", false)
+
+                val dao = AppDatabase.getDatabase(this@EpgGuideActivity).catalogoDao()
+                val categoriasEntity = dao.getCategoriasPorTipo("live")
+                val catMap = categoriasEntity.associate { it.id to it.nome }
+                
+                val todosCanais = dao.getTodosCanais()
+                val mapEpgToCanal = mutableMapOf<String, CanalEntity>()
+
+                for (canal in todosCanais) {
+                    val epgId = canal.epgChannelId
+                    if (epgId.isEmpty()) continue
+
+                    val nomeCategoria = catMap[canal.categoryId] ?: ""
+                    
+                    val isBlocked = ContentFilterUtils.isContentBlocked(
+                        canal.nome, nomeCategoria, isParentalActive, filterSD, filterHD, filterFHD, filterH265, filter4K
+                    )
+                    if (isBlocked) continue
+
+                    // INTELIGÊNCIA: Desduplicação dando prioridade para HD
+                    if (mapEpgToCanal.containsKey(epgId)) {
+                        val canalSalvo = mapEpgToCanal[epgId]!!
+                        val nomeSalvo = canalSalvo.nome.uppercase()
+                        val nomeNovo = canal.nome.uppercase()
+
+                        val novoEhHD = nomeNovo.contains(" HD") || nomeNovo.contains("- HD") || nomeNovo.endsWith("HD")
+                        val salvoEhHD = nomeSalvo.contains(" HD") || nomeSalvo.contains("- HD") || nomeSalvo.endsWith("HD")
+
+                        if (novoEhHD && !salvoEhHD) {
+                            mapEpgToCanal[epgId] = canal
+                        }
+                    } else {
+                        mapEpgToCanal[epgId] = canal
+                    }
+                }
+
+                val agoraTs = System.currentTimeMillis() / 1000
+                for ((epgId, canalEntity) in mapEpgToCanal) {
+                    val localList = epgDatabaseJson?.optJSONArray(epgId)
+                    if (localList != null && localList.length() > 0) {
+                        var temProgramacaoFutura = false
+                        for (i in 0 until localList.length()) {
+                            val prog = localList.getJSONObject(i)
+                            if (prog.optLong("stop_timestamp", 0) > agoraTs) {
+                                temProgramacaoFutura = true
+                                break
+                            }
+                        }
+
+                        if (temProgramacaoFutura) {
+                            val canalItem = CanalItem(
+                                canalEntity.id, canalEntity.nome, canalEntity.urlImagem, canalEntity.categoryId, canalEntity.streamUrl
+                            )
+                            listaCanaisUnicos.add(canalItem)
+                            mapaIdParaEpg[canalEntity.id] = epgId
+                        }
+                    }
+                }
+
+                withContext(Dispatchers.Main) {
+                    progressLoadingEpg.visibility = View.GONE
+                    if (listaCanaisUnicos.isEmpty()) {
+                        layoutEpgVazio.visibility = View.VISIBLE
+                    } else {
+                        layoutGuia.visibility = View.VISIBLE
+                        recyclerCanaisEpg.adapter = CanalLinhaAdapter(listaCanaisUnicos) { canalClicado ->
+                            abrirCanalNoPlayer(canalClicado)
+                        }
+
+                        // Atualiza a programação da direita apenas mudando o foco (sem precisar clicar)
+                        recyclerCanaisEpg.viewTreeObserver.addOnGlobalFocusChangeListener { oldFocus, newFocus ->
+                            if (newFocus != null) {
+                                val pos = recyclerCanaisEpg.getChildAdapterPosition(newFocus)
+                                if (pos in 0 until listaCanaisUnicos.size) {
+                                    val canalFocado = listaCanaisUnicos[pos]
+                                    carregarProgramacaoDoCanal(canalFocado)
+                                }
+                            }
+                        }
+
+                        carregarProgramacaoDoCanal(listaCanaisUnicos[0])
+                        recyclerCanaisEpg.requestFocus()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    progressLoadingEpg.visibility = View.GONE
+                    Toast.makeText(this@EpgGuideActivity, "Erro ao processar o EPG.", Toast.LENGTH_SHORT).show()
+                    finish()
+                }
+            }
+        }
+    }
+
+    private fun carregarProgramacaoDoCanal(canal: CanalItem) {
+        tvNomeCanalEpg.text = canal.nome
+        activityScope.launch {
+            val listaEpgExibir = mutableListOf<EpgItem>()
+            val agoraTs = System.currentTimeMillis() / 1000
+
+            val epgId = mapaIdParaEpg[canal.id] ?: ""
+
+            if (epgId.isNotEmpty() && epgDatabaseJson != null) {
+                val progList = epgDatabaseJson!!.optJSONArray(epgId)
+                if (progList != null) {
+                    val futuros = mutableListOf<JSONObject>()
+                    for (i in 0 until progList.length()) {
+                        val prog = progList.getJSONObject(i)
+                        if (prog.optLong("stop_timestamp", 0) > agoraTs) {
+                            futuros.add(prog)
+                        }
+                    }
+                    futuros.sortBy { it.optLong("start_timestamp", 0) }
+
+                    // Pega até 15 programas para não engasgar a lista
+                    for (i in 0 until Math.min(15, futuros.size)) {
+                        val prog = futuros[i]
+                        val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
+                        val startTs = prog.optLong("start_timestamp", 0)
+                        val stopTs = prog.optLong("stop_timestamp", 0)
+
+                        val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+                        val hInicio = sdfHora.format(Date(startTs * 1000))
+                        val hFim = sdfHora.format(Date(stopTs * 1000))
+                        
+                        val duracaoMinutos = (stopTs - startTs) / 60
+                        val h = duracaoMinutos / 60
+                        val m = duracaoMinutos % 60
+                        val duracaoLista = if (h > 0 && m > 0) "$h hora e $m min" else if (h > 0) "$h horas" else "$m min"
+
+                        var isLive = false
+                        var corTexto = "#888888"
+                        var horarioStr = "Hoje / $hInicio - $hFim"
+
+                        if (agoraTs in startTs until stopTs) {
+                            isLive = true
+                            corTexto = "#2ED573"
+                            horarioStr = "Ao Vivo / $hInicio - $hFim"
+                        }
+
+                        listaEpgExibir.add(EpgItem(titleDecoded, horarioStr, duracaoLista, isLive, corTexto))
+                    }
+                }
+            }
+
+            withContext(Dispatchers.Main) {
+                recyclerProgramacao.adapter = EpgAdapter(listaEpgExibir)
+            }
+        }
+    }
+
+    private fun abrirCanalNoPlayer(canalClicado: CanalItem) {
+        DataHolder.todasCategorias = listOf(CategoriaItem("EPG_GUIDE", "Guia de Programação"))
+        DataHolder.todosCanais = listaCanaisUnicos
+        DataHolder.categoriaAtualId = "EPG_GUIDE"
+        DataHolder.canaisFiltrados = listaCanaisUnicos
+        
+        val indice = listaCanaisUnicos.indexOf(canalClicado)
+        
+        val intentPlayer = Intent(this, PlayerTvActivity::class.java)
+        intentPlayer.putExtras(intent)
+        intentPlayer.putExtra("INDICE_CANAL", if (indice != -1) indice else 0)
+        startActivity(intentPlayer)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        activityJob.cancel()
+    }
+}
