@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -34,12 +35,17 @@ class TvActivity : Activity() {
     private lateinit var tvTituloCategoria: TextView
     private var username: String = ""
 
-    // CORREÇÃO PONTO 3: Controle rígido do ciclo de vida das Coroutines
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_tv)
 
         db = FirebaseFirestore.getInstance()
@@ -53,7 +59,6 @@ class TvActivity : Activity() {
 
         username = intent.getStringExtra("USERNAME") ?: ""
 
-        // Usando o escopo atrelado ao Job desta Activity
         activityScope.launch {
             try {
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -99,7 +104,6 @@ class TvActivity : Activity() {
                 for (canal in canaisEntity) {
                     val nomeCategoria = catMap[canal.categoryId] ?: ""
                     
-                    // CORREÇÃO PONTO 1: Chamando a mágica de apenas uma linha
                     val shouldHide = ContentFilterUtils.isContentBlocked(
                         nomeItem = canal.nome,
                         nomeCategoria = nomeCategoria,
@@ -177,7 +181,14 @@ class TvActivity : Activity() {
         })
     }
 
-    // CORREÇÃO PONTO 3: Se o usuário fechar a tela, cancelamos as buscas no banco para não travar o app
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
+        }
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         activityJob.cancel()
