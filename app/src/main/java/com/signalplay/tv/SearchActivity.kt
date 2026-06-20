@@ -9,6 +9,7 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.EditText
 import android.widget.ImageView
 import android.widget.ProgressBar
@@ -38,12 +39,17 @@ class SearchActivity : Activity() {
     private var pass = ""
     private var username = ""
 
-    // CORREÇÃO: Job para proteger a memória da Activity
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_search)
 
         url = intent.getStringExtra("URL") ?: ""
@@ -106,7 +112,6 @@ class SearchActivity : Activity() {
 
                 for (c in canais) {
                     val nomeCategoria = mapLiveCats[c.categoryId] ?: ""
-                    // Filtro inteligente e compacto
                     if (ContentFilterUtils.isContentBlocked(c.nome, nomeCategoria, isParentalActive, filterSD, filterHD, filterFHD, filterH265, filter4K)) continue
                     masterList.add(SearchItem(c.id, c.nome, c.urlImagem, "TV", c.streamUrl))
                 }
@@ -197,6 +202,14 @@ class SearchActivity : Activity() {
             holder.itemView.setOnClickListener { onClick(item) }
         }
         override fun getItemCount(): Int = list.size
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
+        }
     }
 
     override fun onDestroy() {
