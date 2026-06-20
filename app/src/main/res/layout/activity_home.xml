@@ -9,6 +9,7 @@
     android:padding="0dp">
 
     <androidx.core.widget.NestedScrollView
+        android:id="@+id/mainScrollView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scrollbars="none"
@@ -16,7 +17,8 @@
         android:clipToPadding="false"
         android:fillViewport="true"
         android:layout_margin="0dp"
-        android:padding="0dp">
+        android:paddingBottom="120dp"
+        android:paddingTop="0dp">
 
         <RelativeLayout
             android:layout_width="match_parent"
@@ -26,7 +28,6 @@
             android:layout_margin="0dp"
             android:padding="0dp">
 
-            <!-- 1. BACKGROUND HERO (Fica fixo lá atrás, garantindo que o rosto não corte) -->
             <RelativeLayout
                 android:id="@+id/heroBackground"
                 android:layout_width="match_parent"
@@ -42,7 +43,6 @@
                     android:layout_alignParentStart="true"
                     android:src="#222222" />
 
-                <!-- Degradê de transição suave -->
                 <View 
                     android:layout_width="match_parent" 
                     android:layout_height="450dp" 
@@ -50,9 +50,6 @@
                     android:background="@drawable/bg_hero_gradient" />
             </RelativeLayout>
 
-            <!-- 2. CAMADA DE CONTEÚDO (Flutua por cima do Background) -->
-
-            <!-- Menu Superior -->
             <RelativeLayout
                 android:id="@+id/topMenuContainer"
                 android:layout_width="match_parent"
@@ -106,7 +103,6 @@
                 </LinearLayout>
             </RelativeLayout>
 
-            <!-- Textos do Filme ancorados diretamente abaixo do Menu -->
             <LinearLayout
                 android:id="@+id/textosDestaqueContainer"
                 android:layout_width="600dp"
@@ -120,12 +116,12 @@
 
                 <TextView android:id="@+id/heroBadge" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="CARREGANDO..." android:textColor="#FFC107" android:textSize="14sp" android:textStyle="bold" android:layout_marginBottom="8dp" />
                 <TextView android:id="@+id/heroTitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Aguarde" android:textColor="#FFFFFF" android:textSize="48sp" android:textStyle="bold" android:fontFamily="sans-serif-black" android:layout_marginBottom="8dp" android:maxLines="2" android:ellipsize="end" />
-                <TextView android:id="@+id/heroDesc" android:layout_width="match_parent" android:layout_height="wrap_content" android:text="Conectando ao servidor..." android:textColor="#E0E0E0" android:textSize="16sp" android:layout_marginBottom="24dp" android:maxLines="3" android:ellipsize="end" />
+                
+                <TextView android:id="@+id/heroDesc" android:layout_width="match_parent" android:layout_height="wrap_content" android:lines="3" android:text="Conectando ao servidor..." android:textColor="#E0E0E0" android:textSize="16sp" android:layout_marginBottom="24dp" android:ellipsize="end" />
                 
                 <Button android:id="@+id/btnAssistirDestaque" android:layout_width="wrap_content" android:layout_height="wrap_content" android:backgroundTint="#FFFFFF" android:textColor="#000000" android:text="▶ ASSISTIR AGORA" android:textStyle="bold" android:textSize="16sp" android:paddingStart="32dp" android:paddingEnd="32dp" android:paddingTop="12dp" android:paddingBottom="12dp" android:visibility="gone" />
             </LinearLayout>
 
-            <!-- Restante da Tela colado logo abaixo dos Textos -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -294,7 +290,6 @@
         </RelativeLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Overlay de Loading -->
     <RelativeLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
