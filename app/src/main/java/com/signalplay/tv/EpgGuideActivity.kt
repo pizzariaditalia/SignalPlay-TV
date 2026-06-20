@@ -46,6 +46,7 @@ class EpgGuideActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        TvNavigationUtils.aplicarModoImersivo(this)
         setContentView(R.layout.activity_epg_guide)
 
         recyclerCanaisEpg = findViewById(R.id.recyclerCanaisEpg)
@@ -235,7 +236,6 @@ class EpgGuideActivity : Activity() {
                     } else {
                         layoutGuia.visibility = View.VISIBLE
                         
-                        // NOVIDADE AQUI: O Adapter agora recebe o clique e o evento de FOCO com segurança.
                         recyclerCanaisEpg.adapter = EpgGuideChannelAdapter(
                             list = listaCanaisUnicos,
                             onClick = { canalClicado ->
@@ -372,8 +372,15 @@ class EpgGuideActivity : Activity() {
         }
     }
 
+    // NOVIDADE: Cérebro do DataHolder reconstruído para o Player funcionar
     private fun abrirCanalNoPlayer(canalClicado: CanalItem) {
-        DataHolder.todasCategorias = listOf(CategoriaItem("EPG_GUIDE", "Guia de Programação"))
+        val guiaCat = CategoriaItem("EPG_GUIDE", "Guia de Programação")
+        
+        // MÁGICA: Empurramos a nossa categoria temporária junto com o catálogo real
+        val categoriasTemporarias = mutableListOf<CategoriaItem>()
+        categoriasTemporarias.add(guiaCat)
+        
+        DataHolder.todasCategorias = categoriasTemporarias
         DataHolder.todosCanais = listaCanaisUnicos
         DataHolder.categoriaAtualId = "EPG_GUIDE"
         DataHolder.canaisFiltrados = listaCanaisUnicos
@@ -384,6 +391,13 @@ class EpgGuideActivity : Activity() {
         intentPlayer.putExtras(intent)
         intentPlayer.putExtra("INDICE_CANAL", if (indice != -1) indice else 0)
         startActivity(intentPlayer)
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
+        }
     }
 
     override fun onDestroy() {
