@@ -39,13 +39,11 @@ class Top10Adapter(
         val item = listaItens[position]
         val positionText = (position + 1).toString()
         
-        // MÁGICA: Acessando a pintura nativa do Android para criar o contorno
         holder.topNumberOutline.text = positionText
         holder.topNumberOutline.paint.style = Paint.Style.STROKE
         holder.topNumberOutline.paint.strokeWidth = 10f
-        holder.topNumberOutline.setTextColor(Color.parseColor("#EEEEEE")) // Contorno claro
+        holder.topNumberOutline.setTextColor(Color.parseColor("#EEEEEE"))
 
-        // O preenchimento com a cor de fundo exata do seu App para dar o efeito vazado
         holder.topNumberFill.text = positionText
         holder.topNumberFill.paint.style = Paint.Style.FILL
         holder.topNumberFill.setTextColor(Color.parseColor("#111114")) 
@@ -54,10 +52,10 @@ class Top10Adapter(
         val prefs = context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val isLowEndMode = prefs.getBoolean("LOW_END_MODE", false)
         
+        // A trava de redimensionamento do Glide (.override) foi removida!
         val options = RequestOptions()
             .transform(CenterCrop(), RoundedCorners(8))
             .format(DecodeFormat.PREFER_RGB_565)
-            .override(250, 350) 
             
         Glide.with(context).load(item.urlImagem).apply(options).into(holder.cardImage)
 
