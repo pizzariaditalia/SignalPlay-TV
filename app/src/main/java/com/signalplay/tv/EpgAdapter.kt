@@ -1,53 +1,89 @@
 package com.signalplay.tv
 
 import android.graphics.Color
-import android.view.LayoutInflater
+import android.graphics.Typeface
 import android.view.View
 import android.view.ViewGroup
+import android.widget.LinearLayout
 import android.widget.TextView
+import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.RecyclerView
 
 data class EpgItem(
-    val titulo: String, 
+    val title: String, 
     val horario: String, 
     val duracao: String, 
-    val isAgora: Boolean, 
-    val textColor: String
+    val isLive: Boolean, 
+    val corTexto: String
 )
 
-class EpgAdapter(private val lista: List<EpgItem>) : RecyclerView.Adapter<EpgAdapter.EpgViewHolder>() {
+class EpgAdapter(private val list: List<EpgItem>) : RecyclerView.Adapter<EpgAdapter.ViewHolder>() {
 
-    class EpgViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val tvTitulo: TextView = view.findViewById(R.id.epgTitulo)
-        val tvHorario: TextView = view.findViewById(R.id.epgHorario)
-        val tvDuracao: TextView = view.findViewById(R.id.epgDuracao)
-        val indAgora: View = view.findViewById(R.id.epgIndAgora)
+    inner class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
+        val tvTitle: TextView = view.findViewById(4001)
+        val tvTime: TextView = view.findViewById(4002)
+        val tvDuration: TextView = view.findViewById(4003)
     }
 
-    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): EpgViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_epg, parent, false)
-        return EpgViewHolder(view)
-    }
-
-    override fun onBindViewHolder(holder: EpgViewHolder, position: Int) {
-        val item = lista[position]
-        holder.tvTitulo.text = item.titulo
-        holder.tvHorario.text = item.horario
-        
-        try {
-            holder.tvHorario.setTextColor(Color.parseColor(item.textColor))
-        } catch (e: Exception) {
-            holder.tvHorario.setTextColor(Color.parseColor("#888888"))
+    override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        val layout = LinearLayout(parent.context).apply {
+            orientation = LinearLayout.VERTICAL
+            // CORREÇÃO AQUI: Usando RecyclerView.LayoutParams
+            layoutParams = RecyclerView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                setMargins(0, 4, 0, 8)
+            }
+            background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
+            setPadding(20, 16, 20, 16)
         }
-        
-        holder.tvDuracao.text = item.duracao
-        holder.indAgora.visibility = if (item.isAgora) View.VISIBLE else View.INVISIBLE
 
-        holder.itemView.setOnFocusChangeListener { v, hasFocus ->
-            if (hasFocus) v.setBackgroundColor(Color.parseColor("#222222"))
-            else v.setBackgroundColor(Color.TRANSPARENT)
+        val title = TextView(parent.context).apply {
+            id = 4001
+            setTextColor(Color.WHITE)
+            textSize = 16f
+            typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        }
+
+        val timeLayout = LinearLayout(parent.context).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                topMargin = 6
+            }
+        }
+
+        val time = TextView(parent.context).apply {
+            id = 4002
+            textSize = 13f
+        }
+
+        val duration = TextView(parent.context).apply {
+            id = 4003
+            setTextColor(Color.parseColor("#888888"))
+            textSize = 13f
+            layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply {
+                marginStart = 16
+            }
+        }
+
+        timeLayout.addView(time)
+        timeLayout.addView(duration)
+        layout.addView(title)
+        layout.addView(timeLayout)
+        return ViewHolder(layout)
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        val item = list[position]
+        holder.tvTitle.text = item.title
+        holder.tvTime.text = item.horario
+        holder.tvTime.setTextColor(Color.parseColor(item.corTexto))
+        holder.tvDuration.text = "Duração: ${item.duracao}"
+
+        if (item.isLive) {
+            holder.itemView.setBackgroundColor(Color.parseColor("#1A2ED573"))
+        } else {
+            holder.itemView.setBackgroundResource(R.drawable.bg_glass)
         }
     }
 
-    override fun getItemCount() = lista.size
+    override fun getItemCount(): Int = list.size
 }
