@@ -68,7 +68,6 @@ class EpgGuideActivity : Activity() {
         carregarGuia()
     }
 
-    // SISTEMA DE DEBUG VISUAL (O app não fecha mais sozinho, ele exibe o erro)
     private fun mostrarErroDebug(e: Exception, local: String) {
         val stackTrace = Log.getStackTraceString(e)
         val dialog = AlertDialog.Builder(this)
@@ -228,8 +227,8 @@ class EpgGuideActivity : Activity() {
                     } else {
                         layoutGuia.visibility = View.VISIBLE
                         
-                        // Chamando o Adapter original perfeitamente
-                        recyclerCanaisEpg.adapter = CanalLinhaAdapter(listaCanaisUnicos) { canalClicado ->
+                        // CORREÇÃO: Usando o Adapter Exclusivo
+                        recyclerCanaisEpg.adapter = EpgGuideChannelAdapter(listaCanaisUnicos) { canalClicado ->
                             abrirCanalNoPlayer(canalClicado)
                         }
 
@@ -343,7 +342,6 @@ class EpgGuideActivity : Activity() {
                                 horarioStr = "Ao Vivo / $hInicio - $hFim"
                             }
 
-                            // Construindo usando as variáveis do SEU EpgAdapter
                             listaEpgExibir.add(EpgItem(
                                 titulo = titleDecoded, 
                                 horario = horarioStr, 
