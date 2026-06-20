@@ -61,6 +61,11 @@ dependencies {
     implementation 'androidx.recyclerview:recyclerview:1.3.2'
     implementation 'androidx.cardview:cardview:1.0.0'
 
+    // =========================================================================
+    // A MÁGICA DO GOOGLE TV (LEANBACK) - A ESPINHA DORSAL DA NOVA ROLAGEM
+    // =========================================================================
+    implementation 'androidx.leanback:leanback:1.0.0'
+
     // MultiDex (Resolve o problema de MergeExtDexDebug)
     implementation 'androidx.multidex:multidex:2.0.1'
 
