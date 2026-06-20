@@ -4,6 +4,7 @@ import android.app.Activity
 import android.content.Intent
 import android.os.Bundle
 import android.view.View
+import android.view.Window
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
@@ -34,6 +35,12 @@ class DetailsActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_details)
 
         val detBackdrop = findViewById<ImageView>(R.id.detBackdrop)
@@ -181,7 +188,6 @@ class DetailsActivity : Activity() {
                                             intentVod.putExtra("STREAM_URL", epClicado.streamUrl)
                                             intentVod.putExtra("TIPO", "serie")
                                             intentVod.putExtra("USERNAME", username)
-                                            // MÁGICA: MANDA O ID DA SÉRIE PARA SER O CHAVEIRO DO FIREBASE
                                             intentVod.putExtra("MEDIA_ID", idMedia) 
                                             startActivity(intentVod)
                                         }
@@ -210,6 +216,14 @@ class DetailsActivity : Activity() {
             } else {
                 Toast.makeText(this, "Aguarde o carregamento do link...", Toast.LENGTH_SHORT).show()
             }
+        }
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
         }
     }
 }
