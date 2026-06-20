@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -27,12 +26,10 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
-import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
-import com.bumptech.glide.request.target.CustomViewTarget
-import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -93,8 +90,6 @@ class HomeActivity : Activity() {
         
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         actionBar?.hide()
-        
-        // NOVIDADE: Chama o modo tela cheia agressivo
         TvNavigationUtils.aplicarModoImersivo(this)
         
         setContentView(R.layout.activity_home)
@@ -165,7 +160,6 @@ class HomeActivity : Activity() {
         recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerApps.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
-        // NOVIDADE: Chama o configurador global com Snap magnético e trava de D-Pad
         TvNavigationUtils.configurarPrateleira(recyclerContinuar)
         TvNavigationUtils.configurarPrateleira(recyclerFavoritos)
         TvNavigationUtils.configurarPrateleira(recyclerUltimos)
@@ -223,7 +217,6 @@ class HomeActivity : Activity() {
         iniciarBatimentoCardiaco()
     }
     
-    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
         if (hasFocus) {
@@ -691,63 +684,55 @@ class HomeActivity : Activity() {
     }
 
     private fun atualizarBanner(filme: FilmeItem, mapCategorias: Map<String, String>) {
-
         val tvTitle = findViewById<TextView>(R.id.heroTitle)
         val tvBadge = findViewById<TextView>(R.id.heroBadge)
         val tvDesc = findViewById<TextView>(R.id.heroDesc)
+        val containerTextos = findViewById<LinearLayout>(R.id.textosDestaqueContainer)
         
-        tvTitle.text = filme.nome
-        val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
-        tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
-        tvDesc.text = "Buscando informações..."
+        // NOVIDADE: Efeito Fade-out nos textos antes de trocar
+        containerTextos.animate().alpha(0f).setDuration(300).withEndAction {
+            tvTitle.text = filme.nome
+            val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
+            tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
+            tvDesc.text = "Buscando informações..."
 
-        activityScope.launch {
-            try {
-                val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
-                val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
-                val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
-                val res = client.newCall(req).execute().body?.string() ?: "{}"
-                var plot = "Sinopse não disponível para este conteúdo."
-                if (res.startsWith("{")) {
-                    val json = JSONObject(res)
-                    val info = json.optJSONObject("info")
-                    if (info != null) {
-                        plot = info.optString("plot", "Sinopse não disponível.")
-                        if (plot.isEmpty() || plot == "null") plot = "Sinopse não disponível."
+            activityScope.launch {
+                try {
+                    val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+                    val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
+                    val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
+                    val res = client.newCall(req).execute().body?.string() ?: "{}"
+                    var plot = "Sinopse não disponível para este conteúdo."
+                    if (res.startsWith("{")) {
+                        val json = JSONObject(res)
+                        val info = json.optJSONObject("info")
+                        if (info != null) {
+                            plot = info.optString("plot", "Sinopse não disponível.")
+                            if (plot.isEmpty() || plot == "null") plot = "Sinopse não disponível."
+                        }
+                    }
+                    withContext(Dispatchers.Main) { 
+                        tvDesc.text = plot 
+                        // Textos voltam suavemente
+                        containerTextos.animate().alpha(1f).setDuration(400).start()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) { 
+                        tvDesc.text = "Sinopse não disponível." 
+                        containerTextos.animate().alpha(1f).setDuration(400).start()
                     }
                 }
-                withContext(Dispatchers.Main) { tvDesc.text = plot }
-            } catch (e: Exception) {
-                withContext(Dispatchers.Main) { tvDesc.text = "Sinopse não disponível." }
             }
-        }
 
-        btnAssistirDestaque.visibility = View.VISIBLE
-        btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
+            btnAssistirDestaque.visibility = View.VISIBLE
+            btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
+        }.start()
         
+        // NOVIDADE: Efeito CrossFade suave (800ms) para trocar o banner de fundo
         Glide.with(this)
             .load(filme.urlImagem)
-            .apply(RequestOptions()
-                .format(DecodeFormat.PREFER_RGB_565)
-            )
-            .into(object : CustomViewTarget<ImageView, Drawable>(heroImage) {
-            override fun onLoadFailed(errorDrawable: Drawable?) {}
-            override fun onResourceCleared(placeholder: Drawable?) {}
-            override fun onResourceReady(resource: Drawable, transition: Transition<in Drawable>?) {
-                view.setImageDrawable(resource)
-                view.post {
-                    val dWidth = resource.intrinsicWidth
-                    val vWidth = view.width
-                    if (dWidth > 0 && vWidth > 0) {
-                        val matrix = Matrix()
-                        val scale = vWidth.toFloat() / dWidth.toFloat()
-                        matrix.setScale(scale, scale)
-                        matrix.postTranslate(0f, 0f)
-                        view.imageMatrix = matrix
-                    }
-                }
-            }
-        })
+            .transition(DrawableTransitionOptions.withCrossFade(800))
+            .into(heroImage)
     }
 
     private fun abrirDetalhes(itemClicado: FilmeItem) {
