@@ -602,7 +602,6 @@ class HomeActivity : Activity() {
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
         
-        // MÁGICA: Puxamos os favoritos e eles ficam na ordem natural de adição!
         val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> listCanaisGlobais.find { it.id == favId } }
 
         if (listFavoritos.isNotEmpty()) {
@@ -614,7 +613,6 @@ class HomeActivity : Activity() {
                 DataHolder.favoritosIds = listaIdsFavoritosGlobais
                 DataHolder.categoriaAtualId = "FAV"
                 
-                // MÁGICA: O índice agora pergunta a posição na lista CORRETA E ORDENADA (listFavoritos)
                 val indiceCorretoProPlayer = listFavoritos.indexOf(canalClicado)
                 
                 startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply { putExtra("INDICE_CANAL", if (indiceCorretoProPlayer != -1) indiceCorretoProPlayer else 0) })
@@ -737,6 +735,7 @@ class HomeActivity : Activity() {
         
         Glide.with(this)
             .load(filme.urlImagem)
+            .format(com.bumptech.glide.load.DecodeFormat.PREFER_ARGB_8888)
             .transition(DrawableTransitionOptions.withCrossFade(800))
             .into(heroImage)
     }
