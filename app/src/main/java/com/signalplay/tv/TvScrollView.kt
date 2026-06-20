@@ -26,8 +26,8 @@ class TvScrollView @JvmOverloads constructor(
         }
     }
 
-    // A VACINA: Isso aqui desativa o pulo "seco" padrão de celulares
-    override fun requestChildRectangleOnScreen(child: View?, rectangle: Rect?, immediate: Boolean): Boolean {
+    // A VACINA CORRIGIDA: Removido os "?" de View e Rect
+    override fun requestChildRectangleOnScreen(child: View, rectangle: Rect, immediate: Boolean): Boolean {
         return false 
     }
 }
