@@ -18,6 +18,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.text.SimpleDateFormat
@@ -38,7 +39,9 @@ class EpgGuideActivity : Activity() {
 
     private val listaCanaisUnicos = mutableListOf<CanalItem>()
     private val mapaIdParaEpg = mutableMapOf<String, String>()
-    private var epgDatabaseJson: JSONObject? = null
+    
+    // Novo Mapeamento Universal
+    private val epgDataMap = mutableMapOf<String, JSONArray>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,7 +93,57 @@ class EpgGuideActivity : Activity() {
                 }
 
                 val fileContent = file.readText()
-                epgDatabaseJson = JSONObject(fileContent)
+                val conteudoLimpo = fileContent.trim()
+
+                // PARSER UNIVERSAL DE EPG (Detecta automaticamente o formato do seu Painel)
+                try {
+                    if (conteudoLimpo.startsWith("[")) {
+                        // Formato 1: Array Direto
+                        val jsonArr = JSONArray(conteudoLimpo)
+                        for (i in 0 until jsonArr.length()) {
+                            val prog = jsonArr.optJSONObject(i) ?: continue
+                            val eId = prog.optString("epg_id")
+                            if (eId.isNotEmpty()) {
+                                val list = epgDataMap.getOrPut(eId) { JSONArray() }
+                                list.put(prog)
+                            }
+                        }
+                    } else {
+                        val jsonObj = JSONObject(conteudoLimpo)
+                        if (jsonObj.has("epg_listings")) {
+                            // Formato 2: Padrão Xtream Codes Completo
+                            val arr = jsonObj.optJSONArray("epg_listings")
+                            if (arr != null) {
+                                for (i in 0 until arr.length()) {
+                                    val prog = arr.optJSONObject(i) ?: continue
+                                    val eId = prog.optString("epg_id")
+                                    if (eId.isNotEmpty()) {
+                                        val list = epgDataMap.getOrPut(eId) { JSONArray() }
+                                        list.put(prog)
+                                    }
+                                }
+                            }
+                        } else {
+                            // Formato 3: Chave-Valor (Map)
+                            val keys = jsonObj.keys()
+                            while (keys.hasNext()) {
+                                val key = keys.next()
+                                val arr = jsonObj.optJSONArray(key)
+                                if (arr != null) {
+                                    epgDataMap[key] = arr
+                                }
+                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    // Se falhar aqui, o arquivo não é um JSON válido (Pode ser um XML)
+                    withContext(Dispatchers.Main) {
+                        progressLoadingEpg.visibility = View.GONE
+                        Toast.makeText(this@EpgGuideActivity, "Erro no formato do arquivo EPG: ${e.message}", Toast.LENGTH_LONG).show()
+                        finish()
+                    }
+                    return@launch
+                }
 
                 val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
                 val isParentalActive = prefs.getBoolean("PARENTAL_CONTROL", false)
@@ -137,12 +190,24 @@ class EpgGuideActivity : Activity() {
 
                 val agoraTs = System.currentTimeMillis() / 1000
                 for ((epgId, canalEntity) in mapEpgToCanal) {
-                    val localList = epgDatabaseJson?.optJSONArray(epgId)
+                    val localList = epgDataMap[epgId]
                     if (localList != null && localList.length() > 0) {
                         var temProgramacaoFutura = false
                         for (i in 0 until localList.length()) {
                             val prog = localList.getJSONObject(i)
-                            if (prog.optLong("stop_timestamp", 0) > agoraTs) {
+                            
+                            var stopTs = prog.optLong("stop_timestamp", 0)
+                            if (stopTs == 0L) {
+                                val endStr = prog.optString("end", "")
+                                if (endStr.isNotEmpty()) {
+                                    try {
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                        stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
+                                    } catch (e: Exception) {}
+                                }
+                            }
+
+                            if (stopTs > agoraTs) {
                                 temProgramacaoFutura = true
                                 break
                             }
@@ -168,7 +233,6 @@ class EpgGuideActivity : Activity() {
                             abrirCanalNoPlayer(canalClicado)
                         }
 
-                        // Atualiza a programação da direita apenas mudando o foco (sem precisar clicar)
                         recyclerCanaisEpg.viewTreeObserver.addOnGlobalFocusChangeListener { oldFocus, newFocus ->
                             if (newFocus != null) {
                                 val pos = recyclerCanaisEpg.getChildAdapterPosition(newFocus)
@@ -186,7 +250,7 @@ class EpgGuideActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressLoadingEpg.visibility = View.GONE
-                    Toast.makeText(this@EpgGuideActivity, "Erro ao processar o EPG.", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(this@EpgGuideActivity, "Erro geral ao processar EPG: ${e.message}", Toast.LENGTH_LONG).show()
                     finish()
                 }
             }
@@ -201,24 +265,68 @@ class EpgGuideActivity : Activity() {
 
             val epgId = mapaIdParaEpg[canal.id] ?: ""
 
-            if (epgId.isNotEmpty() && epgDatabaseJson != null) {
-                val progList = epgDatabaseJson!!.optJSONArray(epgId)
+            if (epgId.isNotEmpty()) {
+                val progList = epgDataMap[epgId]
                 if (progList != null) {
                     val futuros = mutableListOf<JSONObject>()
                     for (i in 0 until progList.length()) {
                         val prog = progList.getJSONObject(i)
-                        if (prog.optLong("stop_timestamp", 0) > agoraTs) {
+                        
+                        var stopTs = prog.optLong("stop_timestamp", 0)
+                        if (stopTs == 0L) {
+                            val endStr = prog.optString("end", "")
+                            if (endStr.isNotEmpty()) {
+                                try {
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                    stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
+                                } catch (e: Exception) {}
+                            }
+                        }
+
+                        if (stopTs > agoraTs) {
                             futuros.add(prog)
                         }
                     }
-                    futuros.sortBy { it.optLong("start_timestamp", 0) }
+                    
+                    futuros.sortBy { 
+                        var sTs = it.optLong("start_timestamp", 0)
+                        if (sTs == 0L) {
+                            val stStr = it.optString("start", "")
+                            if (stStr.isNotEmpty()) {
+                                try {
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                    sTs = sdf.parse(stStr)?.time?.div(1000) ?: 0L
+                                } catch (e: Exception) {}
+                            }
+                        }
+                        sTs 
+                    }
 
-                    // Pega até 15 programas para não engasgar a lista
                     for (i in 0 until Math.min(15, futuros.size)) {
                         val prog = futuros[i]
                         val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
-                        val startTs = prog.optLong("start_timestamp", 0)
-                        val stopTs = prog.optLong("stop_timestamp", 0)
+                        
+                        var startTs = prog.optLong("start_timestamp", 0)
+                        var stopTs = prog.optLong("stop_timestamp", 0)
+
+                        if (startTs == 0L) {
+                            val startStr = prog.optString("start", "")
+                            if (startStr.isNotEmpty()) {
+                                try {
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                    startTs = sdf.parse(startStr)?.time?.div(1000) ?: 0L
+                                } catch (e: Exception) {}
+                            }
+                        }
+                        if (stopTs == 0L) {
+                            val endStr = prog.optString("end", "")
+                            if (endStr.isNotEmpty()) {
+                                try {
+                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                    stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
+                                } catch (e: Exception) {}
+                            }
+                        }
 
                         val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
                         val hInicio = sdfHora.format(Date(startTs * 1000))
