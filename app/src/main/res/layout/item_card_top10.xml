@@ -11,7 +11,6 @@
     android:paddingBottom="20dp"
     android:paddingStart="12dp">
 
-    <!-- Container dos números: Margem negativa joga ele para baixo da capa do filme -->
     <RelativeLayout
         android:id="@+id/numberContainer"
         android:layout_width="wrap_content"
@@ -19,13 +18,13 @@
         android:layout_marginEnd="-45dp"
         android:layout_centerVertical="true">
 
-        <!-- MÁGICA: Usando textSize em "dp" para travar o tamanho junto com o card, e a fonte ultra grossa (sans-serif-black) -->
         <TextView
             android:id="@+id/topNumberOutline"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textSize="150dp"
+            android:textSize="150sp"
             android:fontFamily="sans-serif-black"
+            android:textScaleX="1.2"
             android:gravity="center_vertical|end"
             android:includeFontPadding="false" />
 
@@ -33,8 +32,9 @@
             android:id="@+id/topNumberFill"
             android:layout_width="wrap_content"
             android:layout_height="match_parent"
-            android:textSize="150dp"
+            android:textSize="150sp"
             android:fontFamily="sans-serif-black"
+            android:textScaleX="1.2"
             android:gravity="center_vertical|end"
             android:includeFontPadding="false" />
     </RelativeLayout>
