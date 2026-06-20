@@ -192,6 +192,60 @@
                         android:padding="16dp" />
                 </LinearLayout>
 
+                <LinearLayout
+                    android:id="@+id/btnGuiaEpg"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginBottom="32dp"
+                    android:layout_marginEnd="48dp"
+                    android:background="@drawable/bg_glass"
+                    android:orientation="horizontal"
+                    android:padding="16dp"
+                    android:focusable="true"
+                    android:clickable="true"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="60dp"
+                        android:layout_height="60dp"
+                        android:src="@android:drawable/ic_menu_sort_by_size"
+                        android:background="#FF4757"
+                        android:padding="12dp"
+                        android:layout_marginEnd="16dp" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Guia de Programação"
+                            android:textColor="#FFFFFF"
+                            android:textSize="20sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Veja o que está passando agora nos canais"
+                            android:textColor="#AAAAAA"
+                            android:textSize="14sp"
+                            android:layout_marginTop="4dp" />
+                    </LinearLayout>
+                    
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="▶"
+                        android:textColor="#FF4757"
+                        android:textSize="24sp"
+                        android:textStyle="bold"
+                        android:layout_marginEnd="16dp"/>
+                </LinearLayout>
+
                 <TextView android:id="@+id/tvAppsTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Seus Aplicativos" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerApps" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
 
