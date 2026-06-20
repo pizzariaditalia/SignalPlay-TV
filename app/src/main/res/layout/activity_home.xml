@@ -26,7 +26,6 @@
             android:layout_margin="0dp"
             android:padding="0dp">
 
-            <!-- Altura aumentada para 550dp para não cortar rostos e dar imersão -->
             <RelativeLayout
                 android:id="@+id/heroSection"
                 android:layout_width="match_parent"
@@ -36,7 +35,6 @@
                 android:layout_margin="0dp"
                 android:padding="0dp">
 
-                <!-- Imagem alinhada ao topo absoluto para priorizar a cabeça dos personagens -->
                 <ImageView
                     android:id="@+id/heroImage"
                     android:layout_width="match_parent"
@@ -48,12 +46,12 @@
 
                 <View 
                     android:layout_width="match_parent" 
-                    android:layout_height="300dp" 
+                    android:layout_height="450dp" 
                     android:layout_alignParentBottom="true"
                     android:background="@drawable/bg_hero_gradient" />
 
-                <!-- Container do Menu (Alinhamentos mantidos para manter o design) -->
                 <RelativeLayout
+                    android:id="@+id/topMenuContainer"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:paddingStart="24dp"
@@ -109,7 +107,8 @@
                     android:id="@+id/textosDestaqueContainer"
                     android:layout_width="600dp"
                     android:layout_height="wrap_content"
-                    android:layout_alignParentBottom="true"
+                    android:layout_below="@id/topMenuContainer"
+                    android:layout_marginTop="16dp"
                     android:orientation="vertical"
                     android:paddingStart="48dp"
                     android:paddingEnd="48dp"
@@ -291,7 +290,6 @@
         </RelativeLayout>
     </androidx.core.widget.NestedScrollView>
 
-    <!-- Overlay de Loading -->
     <RelativeLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
