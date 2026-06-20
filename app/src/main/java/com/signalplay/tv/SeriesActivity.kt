@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -32,12 +33,17 @@ class SeriesActivity : Activity() {
     private var pass = ""
     private var username = ""
 
-    // CORREÇÃO: Job para proteger a memória da Activity
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_tv)
 
         val recyclerCategories = findViewById<RecyclerView>(R.id.recyclerCategories)
@@ -132,6 +138,14 @@ class SeriesActivity : Activity() {
             intentDet.putExtra("MEDIA_NOME", serieClicada.nome)
             intentDet.putExtra("MEDIA_CAPA", serieClicada.urlImagem)
             startActivity(intentDet)
+        }
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
         }
     }
 
