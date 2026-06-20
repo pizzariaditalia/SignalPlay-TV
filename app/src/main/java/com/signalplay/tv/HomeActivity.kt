@@ -5,13 +5,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
-import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.text.TextUtils
-import android.view.KeyEvent
 import android.view.View
 import android.view.ViewGroup
 import android.view.Window
@@ -24,6 +22,7 @@ import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
+import androidx.core.widget.NestedScrollView
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
@@ -32,8 +31,6 @@ import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
-import com.bumptech.glide.request.target.CustomViewTarget
-import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -106,6 +103,8 @@ class HomeActivity : Activity() {
         heroImage = findViewById(R.id.heroImage)
         tvClock = findViewById(R.id.tvClock)
         tvNetworkStatus = findViewById(R.id.tvNetworkStatus)
+        
+        val mainScrollView = findViewById<NestedScrollView>(R.id.mainScrollView)
 
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
 
@@ -131,6 +130,10 @@ class HomeActivity : Activity() {
             val txt = v as TextView
             if (hasFocus) {
                 txt.setTextColor(Color.BLACK)
+                
+                // MÁGICA 1: Ancoragem de Topo! Impede o "pulinho" da tela forçando-a ao ponto 0,0 suavemente
+                mainScrollView.post { mainScrollView.smoothScrollTo(0, 0) }
+                
                 if(!isLowEndMode) v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
                 else v.setBackgroundColor(Color.WHITE)
             } else {
@@ -193,7 +196,8 @@ class HomeActivity : Activity() {
             btnGuiaEpg.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
-                    v.setBackgroundResource(R.drawable.bg_menu_focus)
+                    // MÁGICA 2: Novo fundo transparente com contorno no lugar daquele bloco branco
+                    v.setBackgroundResource(R.drawable.bg_card_outline)
                 } else {
                     if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
                     v.setBackgroundResource(R.drawable.bg_glass)
@@ -569,7 +573,8 @@ class HomeActivity : Activity() {
             cardRetomar.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
-                    v.setBackgroundResource(R.drawable.bg_menu_focus)
+                    // MÁGICA 2: Novo fundo transparente com contorno 
+                    v.setBackgroundResource(R.drawable.bg_card_outline)
                 } else {
                     if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
                     v.setBackgroundResource(R.drawable.bg_glass)
