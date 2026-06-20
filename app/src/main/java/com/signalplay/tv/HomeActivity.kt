@@ -130,8 +130,6 @@ class HomeActivity : Activity() {
             val txt = v as TextView
             if (hasFocus) {
                 txt.setTextColor(Color.BLACK)
-                
-                // MÁGICA 1: Ancoragem de Topo! Impede o "pulinho" da tela forçando-a ao ponto 0,0 suavemente
                 mainScrollView.post { mainScrollView.smoothScrollTo(0, 0) }
                 
                 if(!isLowEndMode) v.animate().scaleX(1.08f).scaleY(1.08f).translationZ(10f).setDuration(250).setInterpolator(suaveOvershoot).start()
@@ -196,7 +194,6 @@ class HomeActivity : Activity() {
             btnGuiaEpg.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
-                    // MÁGICA 2: Novo fundo transparente com contorno no lugar daquele bloco branco
                     v.setBackgroundResource(R.drawable.bg_card_outline)
                 } else {
                     if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
@@ -573,7 +570,6 @@ class HomeActivity : Activity() {
             cardRetomar.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) {
                     if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
-                    // MÁGICA 2: Novo fundo transparente com contorno 
                     v.setBackgroundResource(R.drawable.bg_card_outline)
                 } else {
                     if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
@@ -766,14 +762,30 @@ class HomeActivity : Activity() {
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
             val layout = LinearLayout(parent.context).apply {
-                orientation = LinearLayout.VERTICAL; gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(140, 140).apply { setMargins(12, 12, 12, 12) }
-                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_glass)
-                isFocusable = true; isClickable = true; setPadding(12, 12, 12, 12)
+                orientation = LinearLayout.VERTICAL
+                gravity = android.view.Gravity.CENTER
+                layoutParams = ViewGroup.MarginLayoutParams(180, 100).apply { setMargins(12, 12, 12, 12) }
+                background = ContextCompat.getDrawable(parent.context, R.drawable.bg_app_card)
+                isFocusable = true
+                isClickable = true
+                setPadding(8, 12, 8, 8)
             }
-            val img = ImageView(parent.context).apply { id = 2001; layoutParams = LinearLayout.LayoutParams(70, 70); scaleType = ImageView.ScaleType.FIT_CENTER }
-            val txt = TextView(parent.context).apply { id = 2002; layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }; setTextColor(Color.WHITE); textSize = 10f; textAlignment = View.TEXT_ALIGNMENT_CENTER; maxLines = 1; ellipsize = TextUtils.TruncateAt.END }
-            layout.addView(img); layout.addView(txt)
+            val img = ImageView(parent.context).apply { 
+                id = 2001
+                layoutParams = LinearLayout.LayoutParams(40, 40)
+                scaleType = ImageView.ScaleType.FIT_CENTER 
+            }
+            val txt = TextView(parent.context).apply { 
+                id = 2002
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                setTextColor(Color.WHITE)
+                textSize = 11f
+                textAlignment = View.TEXT_ALIGNMENT_CENTER
+                maxLines = 1
+                ellipsize = TextUtils.TruncateAt.END 
+            }
+            layout.addView(img)
+            layout.addView(txt)
             return AppViewHolder(layout)
         }
         override fun onBindViewHolder(holder: AppViewHolder, position: Int) {
@@ -784,11 +796,11 @@ class HomeActivity : Activity() {
             holder.itemView.setOnFocusChangeListener { v, hasFocus ->
                 if (hasFocus) { 
                     v.bringToFront()
-                    if(!isLowEndMode) v.animate().scaleX(1.12f).scaleY(1.12f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() 
-                    else v.setBackgroundColor(Color.parseColor("#FFC107"))
+                    if(!isLowEndMode) v.animate().scaleX(1.10f).scaleY(1.10f).translationZ(15f).setDuration(250).setInterpolator(interpolator).start() 
+                    v.setBackgroundResource(R.drawable.bg_card_outline)
                 } else { 
                     if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(250).setInterpolator(interpolator).start()
-                    else v.background = ContextCompat.getDrawable(v.context, R.drawable.bg_glass)
+                    v.setBackgroundResource(R.drawable.bg_app_card)
                 }
             }
             holder.itemView.setOnClickListener { onClick(item) }
