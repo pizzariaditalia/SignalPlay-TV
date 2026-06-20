@@ -55,7 +55,7 @@
         <activity android:name=".SettingsActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".DetailsActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".SportsActivity" android:exported="false" android:screenOrientation="landscape" />
-
+        <activity android:name=".EpgGuideActivity" android:exported="false" android:screenOrientation="landscape" />
         <activity android:name=".PixActivity" android:exported="false" android:screenOrientation="landscape" />
 
         <activity 
