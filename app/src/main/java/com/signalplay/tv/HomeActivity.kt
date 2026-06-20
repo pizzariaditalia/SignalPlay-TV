@@ -76,14 +76,15 @@ class HomeActivity : Activity() {
     private var listCanaisGlobais = listOf<CanalItem>()
     private var liveCatsGlobal = listOf<CategoriaItem>()
     
+    private var mapVodCatsGlobal: Map<String, String> = emptyMap()
+    private var mapSeriesCatsGlobal: Map<String, String> = emptyMap()
+    
     private var listaIdsFavoritosGlobais = mutableListOf<String>()
     private var historicoMapGlobal: Map<String, Any> = emptyMap()
 
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
     private var heartbeatJob: Job? = null
-    
-    private var carrosselJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,7 +104,6 @@ class HomeActivity : Activity() {
         tvClock = findViewById(R.id.tvClock)
         tvNetworkStatus = findViewById(R.id.tvNetworkStatus)
         
-        // VINCULANDO O NOVO MOTOR DE ROLAGEM
         val mainScrollView = findViewById<TvScrollView>(R.id.mainScrollView)
 
         btnAssistirDestaque.setBackgroundResource(R.drawable.bg_btn_white)
@@ -157,13 +157,14 @@ class HomeActivity : Activity() {
         val recyclerSeriesAlta = findViewById<RecyclerView>(R.id.recyclerSeriesAlta)
         val recyclerApps = findViewById<RecyclerView>(R.id.recyclerApps)
         
-        recyclerContinuar.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerFavoritos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerUltimos.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerTopFilmes.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerTopSeries.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
-        recyclerApps.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
+        // APLICANDO O NOVO MOTOR HORIZONTAL DO GOOGLE TV NAS PRATELEIRAS
+        recyclerContinuar.layoutManager = TvLinearLayoutManager(this)
+        recyclerFavoritos.layoutManager = TvLinearLayoutManager(this)
+        recyclerUltimos.layoutManager = TvLinearLayoutManager(this)
+        recyclerTopFilmes.layoutManager = TvLinearLayoutManager(this)
+        recyclerTopSeries.layoutManager = TvLinearLayoutManager(this)
+        recyclerSeriesAlta.layoutManager = TvLinearLayoutManager(this)
+        recyclerApps.layoutManager = TvLinearLayoutManager(this)
 
         TvNavigationUtils.configurarPrateleira(recyclerContinuar)
         TvNavigationUtils.configurarPrateleira(recyclerFavoritos)
@@ -285,14 +286,18 @@ class HomeActivity : Activity() {
     override fun onResume() {
         super.onResume()
         carregarAplicativosDaTV()
-        if (listFilmesGlobais.isEmpty()) carregarCatalogoDaAPI()
+        if (listFilmesGlobais.isEmpty()) {
+            carregarCatalogoDaAPI()
+        } else {
+            // Atualiza com 1 banner aleatório ao retornar
+            carregarDestaqueAleatorio()
+        }
     }
 
     override fun onDestroy() {
         super.onDestroy()
         isClockRunning = false
         activityJob.cancel()
-        carrosselJob?.cancel()
     }
 
     private fun carregarCatalogoDaAPI() {
@@ -444,6 +449,9 @@ class HomeActivity : Activity() {
                 }
                 for (cat in dao.getCategoriasPorTipo("vod")) mapVodCats[cat.id] = cat.nome
                 for (cat in dao.getCategoriasPorTipo("series")) mapSeriesCats[cat.id] = cat.nome
+                
+                mapVodCatsGlobal = mapVodCats
+                mapSeriesCatsGlobal = mapSeriesCats
 
                 liveCats.add(0, CategoriaItem("FAV", "Canais Favoritos"))
                 liveCatsGlobal = liveCats
@@ -505,10 +513,7 @@ class HomeActivity : Activity() {
                     recyclerTopSeries.adapter = Top10Adapter(listSeriesGlobais.take(10)) { abrirDetalhes(it) }
 
                     if (listFilmesGlobais.isNotEmpty()) {
-                        val mCat = mapVodCats.toMutableMap()
-                        mCat.putAll(mapSeriesCats)
-                        val destaques = listFilmesGlobais.shuffled().take(5)
-                        iniciarCarrossel(destaques, mCat)
+                        carregarDestaqueAleatorio()
                     }
                 }
             } catch (e: Exception) {
@@ -518,6 +523,66 @@ class HomeActivity : Activity() {
                 }
             }
         }
+    }
+
+    private fun carregarDestaqueAleatorio() {
+        if (listFilmesGlobais.isEmpty()) return
+        val filmeAleatorio = listFilmesGlobais.random()
+        
+        val mapTodasCats = mapVodCatsGlobal.toMutableMap()
+        mapTodasCats.putAll(mapSeriesCatsGlobal)
+        
+        atualizarBanner(filmeAleatorio, mapTodasCats)
+    }
+
+    private fun atualizarBanner(filme: FilmeItem, mapCategorias: Map<String, String>) {
+        val tvTitle = findViewById<TextView>(R.id.heroTitle)
+        val tvBadge = findViewById<TextView>(R.id.heroBadge)
+        val tvDesc = findViewById<TextView>(R.id.heroDesc)
+        val containerTextos = findViewById<LinearLayout>(R.id.textosDestaqueContainer)
+        
+        containerTextos.animate().alpha(0f).setDuration(300).withEndAction {
+            tvTitle.text = filme.nome
+            val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
+            tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
+            tvDesc.text = "Buscando informações..."
+
+            activityScope.launch {
+                try {
+                    val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
+                    val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
+                    val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
+                    val res = client.newCall(req).execute().body?.string() ?: "{}"
+                    var plot = "Sinopse não disponível para este conteúdo."
+                    if (res.startsWith("{")) {
+                        val json = JSONObject(res)
+                        val info = json.optJSONObject("info")
+                        if (info != null) {
+                            plot = info.optString("plot", "Sinopse não disponível.")
+                            if (plot.isEmpty() || plot == "null") plot = "Sinopse não disponível."
+                        }
+                    }
+                    withContext(Dispatchers.Main) { 
+                        tvDesc.text = plot 
+                        containerTextos.animate().alpha(1f).setDuration(400).start()
+                    }
+                } catch (e: Exception) {
+                    withContext(Dispatchers.Main) { 
+                        tvDesc.text = "Sinopse não disponível." 
+                        containerTextos.animate().alpha(1f).setDuration(400).start()
+                    }
+                }
+            }
+
+            btnAssistirDestaque.visibility = View.VISIBLE
+            btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
+        }.start()
+        
+        Glide.with(this)
+            .load(filme.urlImagem)
+            .format(com.bumptech.glide.load.DecodeFormat.PREFER_ARGB_8888)
+            .transition(DrawableTransitionOptions.withCrossFade(800))
+            .into(heroImage)
     }
 
     private fun renderizarContinuarAssistindo() {
@@ -670,75 +735,6 @@ class HomeActivity : Activity() {
                 else Toast.makeText(this, "Não foi possível abrir.", Toast.LENGTH_SHORT).show()
             }
         }
-    }
-
-    private fun iniciarCarrossel(destaques: List<FilmeItem>, mapCategorias: Map<String, String>) {
-        carrosselJob?.cancel() 
-        if (destaques.isEmpty()) return
-
-        carrosselJob = activityScope.launch {
-            var index = 0
-            while (isActive) {
-                val filmeAtual = destaques[index]
-                
-                withContext(Dispatchers.Main) {
-                    atualizarBanner(filmeAtual, mapCategorias)
-                }
-                
-                delay(8000) 
-                index = (index + 1) % destaques.size
-            }
-        }
-    }
-
-    private fun atualizarBanner(filme: FilmeItem, mapCategorias: Map<String, String>) {
-        val tvTitle = findViewById<TextView>(R.id.heroTitle)
-        val tvBadge = findViewById<TextView>(R.id.heroBadge)
-        val tvDesc = findViewById<TextView>(R.id.heroDesc)
-        val containerTextos = findViewById<LinearLayout>(R.id.textosDestaqueContainer)
-        
-        containerTextos.animate().alpha(0f).setDuration(300).withEndAction {
-            tvTitle.text = filme.nome
-            val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
-            tvBadge.text = "PASTA: ${nomeDaPasta.uppercase()}"
-            tvDesc.text = "Buscando informações..."
-
-            activityScope.launch {
-                try {
-                    val client = OkHttpClient.Builder().connectTimeout(15, TimeUnit.SECONDS).readTimeout(15, TimeUnit.SECONDS).build()
-                    val action = if (filme.tipo == "serie") "get_series_info&series_id=${filme.id}" else "get_vod_info&vod_id=${filme.id}"
-                    val req = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=$action").build()
-                    val res = client.newCall(req).execute().body?.string() ?: "{}"
-                    var plot = "Sinopse não disponível para este conteúdo."
-                    if (res.startsWith("{")) {
-                        val json = JSONObject(res)
-                        val info = json.optJSONObject("info")
-                        if (info != null) {
-                            plot = info.optString("plot", "Sinopse não disponível.")
-                            if (plot.isEmpty() || plot == "null") plot = "Sinopse não disponível."
-                        }
-                    }
-                    withContext(Dispatchers.Main) { 
-                        tvDesc.text = plot 
-                        containerTextos.animate().alpha(1f).setDuration(400).start()
-                    }
-                } catch (e: Exception) {
-                    withContext(Dispatchers.Main) { 
-                        tvDesc.text = "Sinopse não disponível." 
-                        containerTextos.animate().alpha(1f).setDuration(400).start()
-                    }
-                }
-            }
-
-            btnAssistirDestaque.visibility = View.VISIBLE
-            btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
-        }.start()
-        
-        Glide.with(this)
-            .load(filme.urlImagem)
-            .format(com.bumptech.glide.load.DecodeFormat.PREFER_ARGB_8888)
-            .transition(DrawableTransitionOptions.withCrossFade(800))
-            .into(heroImage)
     }
 
     private fun abrirDetalhes(itemClicado: FilmeItem) {
