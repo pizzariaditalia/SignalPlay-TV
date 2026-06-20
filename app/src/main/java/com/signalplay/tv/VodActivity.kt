@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.Window
 import android.widget.RelativeLayout
 import android.widget.TextView
 import android.widget.Toast
@@ -34,12 +35,17 @@ class VodActivity : Activity() {
     private var pass = ""
     private var username = ""
 
-    // CORREÇÃO: Job para proteger a memória da Activity
     private val activityJob = Job()
     private val activityScope = CoroutineScope(Dispatchers.IO + activityJob)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_tv)
 
         db = FirebaseFirestore.getInstance()
@@ -87,7 +93,6 @@ class VodActivity : Activity() {
                 val catMap = mutableMapOf<String, String>()
                 
                 for (cat in categoriasEntity) {
-                    // CORREÇÃO: Utilizando a nova classe utilitária (Filmes não filtram resolução pelo nome, só parental)
                     if (ContentFilterUtils.isContentBlocked("", cat.nome, isParentalActive, false, false, false, false, false)) continue
                     
                     todasCategorias.add(CategoriaItem(cat.id, cat.nome))
@@ -98,7 +103,6 @@ class VodActivity : Activity() {
                 for (filme in filmesEntity) {
                     val catName = catMap[filme.categoryId] ?: ""
                     
-                    // CORREÇÃO: Filtro compacto
                     if (ContentFilterUtils.isContentBlocked(filme.nome, catName, isParentalActive, false, false, false, false, false)) continue
                     
                     todosFilmes.add(FilmeItem(
@@ -158,6 +162,14 @@ class VodActivity : Activity() {
             intentDet.putExtra("MEDIA_NOME", filmeClicado.nome)
             intentDet.putExtra("MEDIA_CAPA", filmeClicado.urlImagem)
             startActivity(intentDet)
+        }
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
         }
     }
 
