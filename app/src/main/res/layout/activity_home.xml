@@ -8,7 +8,6 @@
     android:layout_margin="0dp"
     android:padding="0dp">
 
-    <!-- MOTOR DE ROLAGEM DE TV APLICADO AQUI -->
     <com.signalplay.tv.TvScrollView
         android:id="@+id/mainScrollView"
         android:layout_width="match_parent"
@@ -134,7 +133,7 @@
                 android:clipToPadding="false">
 
                 <TextView android:id="@+id/tvAppsTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Seus Aplicativos" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerApps" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerApps" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
 
                 <LinearLayout
                     android:id="@+id/btnGuiaEpg"
@@ -191,7 +190,7 @@
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvFavoritosTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Canais Favoritos" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" android:visibility="gone" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerFavoritos" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" android:visibility="gone" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerFavoritos" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" android:visibility="gone" />
 
                 <LinearLayout
                     android:id="@+id/cardRetomar"
@@ -272,19 +271,19 @@
                 </LinearLayout>
 
                 <TextView android:id="@+id/tvContinuarTitulo" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Continuar Assistindo" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" android:visibility="gone" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerContinuar" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" android:visibility="gone" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerContinuar" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" android:visibility="gone" />
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Últimos Adicionados" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerUltimos" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerUltimos" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Top 10 Filmes" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerTopFilmes" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerTopFilmes" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
                     
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Séries em Alta" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerSeriesAlta" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerSeriesAlta" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
 
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Top 10 Séries" android:textColor="#FFFFFF" android:textSize="20sp" android:textStyle="bold" android:layout_marginBottom="12dp" />
-                <androidx.recyclerview.widget.RecyclerView android:id="@+id/recyclerTopSeries" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
+                <androidx.leanback.widget.HorizontalGridView android:id="@+id/recyclerTopSeries" android:scrollbars="none" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="32dp" android:clipChildren="false" android:clipToPadding="false" android:paddingEnd="80dp" />
 
             </LinearLayout>
         </RelativeLayout>
