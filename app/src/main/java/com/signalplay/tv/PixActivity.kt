@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory
 import android.os.Bundle
 import android.util.Base64
 import android.view.View
+import android.view.Window
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.TextView
@@ -31,6 +32,12 @@ class PixActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Tela cheia
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_pix)
 
         imgQrCode = findViewById(R.id.imgQrCode)
@@ -38,7 +45,6 @@ class PixActivity : Activity() {
         btnPixVoltar = findViewById(R.id.btnPixVoltar)
         db = FirebaseFirestore.getInstance()
 
-        // Recebe o nome do utilizador vindo da tela de login
         username = intent.getStringExtra("USERNAME") ?: ""
 
         btnPixVoltar.setOnFocusChangeListener { v, hasFocus ->
@@ -64,10 +70,7 @@ class PixActivity : Activity() {
         
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Substitui espaços por underline (_) conforme exigido pela sua API PHP
                 val usuarioFormatado = username.replace(" ", "_")
-                
-                // CORREÇÃO DEFINITIVA DA URL: Agora aponta diretamente para o seu site estável
                 val urlCompleta = "http://signalplay.pro/gerar_pix.php?usuario=$usuarioFormatado"
 
                 val client = OkHttpClient()
@@ -75,7 +78,6 @@ class PixActivity : Activity() {
                 val res = client.newCall(req).execute()
                 val jsonStrBruto = res.body?.string() ?: ""
 
-                // Limpa quaisquer impurezas ou textos extras fora do objeto JSON
                 val startIndex = jsonStrBruto.indexOf("{")
                 val endIndex = jsonStrBruto.lastIndexOf("}")
 
@@ -89,7 +91,6 @@ class PixActivity : Activity() {
                             val base64Qr = json.optString("qr_code_base64", "")
                             
                             if (sucesso && base64Qr.isNotEmpty()) {
-                                // Remove quebras de linha acidentais do Base64
                                 val cleanBase64 = base64Qr.replace("\n", "").replace("\r", "")
                                 
                                 val decodedString: ByteArray = Base64.decode(cleanBase64, Base64.DEFAULT)
@@ -161,7 +162,6 @@ class PixActivity : Activity() {
                     }
                 }
 
-                // O Radar só liberta o utilizador se o status for ATIVO e não estiver com data vencida
                 if (status == "ATIVO" && !isVencido) {
                     tvPixStatus.text = "PAGAMENTO APROVADO!"
                     tvPixStatus.setTextColor(android.graphics.Color.parseColor("#2ED573")) 
@@ -173,5 +173,13 @@ class PixActivity : Activity() {
                     }, 3000)
                 }
             }
+    }
+    
+    // NOVIDADE: Garante que a barra preta não volte
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
+        }
     }
 }
