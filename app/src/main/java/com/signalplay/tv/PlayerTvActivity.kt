@@ -132,7 +132,6 @@ class PlayerTvActivity : Activity() {
             }
             DataHolder.canaisFiltrados = canaisFavOrdenados
             
-        // NOVIDADE AQUI: O Player agora aceita canais do EPG e Pesquisa sem filtrar e esvaziar a lista!
         } else if (cat.id == "EPG_GUIDE" || cat.id == "PESQUISA") {
             DataHolder.canaisFiltrados = DataHolder.todosCanais
         } else {
@@ -153,12 +152,7 @@ class PlayerTvActivity : Activity() {
 
     private fun inicializarPlayer() {
         val loadControl = DefaultLoadControl.Builder()
-            .setBufferDurationsMs(
-                15000,  
-                30000,  
-                2500,   
-                5000    
-            )
+            .setBufferDurationsMs(15000, 30000, 2500, 5000)
             .build()
 
         exoPlayer = ExoPlayer.Builder(this)
@@ -208,6 +202,21 @@ class PlayerTvActivity : Activity() {
         return raw
     }
 
+    // Função auxiliar para evitar erros de data
+    private fun getTs(prog: JSONObject, keyTs: String, keyStr: String): Long {
+        var ts = prog.optLong(keyTs, 0)
+        if (ts == 0L) {
+            val str = prog.optString(keyStr, "")
+            if (str.isNotEmpty()) {
+                try {
+                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                    ts = sdf.parse(str)?.time?.div(1000) ?: 0L
+                } catch (e: Exception) {}
+            }
+        }
+        return ts
+    }
+
     private fun buscarEPGDinamico(canal: CanalItem) {
         CoroutineScope(Dispatchers.IO).launch {
             try {
@@ -234,29 +243,72 @@ class PlayerTvActivity : Activity() {
                     }
                 } catch (e: Exception) {}
 
+                // MÁGICA: O Player agora usa o Universal Parser igual a tela de EPG!
                 if (listings == null || listings.length() == 0) {
                     try {
-                        val epgChannelId = DataHolder.mapaEpgIds[canal.id]
-                        if (epgChannelId != null && epgChannelId.isNotEmpty()) {
+                        val dao = AppDatabase.getDatabase(this@PlayerTvActivity).catalogoDao()
+                        val canalDB = dao.getTodosCanais().find { it.id == canal.id }
+                        val epgChannelId = canalDB?.epgChannelId ?: DataHolder.mapaEpgIds[canal.id] ?: ""
+
+                        if (epgChannelId.isNotEmpty()) {
                             val file = File(filesDir, "epg_data.json")
                             if (file.exists()) {
-                                val dbJson = JSONObject(file.readText())
-                                val localList = dbJson.optJSONArray(epgChannelId)
+                                val fileContent = file.readText().trim()
+                                val epgDataMap = mutableMapOf<String, JSONArray>()
+                                
+                                if (fileContent.startsWith("[")) {
+                                    val jsonArr = JSONArray(fileContent)
+                                    for (i in 0 until jsonArr.length()) {
+                                        val prog = jsonArr.optJSONObject(i) ?: continue
+                                        val eId = prog.optString("epg_id")
+                                        if (eId.isNotEmpty()) {
+                                            val list = epgDataMap.getOrPut(eId) { JSONArray() }
+                                            list.put(prog)
+                                        }
+                                    }
+                                } else {
+                                    val jsonObj = JSONObject(fileContent)
+                                    if (jsonObj.has("epg_listings")) {
+                                        val arr = jsonObj.optJSONArray("epg_listings")
+                                        if (arr != null) {
+                                            for (i in 0 until arr.length()) {
+                                                val prog = arr.optJSONObject(i) ?: continue
+                                                val eId = prog.optString("epg_id")
+                                                if (eId.isNotEmpty()) {
+                                                    val list = epgDataMap.getOrPut(eId) { JSONArray() }
+                                                    list.put(prog)
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        val keys = jsonObj.keys()
+                                        while (keys.hasNext()) {
+                                            val key = keys.next()
+                                            val arr = jsonObj.optJSONArray(key)
+                                            if (arr != null) {
+                                                epgDataMap[key] = arr
+                                            }
+                                        }
+                                    }
+                                }
+
+                                val localList = epgDataMap[epgChannelId]
                                 if (localList != null && localList.length() > 0) {
                                     val agora = System.currentTimeMillis() / 1000
                                     val futuros = mutableListOf<JSONObject>()
                                     
                                     for (i in 0 until localList.length()) {
                                         val prog = localList.getJSONObject(i)
-                                        if (prog.optLong("stop_timestamp", 0) > agora) {
+                                        val stopTs = getTs(prog, "stop_timestamp", "end")
+                                        if (stopTs > agora) {
                                             futuros.add(prog)
                                         }
                                     }
                                     
-                                    futuros.sortBy { it.optLong("start_timestamp", 0) }
+                                    futuros.sortBy { getTs(it, "start_timestamp", "start") }
                                     
                                     val newArr = JSONArray()
-                                    for (i in 0 until Math.min(10, futuros.size)) newArr.put(futuros[i])
+                                    for (i in 0 until Math.min(15, futuros.size)) newArr.put(futuros[i])
                                     if (newArr.length() > 0) listings = newArr
                                 }
                             }
@@ -278,11 +330,10 @@ class PlayerTvActivity : Activity() {
                     
                     for (i in 0 until listings.length()) {
                         val prog = listings.getJSONObject(i)
-                        
                         val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
 
-                        val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
-                        val stopTs = prog.optString("stop_timestamp").toLongOrNull() ?: prog.optLong("stop_timestamp", 0)
+                        val startTs = getTs(prog, "start_timestamp", "start")
+                        val stopTs = getTs(prog, "stop_timestamp", "end")
 
                         var horarioLista = ""
                         var duracaoLista = ""
