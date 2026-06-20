@@ -11,6 +11,7 @@ import android.os.Build
 import android.os.Bundle
 import android.os.Environment
 import android.view.View
+import android.view.Window
 import android.widget.Button
 import android.widget.CheckBox
 import android.widget.EditText
@@ -52,6 +53,12 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Tela de Login também em Modo Imersivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_main)
 
         db = FirebaseFirestore.getInstance()
@@ -106,7 +113,6 @@ class MainActivity : Activity() {
 
     private fun fazerLogin(userDigitado: String, passDigitada: String) {
         btnLogin.isEnabled = false
-        // Exibe o Banner de Intro imediatamente ao clicar
         loginOverlay.visibility = View.VISIBLE
         tvLoadingStatus.text = "Validando acesso..."
 
@@ -399,6 +405,14 @@ class MainActivity : Activity() {
             }
         } else {
             Toast.makeText(this, "Arquivo da atualização não foi encontrado.", Toast.LENGTH_SHORT).show()
+        }
+    }
+    
+    // NOVIDADE: Garante que a barra preta não volte
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
         }
     }
 }
