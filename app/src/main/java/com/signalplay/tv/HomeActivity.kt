@@ -740,6 +740,9 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
+    // =========================================================================
+    // NOVA MATEMÁTICA DP NO APP ADAPTER PARA ESCALAR EM QUALQUER RESOLUÇÃO
+    // =========================================================================
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -747,23 +750,29 @@ class HomeActivity : Activity() {
             val txt = view.findViewById<TextView>(2002)
         }
         override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): AppViewHolder {
+            val density = parent.context.resources.displayMetrics.density
+            val w = (160 * density).toInt()
+            val h = (80 * density).toInt()
+            val m = (8 * density).toInt()
+            val p = (12 * density).toInt()
+            
             val layout = LinearLayout(parent.context).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = android.view.Gravity.CENTER
-                layoutParams = ViewGroup.MarginLayoutParams(180, 100).apply { setMargins(12, 12, 12, 12) }
+                layoutParams = ViewGroup.MarginLayoutParams(w, h).apply { setMargins(m, m, m, m) }
                 background = ContextCompat.getDrawable(parent.context, R.drawable.bg_app_card)
                 isFocusable = true
                 isClickable = true
-                setPadding(8, 12, 8, 8)
+                setPadding(p, p, p, p)
             }
             val img = ImageView(parent.context).apply { 
                 id = 2001
-                layoutParams = LinearLayout.LayoutParams(40, 40)
+                layoutParams = LinearLayout.LayoutParams((32 * density).toInt(), (32 * density).toInt())
                 scaleType = ImageView.ScaleType.FIT_CENTER 
             }
             val txt = TextView(parent.context).apply { 
                 id = 2002
-                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = 8 }
+                layoutParams = LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT).apply { topMargin = (4 * density).toInt() }
                 setTextColor(Color.WHITE)
                 textSize = 11f
                 textAlignment = View.TEXT_ALIGNMENT_CENTER
