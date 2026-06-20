@@ -13,7 +13,8 @@ import com.bumptech.glide.Glide
 
 class EpgGuideChannelAdapter(
     private val list: List<CanalItem>,
-    private val onClick: (CanalItem) -> Unit
+    private val onClick: (CanalItem) -> Unit,
+    private val onFocus: (CanalItem) -> Unit // NOVIDADE: Comunicação direta de foco!
 ) : RecyclerView.Adapter<EpgGuideChannelAdapter.ViewHolder>() {
 
     private val interpolator = OvershootInterpolator(1.2f)
@@ -25,7 +26,6 @@ class EpgGuideChannelAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        // SOLUÇÃO: Inflar pelo XML resolve os problemas de parâmetro do RecyclerView
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_epg_guide_channel, parent, false)
         return ViewHolder(view)
     }
@@ -39,11 +39,15 @@ class EpgGuideChannelAdapter(
             .placeholder(R.drawable.bg_glass)
             .into(holder.img)
 
+        // Quando a TV Box focar neste item específico, ele se pinta de amarelo e avisa a Activity!
         holder.itemView.setOnFocusChangeListener { v, hasFocus ->
             if (hasFocus) {
                 holder.container.setBackgroundColor(Color.parseColor("#FFC107"))
                 holder.txt.setTextColor(Color.BLACK)
                 v.animate().scaleX(1.02f).scaleY(1.02f).setDuration(150).setInterpolator(interpolator).start()
+                
+                // Dispara o carregamento do guia da direita
+                onFocus(item) 
             } else {
                 holder.container.setBackgroundResource(R.drawable.bg_glass)
                 holder.txt.setTextColor(Color.WHITE)
