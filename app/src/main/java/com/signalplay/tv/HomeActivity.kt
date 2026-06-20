@@ -94,6 +94,9 @@ class HomeActivity : Activity() {
         requestWindowFeature(Window.FEATURE_NO_TITLE)
         actionBar?.hide()
         
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_home)
         
         val prefs = getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
@@ -162,13 +165,14 @@ class HomeActivity : Activity() {
         recyclerSeriesAlta.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
         recyclerApps.layoutManager = LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false)
 
-        aplicarConfiguracoesDeTV(recyclerContinuar)
-        aplicarConfiguracoesDeTV(recyclerFavoritos)
-        aplicarConfiguracoesDeTV(recyclerUltimos)
-        aplicarConfiguracoesDeTV(recyclerTopFilmes)
-        aplicarConfiguracoesDeTV(recyclerTopSeries)
-        aplicarConfiguracoesDeTV(recyclerSeriesAlta)
-        aplicarConfiguracoesDeTV(recyclerApps)
+        // NOVIDADE: Chama o configurador global com Snap magnético e trava de D-Pad
+        TvNavigationUtils.configurarPrateleira(recyclerContinuar)
+        TvNavigationUtils.configurarPrateleira(recyclerFavoritos)
+        TvNavigationUtils.configurarPrateleira(recyclerUltimos)
+        TvNavigationUtils.configurarPrateleira(recyclerTopFilmes)
+        TvNavigationUtils.configurarPrateleira(recyclerTopSeries)
+        TvNavigationUtils.configurarPrateleira(recyclerSeriesAlta)
+        TvNavigationUtils.configurarPrateleira(recyclerApps)
 
         val urlOriginal = intent.getStringExtra("URL") ?: ""
         urlGlobal = if (urlOriginal.endsWith("/")) urlOriginal.dropLast(1) else urlOriginal
@@ -183,7 +187,6 @@ class HomeActivity : Activity() {
         menuConfig.setOnClickListener { startActivity(Intent(this, SettingsActivity::class.java).apply { putExtras(intent) }) }
         menuEsportes.setOnClickListener { startActivity(Intent(this, SportsActivity::class.java).apply { putExtra("URL_LIGA", "https://m.sofascore.com/pt/") }) }
 
-        // MÁGICA EPG: Configuração do clique e foco do Botão Guia de Programação
         val btnGuiaEpg = findViewById<LinearLayout>(R.id.btnGuiaEpg)
         if (btnGuiaEpg != null) {
             btnGuiaEpg.setOnClickListener { 
@@ -220,6 +223,14 @@ class HomeActivity : Activity() {
         iniciarBatimentoCardiaco()
     }
     
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
+        }
+    }
+
     private fun iniciarBatimentoCardiaco() {
         heartbeatJob?.cancel()
         heartbeatJob = activityScope.launch {
@@ -788,36 +799,5 @@ class HomeActivity : Activity() {
             holder.itemView.setOnClickListener { onClick(item) }
         }
         override fun getItemCount(): Int = list.size
-    }
-
-    inner class EspacamentoItemDecoration(private val espaco: Int) : RecyclerView.ItemDecoration() {
-        override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
-            outRect.right = espaco
-            outRect.bottom = espaco
-        }
-    }
-
-    private fun aplicarConfiguracoesDeTV(recycler: RecyclerView) {
-        recycler.setHasFixedSize(true)
-        recycler.setItemViewCacheSize(12)
-        recycler.addItemDecoration(EspacamentoItemDecoration(16))
-        
-        recycler.setOnKeyListener { _, keyCode, event ->
-            if (event.action == KeyEvent.ACTION_DOWN) {
-                val focusedChild = recycler.focusedChild
-                if (focusedChild != null) {
-                    val pos = recycler.getChildAdapterPosition(focusedChild)
-                    val totalItems = recycler.adapter?.itemCount ?: 0
-                    
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT && pos == totalItems - 1) {
-                        return@setOnKeyListener true 
-                    }
-                    if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT && pos == 0) {
-                        return@setOnKeyListener true 
-                    }
-                }
-            }
-            false
-        }
     }
 }
