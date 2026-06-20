@@ -7,6 +7,7 @@ import android.os.Looper
 import android.util.Base64
 import android.view.KeyEvent
 import android.view.View
+import android.view.Window
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -73,6 +74,12 @@ class PlayerTvActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_player_tv)
 
         playerView = findViewById(R.id.playerView)
@@ -109,13 +116,12 @@ class PlayerTvActivity : Activity() {
         iniciarCanal()
     }
 
-        private fun carregarCanaisDaCategoria() {
+    private fun carregarCanaisDaCategoria() {
         if (DataHolder.todasCategorias.isEmpty()) return
         val cat = DataHolder.todasCategorias[indiceCategoriaAtual]
         tvPainelTitulo.text = "Canais | ${cat.nome}"
         
         if (cat.id == "FAV") {
-            // TRAVA DE ORDEM: Ordena os canais exatamente na mesma sequência em que os IDs foram favoritados
             val canaisFavDesordenados = DataHolder.todosCanais.filter { DataHolder.favoritosIds.contains(it.id) }
             val canaisFavOrdenados = mutableListOf<CanalItem>()
             
@@ -127,7 +133,6 @@ class PlayerTvActivity : Activity() {
             }
             DataHolder.canaisFiltrados = canaisFavOrdenados
         } else {
-            // Se não for favoritos, mantém a ordem original padrão da categoria (sem forçar alfabeto)
             DataHolder.canaisFiltrados = DataHolder.todosCanais.filter { it.categoryId == cat.id }
         }
 
@@ -144,13 +149,12 @@ class PlayerTvActivity : Activity() {
 
 
     private fun inicializarPlayer() {
-        // COLEIRA DE MEMÓRIA: Limita o buffer para poupar a TV Box
         val loadControl = DefaultLoadControl.Builder()
             .setBufferDurationsMs(
-                15000,  // Buffer mínimo de 15 segundos
-                30000,  // Buffer máximo de 30 segundos (evita devorar a RAM)
-                2500,   // Segundos necessários para começar a tocar rápido
-                5000    // Segundos necessários para retomar após um travamento
+                15000,  
+                30000,  
+                2500,   
+                5000    
             )
             .build()
 
@@ -189,15 +193,11 @@ class PlayerTvActivity : Activity() {
         exoPlayer?.playWhenReady = true
     }
 
-    // =========================================================================
-    // FILTRO ANTI-LIXO (Decodificador Blindado UTF-8)
-    // =========================================================================
     private fun decodificarTexto(raw: String): String {
         if (raw.isEmpty()) return ""
         try {
             val decodedBytes = Base64.decode(raw, Base64.DEFAULT)
             val txt = String(decodedBytes, Charsets.UTF_8)
-            // Se tiver o símbolo de erro (), ignora e devolve o texto original
             if (txt.isNotBlank() && !txt.contains("")) {
                 return txt
             }
@@ -276,7 +276,6 @@ class PlayerTvActivity : Activity() {
                     for (i in 0 until listings.length()) {
                         val prog = listings.getJSONObject(i)
                         
-                        // USA O NOVO ESCUDO PARA O TÍTULO ATUAL
                         val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
 
                         val startTs = prog.optString("start_timestamp").toLongOrNull() ?: prog.optLong("start_timestamp", 0)
@@ -315,7 +314,6 @@ class PlayerTvActivity : Activity() {
                                 
                                 if (i + 1 < listings.length()) {
                                     val nextProg = listings.getJSONObject(i + 1)
-                                    // USA O MESMO ESCUDO PARA O PRÓXIMO PROGRAMA
                                     programaSeguinteTitulo = decodificarTexto(nextProg.optString("title", ""))
                                 }
                                 
@@ -445,6 +443,14 @@ class PlayerTvActivity : Activity() {
         if (indiceCanalAtual >= DataHolder.canaisFiltrados.size) indiceCanalAtual = 0
         else if (indiceCanalAtual < 0) indiceCanalAtual = DataHolder.canaisFiltrados.size - 1
         iniciarCanal()
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
+        }
     }
 
     override fun onDestroy() {
