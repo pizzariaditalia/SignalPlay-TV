@@ -8,6 +8,7 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
+import android.view.Window
 import android.widget.Button
 import android.widget.LinearLayout
 import android.widget.ProgressBar
@@ -74,6 +75,12 @@ class PlayerVodActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestWindowFeature(Window.FEATURE_NO_TITLE)
+        actionBar?.hide()
+        
+        // NOVIDADE: Chama o modo tela cheia agressivo
+        TvNavigationUtils.aplicarModoImersivo(this)
+        
         setContentView(R.layout.activity_player_vod)
 
         db = FirebaseFirestore.getInstance()
@@ -341,7 +348,6 @@ class PlayerVodActivity : Activity() {
                         val docId = snapshot.documents[0].id
                         val docRef = db.collection("usuarios").document(docId)
                         
-                        // NOVIDADE: Salvando o timestamp!
                         val mapToSave = mapOf(
                             "posicao" to position, 
                             "duracao" to duration,
@@ -354,6 +360,14 @@ class PlayerVodActivity : Activity() {
                             }
                     }
                 }
+        }
+    }
+
+    // NOVIDADE: Garante que a barra preta não volte ao minimizar e maximizar o app
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus) {
+            TvNavigationUtils.aplicarModoImersivo(this)
         }
     }
 
