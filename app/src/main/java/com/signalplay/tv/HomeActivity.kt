@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
+import android.graphics.Matrix
 import android.graphics.drawable.Drawable
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
@@ -26,10 +27,13 @@ import androidx.core.content.ContextCompat
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
+import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
 import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions
 import com.bumptech.glide.request.RequestOptions
+import com.bumptech.glide.request.target.CustomViewTarget
+import com.bumptech.glide.request.transition.Transition
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -597,6 +601,8 @@ class HomeActivity : Activity() {
     private fun renderizarFavoritos() {
         val recyclerFavoritos = findViewById<RecyclerView>(R.id.recyclerFavoritos)
         val tvFavoritosTitulo = findViewById<TextView>(R.id.tvFavoritosTitulo)
+        
+        // MÁGICA: Puxamos os favoritos e eles ficam na ordem natural de adição!
         val listFavoritos = listaIdsFavoritosGlobais.mapNotNull { favId -> listCanaisGlobais.find { it.id == favId } }
 
         if (listFavoritos.isNotEmpty()) {
@@ -607,7 +613,10 @@ class HomeActivity : Activity() {
                 DataHolder.todosCanais = listCanaisGlobais
                 DataHolder.favoritosIds = listaIdsFavoritosGlobais
                 DataHolder.categoriaAtualId = "FAV"
-                val indiceCorretoProPlayer = listCanaisGlobais.filter { listaIdsFavoritosGlobais.contains(it.id) }.indexOf(canalClicado)
+                
+                // MÁGICA: O índice agora pergunta a posição na lista CORRETA E ORDENADA (listFavoritos)
+                val indiceCorretoProPlayer = listFavoritos.indexOf(canalClicado)
+                
                 startActivity(Intent(this@HomeActivity, PlayerTvActivity::class.java).apply { putExtra("INDICE_CANAL", if (indiceCorretoProPlayer != -1) indiceCorretoProPlayer else 0) })
             }, { })
         } else {
@@ -689,7 +698,6 @@ class HomeActivity : Activity() {
         val tvDesc = findViewById<TextView>(R.id.heroDesc)
         val containerTextos = findViewById<LinearLayout>(R.id.textosDestaqueContainer)
         
-        // NOVIDADE: Efeito Fade-out nos textos antes de trocar
         containerTextos.animate().alpha(0f).setDuration(300).withEndAction {
             tvTitle.text = filme.nome
             val nomeDaPasta = mapCategorias[filme.categoryId] ?: "DESTAQUE"
@@ -713,7 +721,6 @@ class HomeActivity : Activity() {
                     }
                     withContext(Dispatchers.Main) { 
                         tvDesc.text = plot 
-                        // Textos voltam suavemente
                         containerTextos.animate().alpha(1f).setDuration(400).start()
                     }
                 } catch (e: Exception) {
@@ -728,7 +735,6 @@ class HomeActivity : Activity() {
             btnAssistirDestaque.setOnClickListener { abrirDetalhes(filme) }
         }.start()
         
-        // NOVIDADE: Efeito CrossFade suave (800ms) para trocar o banner de fundo
         Glide.with(this)
             .load(filme.urlImagem)
             .transition(DrawableTransitionOptions.withCrossFade(800))
