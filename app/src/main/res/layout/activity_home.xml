@@ -3,7 +3,10 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#111114">
+    android:background="#111114"
+    android:fitsSystemWindows="false"
+    android:layout_margin="0dp"
+    android:padding="0dp">
 
     <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
@@ -11,33 +14,45 @@
         android:scrollbars="none"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:fillViewport="true">
+        android:fillViewport="true"
+        android:layout_margin="0dp"
+        android:padding="0dp">
 
         <RelativeLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:clipChildren="false"
-            android:clipToPadding="false">
+            android:clipToPadding="false"
+            android:layout_margin="0dp"
+            android:padding="0dp">
 
+            <!-- Altura aumentada para 550dp para não cortar rostos e dar imersão -->
             <RelativeLayout
                 android:id="@+id/heroSection"
                 android:layout_width="match_parent"
-                android:layout_height="400dp"
-                android:layout_alignParentTop="true">
+                android:layout_height="550dp"
+                android:layout_alignParentTop="true"
+                android:clipChildren="true"
+                android:layout_margin="0dp"
+                android:padding="0dp">
 
+                <!-- Imagem alinhada ao topo absoluto para priorizar a cabeça dos personagens -->
                 <ImageView
                     android:id="@+id/heroImage"
                     android:layout_width="match_parent"
                     android:layout_height="match_parent"
                     android:scaleType="centerCrop"
+                    android:layout_alignParentTop="true"
+                    android:layout_alignParentStart="true"
                     android:src="#222222" />
 
                 <View 
                     android:layout_width="match_parent" 
-                    android:layout_height="250dp" 
+                    android:layout_height="300dp" 
                     android:layout_alignParentBottom="true"
                     android:background="@drawable/bg_hero_gradient" />
 
+                <!-- Container do Menu (Alinhamentos mantidos para manter o design) -->
                 <RelativeLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
@@ -276,12 +291,14 @@
         </RelativeLayout>
     </androidx.core.widget.NestedScrollView>
 
+    <!-- Overlay de Loading -->
     <RelativeLayout
         android:id="@+id/loadingOverlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="#111114"
-        android:visibility="visible">
+        android:visibility="visible"
+        android:elevation="100dp">
 
         <LinearLayout
             android:layout_width="wrap_content"
