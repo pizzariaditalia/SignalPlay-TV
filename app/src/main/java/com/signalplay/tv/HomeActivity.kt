@@ -601,54 +601,21 @@ class HomeActivity : Activity() {
         listFilmesGlobais.forEach(processarItem)
         listSeriesGlobais.forEach(processarItem)
         
-        val cardRetomar = findViewById<LinearLayout>(R.id.cardRetomar)
-        val tvRetomarTitulo = findViewById<TextView>(R.id.tvRetomarTitulo)
-        val tvRetomarInfo = findViewById<TextView>(R.id.tvRetomarInfo)
-        val imgRetomar = findViewById<ImageView>(R.id.imgRetomar)
-        val progressRetomar = findViewById<ProgressBar>(R.id.progressRetomar)
-        
         val recyclerContinuar = findViewById<HorizontalGridView>(R.id.recyclerContinuar)
         val tvContinuarTitulo = findViewById<TextView>(R.id.tvContinuarTitulo)
         
         if (listContinuar.isNotEmpty()) {
             val listOrdenada = listContinuar.sortedByDescending { it.timestamp }.toMutableList()
-            val destaque = listOrdenada.removeAt(0)
             
-            cardRetomar.visibility = View.VISIBLE
-            tvRetomarTitulo.text = destaque.filme.nome
-            tvRetomarInfo.text = "Faltam ${destaque.restanteMinutos} min"
-            progressRetomar.progress = destaque.progressoPerc
-
-            val options = RequestOptions().transform(CenterCrop(), RoundedCorners(16))
-            Glide.with(this).load(destaque.filme.urlImagem).apply(options).into(imgRetomar)
-
-            cardRetomar.setOnFocusChangeListener { v, hasFocus ->
-                if (hasFocus) {
-                    if(!isLowEndMode) v.animate().scaleX(1.02f).scaleY(1.02f).translationZ(15f).setDuration(200).setInterpolator(suaveOvershoot).start()
-                    v.setBackgroundResource(R.drawable.bg_card_outline)
-                } else {
-                    if(!isLowEndMode) v.animate().scaleX(1f).scaleY(1f).translationZ(0f).setDuration(200).setInterpolator(suaveOvershoot).start()
-                    v.setBackgroundResource(R.drawable.bg_glass)
-                }
+            tvContinuarTitulo.visibility = View.VISIBLE
+            recyclerContinuar.visibility = View.VISIBLE
+            
+            val filmesRestantes = listOrdenada.map { 
+                FilmeItem(it.filme.id, it.filme.nome, it.filme.urlImagem, it.filme.streamUrl, it.filme.tipo, it.filme.categoryId, it.progressoPerc) 
             }
-            
-            cardRetomar.setOnClickListener { abrirDetalhes(destaque.filme) }
-            
-            if (listOrdenada.isNotEmpty()) {
-                tvContinuarTitulo.visibility = View.VISIBLE
-                recyclerContinuar.visibility = View.VISIBLE
-                
-                val filmesRestantes = listOrdenada.map { 
-                    FilmeItem(it.filme.id, it.filme.nome, it.filme.urlImagem, it.filme.streamUrl, it.filme.tipo, it.filme.categoryId, it.progressoPerc) 
-                }
-                recyclerContinuar.adapter = CardAdapter(filmesRestantes) { abrirDetalhes(it) }
-            } else {
-                tvContinuarTitulo.visibility = View.GONE
-                recyclerContinuar.visibility = View.GONE
-            }
+            recyclerContinuar.adapter = CardAdapter(filmesRestantes) { abrirDetalhes(it) }
             
         } else {
-            cardRetomar.visibility = View.GONE
             tvContinuarTitulo.visibility = View.GONE
             recyclerContinuar.visibility = View.GONE
         }
@@ -740,9 +707,6 @@ class HomeActivity : Activity() {
         startActivity(intentDet)
     }
 
-    // =========================================================================
-    // NOVA MATEMÁTICA DP NO APP ADAPTER PARA ESCALAR EM QUALQUER RESOLUÇÃO
-    // =========================================================================
     inner class AppAdapter(private val list: List<AppItem>, private val onClick: (AppItem) -> Unit) : RecyclerView.Adapter<AppAdapter.AppViewHolder>() {
         private val interpolator = OvershootInterpolator(1.2f)
         inner class AppViewHolder(view: View) : RecyclerView.ViewHolder(view) {
