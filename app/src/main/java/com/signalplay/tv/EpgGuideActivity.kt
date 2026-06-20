@@ -1,10 +1,12 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.AlertDialog
 import android.content.Context
 import android.content.Intent
 import android.os.Bundle
 import android.util.Base64
+import android.util.Log
 import android.view.View
 import android.widget.Button
 import android.widget.LinearLayout
@@ -39,8 +41,6 @@ class EpgGuideActivity : Activity() {
 
     private val listaCanaisUnicos = mutableListOf<CanalItem>()
     private val mapaIdParaEpg = mutableMapOf<String, String>()
-    
-    // Novo Mapeamento Universal
     private val epgDataMap = mutableMapOf<String, JSONArray>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -66,6 +66,18 @@ class EpgGuideActivity : Activity() {
         }
 
         carregarGuia()
+    }
+
+    // SISTEMA DE DEBUG VISUAL (O app não fecha mais sozinho, ele exibe o erro)
+    private fun mostrarErroDebug(e: Exception, local: String) {
+        val stackTrace = Log.getStackTraceString(e)
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Erro no Debug ($local)")
+            .setMessage("Motivo: ${e.message}\n\nRastreio:\n$stackTrace")
+            .setPositiveButton("Fechar Tela") { _, _ -> finish() }
+            .setCancelable(false)
+            .create()
+        dialog.show()
     }
 
     private fun decodificarTexto(raw: String): String {
@@ -95,10 +107,8 @@ class EpgGuideActivity : Activity() {
                 val fileContent = file.readText()
                 val conteudoLimpo = fileContent.trim()
 
-                // PARSER UNIVERSAL DE EPG (Detecta automaticamente o formato do seu Painel)
                 try {
                     if (conteudoLimpo.startsWith("[")) {
-                        // Formato 1: Array Direto
                         val jsonArr = JSONArray(conteudoLimpo)
                         for (i in 0 until jsonArr.length()) {
                             val prog = jsonArr.optJSONObject(i) ?: continue
@@ -111,7 +121,6 @@ class EpgGuideActivity : Activity() {
                     } else {
                         val jsonObj = JSONObject(conteudoLimpo)
                         if (jsonObj.has("epg_listings")) {
-                            // Formato 2: Padrão Xtream Codes Completo
                             val arr = jsonObj.optJSONArray("epg_listings")
                             if (arr != null) {
                                 for (i in 0 until arr.length()) {
@@ -124,23 +133,18 @@ class EpgGuideActivity : Activity() {
                                 }
                             }
                         } else {
-                            // Formato 3: Chave-Valor (Map)
                             val keys = jsonObj.keys()
                             while (keys.hasNext()) {
                                 val key = keys.next()
                                 val arr = jsonObj.optJSONArray(key)
-                                if (arr != null) {
-                                    epgDataMap[key] = arr
-                                }
+                                if (arr != null) epgDataMap[key] = arr
                             }
                         }
                     }
                 } catch (e: Exception) {
-                    // Se falhar aqui, o arquivo não é um JSON válido (Pode ser um XML)
                     withContext(Dispatchers.Main) {
                         progressLoadingEpg.visibility = View.GONE
-                        Toast.makeText(this@EpgGuideActivity, "Erro no formato do arquivo EPG: ${e.message}", Toast.LENGTH_LONG).show()
-                        finish()
+                        mostrarErroDebug(e, "Parser do JSON")
                     }
                     return@launch
                 }
@@ -165,13 +169,11 @@ class EpgGuideActivity : Activity() {
                     if (epgId.isEmpty()) continue
 
                     val nomeCategoria = catMap[canal.categoryId] ?: ""
-                    
                     val isBlocked = ContentFilterUtils.isContentBlocked(
                         canal.nome, nomeCategoria, isParentalActive, filterSD, filterHD, filterFHD, filterH265, filter4K
                     )
                     if (isBlocked) continue
 
-                    // INTELIGÊNCIA: Desduplicação dando prioridade para HD
                     if (mapEpgToCanal.containsKey(epgId)) {
                         val canalSalvo = mapEpgToCanal[epgId]!!
                         val nomeSalvo = canalSalvo.nome.uppercase()
@@ -180,9 +182,7 @@ class EpgGuideActivity : Activity() {
                         val novoEhHD = nomeNovo.contains(" HD") || nomeNovo.contains("- HD") || nomeNovo.endsWith("HD")
                         val salvoEhHD = nomeSalvo.contains(" HD") || nomeSalvo.contains("- HD") || nomeSalvo.endsWith("HD")
 
-                        if (novoEhHD && !salvoEhHD) {
-                            mapEpgToCanal[epgId] = canal
-                        }
+                        if (novoEhHD && !salvoEhHD) mapEpgToCanal[epgId] = canal
                     } else {
                         mapEpgToCanal[epgId] = canal
                     }
@@ -195,8 +195,8 @@ class EpgGuideActivity : Activity() {
                         var temProgramacaoFutura = false
                         for (i in 0 until localList.length()) {
                             val prog = localList.getJSONObject(i)
-                            
                             var stopTs = prog.optLong("stop_timestamp", 0)
+                            
                             if (stopTs == 0L) {
                                 val endStr = prog.optString("end", "")
                                 if (endStr.isNotEmpty()) {
@@ -214,9 +214,7 @@ class EpgGuideActivity : Activity() {
                         }
 
                         if (temProgramacaoFutura) {
-                            val canalItem = CanalItem(
-                                canalEntity.id, canalEntity.nome, canalEntity.urlImagem, canalEntity.categoryId, canalEntity.streamUrl
-                            )
+                            val canalItem = CanalItem(canalEntity.id, canalEntity.nome, canalEntity.urlImagem, canalEntity.categoryId, canalEntity.streamUrl)
                             listaCanaisUnicos.add(canalItem)
                             mapaIdParaEpg[canalEntity.id] = epgId
                         }
@@ -229,6 +227,8 @@ class EpgGuideActivity : Activity() {
                         layoutEpgVazio.visibility = View.VISIBLE
                     } else {
                         layoutGuia.visibility = View.VISIBLE
+                        
+                        // Chamando o Adapter original perfeitamente
                         recyclerCanaisEpg.adapter = CanalLinhaAdapter(listaCanaisUnicos) { canalClicado ->
                             abrirCanalNoPlayer(canalClicado)
                         }
@@ -250,8 +250,7 @@ class EpgGuideActivity : Activity() {
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
                     progressLoadingEpg.visibility = View.GONE
-                    Toast.makeText(this@EpgGuideActivity, "Erro geral ao processar EPG: ${e.message}", Toast.LENGTH_LONG).show()
-                    finish()
+                    mostrarErroDebug(e, "Bloco Principal (carregarGuia)")
                 }
             }
         }
@@ -260,100 +259,109 @@ class EpgGuideActivity : Activity() {
     private fun carregarProgramacaoDoCanal(canal: CanalItem) {
         tvNomeCanalEpg.text = canal.nome
         activityScope.launch {
-            val listaEpgExibir = mutableListOf<EpgItem>()
-            val agoraTs = System.currentTimeMillis() / 1000
+            try {
+                val listaEpgExibir = mutableListOf<EpgItem>()
+                val agoraTs = System.currentTimeMillis() / 1000
+                val epgId = mapaIdParaEpg[canal.id] ?: ""
 
-            val epgId = mapaIdParaEpg[canal.id] ?: ""
+                if (epgId.isNotEmpty()) {
+                    val progList = epgDataMap[epgId]
+                    if (progList != null) {
+                        val futuros = mutableListOf<JSONObject>()
+                        for (i in 0 until progList.length()) {
+                            val prog = progList.getJSONObject(i)
+                            var stopTs = prog.optLong("stop_timestamp", 0)
+                            if (stopTs == 0L) {
+                                val endStr = prog.optString("end", "")
+                                if (endStr.isNotEmpty()) {
+                                    try {
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                        stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
+                                    } catch (e: Exception) {}
+                                }
+                            }
 
-            if (epgId.isNotEmpty()) {
-                val progList = epgDataMap[epgId]
-                if (progList != null) {
-                    val futuros = mutableListOf<JSONObject>()
-                    for (i in 0 until progList.length()) {
-                        val prog = progList.getJSONObject(i)
+                            if (stopTs > agoraTs) futuros.add(prog)
+                        }
                         
-                        var stopTs = prog.optLong("stop_timestamp", 0)
-                        if (stopTs == 0L) {
-                            val endStr = prog.optString("end", "")
-                            if (endStr.isNotEmpty()) {
-                                try {
-                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                    stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
-                                } catch (e: Exception) {}
+                        futuros.sortBy { 
+                            var sTs = it.optLong("start_timestamp", 0)
+                            if (sTs == 0L) {
+                                val stStr = it.optString("start", "")
+                                if (stStr.isNotEmpty()) {
+                                    try {
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                        sTs = sdf.parse(stStr)?.time?.div(1000) ?: 0L
+                                    } catch (e: Exception) {}
+                                }
                             }
+                            sTs 
                         }
 
-                        if (stopTs > agoraTs) {
-                            futuros.add(prog)
-                        }
-                    }
-                    
-                    futuros.sortBy { 
-                        var sTs = it.optLong("start_timestamp", 0)
-                        if (sTs == 0L) {
-                            val stStr = it.optString("start", "")
-                            if (stStr.isNotEmpty()) {
-                                try {
-                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                    sTs = sdf.parse(stStr)?.time?.div(1000) ?: 0L
-                                } catch (e: Exception) {}
+                        for (i in 0 until Math.min(15, futuros.size)) {
+                            val prog = futuros[i]
+                            val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
+                            
+                            var startTs = prog.optLong("start_timestamp", 0)
+                            var stopTs = prog.optLong("stop_timestamp", 0)
+
+                            if (startTs == 0L) {
+                                val startStr = prog.optString("start", "")
+                                if (startStr.isNotEmpty()) {
+                                    try {
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                        startTs = sdf.parse(startStr)?.time?.div(1000) ?: 0L
+                                    } catch (e: Exception) {}
+                                }
                             }
-                        }
-                        sTs 
-                    }
-
-                    for (i in 0 until Math.min(15, futuros.size)) {
-                        val prog = futuros[i]
-                        val titleDecoded = decodificarTexto(prog.optString("title", "Programa"))
-                        
-                        var startTs = prog.optLong("start_timestamp", 0)
-                        var stopTs = prog.optLong("stop_timestamp", 0)
-
-                        if (startTs == 0L) {
-                            val startStr = prog.optString("start", "")
-                            if (startStr.isNotEmpty()) {
-                                try {
-                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                    startTs = sdf.parse(startStr)?.time?.div(1000) ?: 0L
-                                } catch (e: Exception) {}
+                            if (stopTs == 0L) {
+                                val endStr = prog.optString("end", "")
+                                if (endStr.isNotEmpty()) {
+                                    try {
+                                        val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                                        stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
+                                    } catch (e: Exception) {}
+                                }
                             }
-                        }
-                        if (stopTs == 0L) {
-                            val endStr = prog.optString("end", "")
-                            if (endStr.isNotEmpty()) {
-                                try {
-                                    val sdf = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
-                                    stopTs = sdf.parse(endStr)?.time?.div(1000) ?: 0L
-                                } catch (e: Exception) {}
+
+                            val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
+                            val hInicio = sdfHora.format(Date(startTs * 1000))
+                            val hFim = sdfHora.format(Date(stopTs * 1000))
+                            
+                            val duracaoMinutos = (stopTs - startTs) / 60
+                            val h = duracaoMinutos / 60
+                            val m = duracaoMinutos % 60
+                            val duracaoLista = if (h > 0 && m > 0) "$h hora e $m min" else if (h > 0) "$h horas" else "$m min"
+
+                            var isLive = false
+                            var corTexto = "#888888"
+                            var horarioStr = "Hoje / $hInicio - $hFim"
+
+                            if (agoraTs in startTs until stopTs) {
+                                isLive = true
+                                corTexto = "#2ED573"
+                                horarioStr = "Ao Vivo / $hInicio - $hFim"
                             }
+
+                            // Construindo usando as variáveis do SEU EpgAdapter
+                            listaEpgExibir.add(EpgItem(
+                                titulo = titleDecoded, 
+                                horario = horarioStr, 
+                                duracao = duracaoLista, 
+                                isAgora = isLive, 
+                                textColor = corTexto
+                            ))
                         }
-
-                        val sdfHora = SimpleDateFormat("HH:mm", Locale.getDefault())
-                        val hInicio = sdfHora.format(Date(startTs * 1000))
-                        val hFim = sdfHora.format(Date(stopTs * 1000))
-                        
-                        val duracaoMinutos = (stopTs - startTs) / 60
-                        val h = duracaoMinutos / 60
-                        val m = duracaoMinutos % 60
-                        val duracaoLista = if (h > 0 && m > 0) "$h hora e $m min" else if (h > 0) "$h horas" else "$m min"
-
-                        var isLive = false
-                        var corTexto = "#888888"
-                        var horarioStr = "Hoje / $hInicio - $hFim"
-
-                        if (agoraTs in startTs until stopTs) {
-                            isLive = true
-                            corTexto = "#2ED573"
-                            horarioStr = "Ao Vivo / $hInicio - $hFim"
-                        }
-
-                        listaEpgExibir.add(EpgItem(titleDecoded, horarioStr, duracaoLista, isLive, corTexto))
                     }
                 }
-            }
 
-            withContext(Dispatchers.Main) {
-                recyclerProgramacao.adapter = EpgAdapter(listaEpgExibir)
+                withContext(Dispatchers.Main) {
+                    recyclerProgramacao.adapter = EpgAdapter(listaEpgExibir)
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    mostrarErroDebug(e, "Carregar Programação Direita")
+                }
             }
         }
     }
