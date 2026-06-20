@@ -18,11 +18,11 @@ object TvNavigationUtils {
 
     fun configurarPrateleira(prateleira: HorizontalGridView) {
         // =========================================================================
-        // A MÁGICA DA ÂNCORA DO GOOGLE TV USANDO LEANBACK (CORRIGIDO)
+        // A MÁGICA DA ÂNCORA DO GOOGLE TV USANDO LEANBACK (CORRIGIDO DEFINITIVO)
         // =========================================================================
         
         // Define que a "âncora" da lista ficará sempre no início (esquerda) da tela
-        prateleira.windowAlignment = BaseGridView.WINDOW_ALIGN_LOW
+        prateleira.windowAlignment = BaseGridView.WINDOW_ALIGN_LOW_EDGE
         
         // O respiro: Desloca a âncora 48 pixels para a direita para não ficar colado na TV
         prateleira.windowAlignmentOffset = 48 
@@ -31,7 +31,7 @@ object TvNavigationUtils {
         // Garante que o próprio item se alinhe pela borda esquerda dele mesmo
         prateleira.itemAlignmentOffsetPercent = BaseGridView.ITEM_ALIGN_OFFSET_PERCENT_DISABLED
         
-        // Espaçamento entre os filmes (em pixels)
+        // Espaçamento entre os filmes (em pixels) - Exige o método setItemSpacing no Leanback
         prateleira.setItemSpacing(24)
         
         // Permite que o zoom "vaze" para fora das bordas do item sem ser cortado
