@@ -2,6 +2,7 @@ package com.signalplay.tv
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Paint
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -23,7 +24,8 @@ class Top10Adapter(
     private val interpolator = OvershootInterpolator(1.2f)
 
     class Top10ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val topNumber: TextView = view.findViewById(R.id.topNumber)
+        val topNumberOutline: TextView = view.findViewById(R.id.topNumberOutline)
+        val topNumberFill: TextView = view.findViewById(R.id.topNumberFill)
         val cardImage: ImageView = view.findViewById(R.id.cardImage)
         val cardContainer: View = view.findViewById(R.id.cardContainer)
     }
@@ -35,13 +37,23 @@ class Top10Adapter(
 
     override fun onBindViewHolder(holder: Top10ViewHolder, position: Int) {
         val item = listaItens[position]
-        holder.topNumber.text = (position + 1).toString()
+        val positionText = (position + 1).toString()
         
+        // MÁGICA: Acessando a pintura nativa do Android para criar o contorno
+        holder.topNumberOutline.text = positionText
+        holder.topNumberOutline.paint.style = Paint.Style.STROKE
+        holder.topNumberOutline.paint.strokeWidth = 10f
+        holder.topNumberOutline.setTextColor(Color.parseColor("#EEEEEE")) // Contorno claro
+
+        // O preenchimento com a cor de fundo exata do seu App para dar o efeito vazado
+        holder.topNumberFill.text = positionText
+        holder.topNumberFill.paint.style = Paint.Style.FILL
+        holder.topNumberFill.setTextColor(Color.parseColor("#111114")) 
+
         val context = holder.itemView.context
         val prefs = context.getSharedPreferences("SignalPlayPrefs", Context.MODE_PRIVATE)
         val isLowEndMode = prefs.getBoolean("LOW_END_MODE", false)
         
-        // MÁGICA: Corta a resolução e o peso da imagem pela metade na memória RAM
         val options = RequestOptions()
             .transform(CenterCrop(), RoundedCorners(8))
             .format(DecodeFormat.PREFER_RGB_565)
