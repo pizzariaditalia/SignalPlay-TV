@@ -23,6 +23,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import androidx.leanback.widget.HorizontalGridView
+import androidx.recyclerview.widget.RecyclerView
 import com.bumptech.glide.Glide
 import com.bumptech.glide.load.DecodeFormat
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
@@ -156,7 +157,6 @@ class HomeActivity : Activity() {
         val recyclerSeriesAlta = findViewById<HorizontalGridView>(R.id.recyclerSeriesAlta)
         val recyclerApps = findViewById<HorizontalGridView>(R.id.recyclerApps)
         
-        // A MÁGICA LEANBACK: O Google TV faz o resto sozinho! Não precisamos setar LayoutManager
         TvNavigationUtils.configurarPrateleira(recyclerContinuar)
         TvNavigationUtils.configurarPrateleira(recyclerFavoritos)
         TvNavigationUtils.configurarPrateleira(recyclerUltimos)
