@@ -415,20 +415,40 @@ class PlayerTvActivity : Activity() {
     // =========================================================================
     private fun entrarModoPiP() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            // Garantimos que tudo está oculto antes da tela encolher
-            painelCanais.visibility = View.GONE
-            painelEpg.visibility = View.GONE
-            osdContainer.visibility = View.GONE
+            
+            // Verifica fisicamente se a TV Box tem o recurso de PiP instalado e habilitado
+            val supportsPiP = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
+            
+            if (supportsPiP) {
+                try {
+                    // Garantimos que tudo está oculto antes da tela encolher
+                    painelCanais.visibility = View.GONE
+                    painelEpg.visibility = View.GONE
+                    osdContainer.visibility = View.GONE
 
-            // Proporção de cinema (16:9) para o mini-player
-            val aspectRatio = Rational(16, 9)
-            val params = PictureInPictureParams.Builder()
-                .setAspectRatio(aspectRatio)
-                .build()
-                
-            enterPictureInPictureMode(params)
+                    // Proporção de cinema (16:9) para o mini-player
+                    val aspectRatio = Rational(16, 9)
+                    val params = PictureInPictureParams.Builder()
+                        .setAspectRatio(aspectRatio)
+                        .build()
+                        
+                    // Tenta entrar no modo PiP e guarda a resposta do sistema
+                    val entrouNoPip = enterPictureInPictureMode(params)
+                    
+                    // ROTA DE FUGA 1: Se o sistema negar a entrada no PiP, fecha o canal
+                    if (!entrouNoPip) {
+                        finish()
+                    }
+                } catch (e: Exception) {
+                    // ROTA DE FUGA 2: Se o Android travar ao tentar criar a janela, fecha o canal
+                    finish()
+                }
+            } else {
+                // ROTA DE FUGA 3: Se a TV Box não suportar PiP nativamente, apenas fecha o canal
+                finish()
+            }
         } else {
-            // Se for uma TV Box muito antiga (Android 7 para baixo), apenas fecha normal
+            // ROTA DE FUGA 4: Se for uma TV Box muito antiga (Android 7 para baixo), fecha o canal
             finish()
         }
     }
