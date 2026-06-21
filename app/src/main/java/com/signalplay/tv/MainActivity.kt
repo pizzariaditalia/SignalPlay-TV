@@ -180,10 +180,27 @@ class MainActivity : Activity() {
                 currentSessionId = "tv_${UUID.randomUUID().toString().substring(0, 8)}"
                 sessoesValidas[currentSessionId] = agora
                 
-                val bloqueios = dadosFirebase.get("bloqueios") as? Map<String, List<String>>
-                val bCanais = bloqueios?.get("canais")?.joinToString(",") ?: ""
-                val bFilmes = bloqueios?.get("filmes")?.joinToString(",") ?: ""
-                val bSeries = bloqueios?.get("series")?.joinToString(",") ?: ""
+                // =========================================================================
+                // MÁGICA DA CORREÇÃO 1: Leitor flexível de bloqueios
+                // =========================================================================
+                var bCanais = ""
+                var bFilmes = ""
+                var bSeries = ""
+
+                try {
+                    val mapBloqueios = dadosFirebase.get("bloqueios") as? Map<*, *>
+                    if (mapBloqueios != null) {
+                        val lstCanais = mapBloqueios["canais"] as? List<*>
+                        val lstFilmes = mapBloqueios["filmes"] as? List<*>
+                        val lstSeries = mapBloqueios["series"] as? List<*>
+
+                        if (lstCanais != null) bCanais = lstCanais.joinToString(",") { it.toString() }
+                        if (lstFilmes != null) bFilmes = lstFilmes.joinToString(",") { it.toString() }
+                        if (lstSeries != null) bSeries = lstSeries.joinToString(",") { it.toString() }
+                    }
+                } catch (e: Exception) {
+                    // Ignora falhas de parser para não travar o login
+                }
 
                 val ocultar4kForcado = dadosFirebase.getBoolean("ocultar_4k") ?: false
                 val ocultarFhdForcado = dadosFirebase.getBoolean("ocultar_fhd") ?: false
@@ -247,9 +264,12 @@ class MainActivity : Activity() {
         tvLoadingStatus.text = "Conectando ao provedor..."
         CoroutineScope(Dispatchers.IO).launch {
             try {
+                // =========================================================================
+                // MÁGICA DA CORREÇÃO 2: Aumentando o Timeout para listas pesadas
+                // =========================================================================
                 val client = OkHttpClient.Builder()
-                    .connectTimeout(15, TimeUnit.SECONDS)
-                    .readTimeout(15, TimeUnit.SECONDS)
+                    .connectTimeout(45, TimeUnit.SECONDS)
+                    .readTimeout(45, TimeUnit.SECONDS)
                     .build()
 
                 val req = Request.Builder()
