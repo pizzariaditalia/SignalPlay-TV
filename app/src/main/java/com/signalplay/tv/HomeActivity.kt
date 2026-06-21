@@ -304,12 +304,19 @@ class HomeActivity : Activity() {
                 val forcedHide4K = prefs.getBoolean("SERVER_FORCED_HIDE_4K", false)
                 val forcedHideFHD = prefs.getBoolean("SERVER_FORCED_HIDE_FHD", false)
 
-                val bloqueadosCanais = prefs.getString("BLOQUEIOS_CANAIS", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
-                val bloqueadosFilmes = prefs.getString("BLOQUEIOS_FILMES", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
-                val bloqueadosSeries = prefs.getString("BLOQUEIOS_SERIES", "")?.split(",")?.map { it.trim().lowercase() } ?: emptyList()
+                // =========================================================================
+                // MÁGICA DA CORREÇÃO 1: Evita que o app bloqueie tudo se a string vier vazia!
+                // =========================================================================
+                val bloqueadosCanais = prefs.getString("BLOQUEIOS_CANAIS", "")?.split(",")?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() } ?: emptyList()
+                val bloqueadosFilmes = prefs.getString("BLOQUEIOS_FILMES", "")?.split(",")?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() } ?: emptyList()
+                val bloqueadosSeries = prefs.getString("BLOQUEIOS_SERIES", "")?.split(",")?.map { it.trim().lowercase() }?.filter { it.isNotEmpty() } ?: emptyList()
 
                 val dao = AppDatabase.getDatabase(this@HomeActivity).catalogoDao()
-                val client = OkHttpClient.Builder().connectTimeout(30, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
+                
+                // =========================================================================
+                // MÁGICA DA CORREÇÃO 2: Timeout aumentado para 60s para evitar travamentos
+                // =========================================================================
+                val client = OkHttpClient.Builder().connectTimeout(60, TimeUnit.SECONDS).readTimeout(60, TimeUnit.SECONDS).writeTimeout(60, TimeUnit.SECONDS).build()
 
                 val reqLiveCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_live_categories").build()
                 val reqVodCat = Request.Builder().url("$urlGlobal/player_api.php?username=$userGlobal&password=$passGlobal&action=get_vod_categories").build()
