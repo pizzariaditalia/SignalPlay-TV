@@ -1,11 +1,15 @@
 package com.signalplay.tv
 
 import android.app.Activity
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
 import android.graphics.Color
+import android.os.Build
 import android.os.Bundle
 import android.os.CountDownTimer
 import android.os.Handler
 import android.os.Looper
+import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
 import android.view.Window
@@ -280,6 +284,55 @@ class PlayerVodActivity : Activity() {
             }
     }
 
+    // =========================================================================
+    // MÁGICA 1: Rota blindada do PiP para Filmes e Séries
+    // =========================================================================
+    private fun entrarModoPiP() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val supportsPiP = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
+            
+            if (supportsPiP) {
+                try {
+                    // Limpa a tela antes de encolher
+                    painelEpisodios.visibility = View.GONE
+                    overlayNextEpisode.visibility = View.GONE
+                    btnSkipIntro.visibility = View.GONE
+                    playerViewVod.hideController()
+
+                    val aspectRatio = Rational(16, 9)
+                    val params = PictureInPictureParams.Builder()
+                        .setAspectRatio(aspectRatio)
+                        .build()
+                        
+                    val entrouNoPip = enterPictureInPictureMode(params)
+                    
+                    if (!entrouNoPip) {
+                        finish()
+                    }
+                } catch (e: Exception) {
+                    finish()
+                }
+            } else {
+                finish()
+            }
+        } else {
+            finish()
+        }
+    }
+
+    // =========================================================================
+    // MÁGICA 2: Garante que os botões não apareçam no mini player
+    // =========================================================================
+    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration?) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        if (isInPictureInPictureMode) {
+            painelEpisodios.visibility = View.GONE
+            overlayNextEpisode.visibility = View.GONE
+            btnSkipIntro.visibility = View.GONE
+            playerViewVod.hideController()
+        }
+    }
+
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             
@@ -292,11 +345,16 @@ class PlayerVodActivity : Activity() {
             }
 
             when (event.keyCode) {
+                // =========================================================================
+                // O pulo do gato! Tenta o PiP antes de fechar o filme.
+                // =========================================================================
                 KeyEvent.KEYCODE_BACK -> {
                     if (painelEpisodios.visibility == View.VISIBLE) {
                         painelEpisodios.visibility = View.GONE
                         return true
                     }
+                    entrarModoPiP()
+                    return true
                 }
                 KeyEvent.KEYCODE_DPAD_UP -> {
                     if (tipoMedia == "serie" && painelEpisodios.visibility == View.GONE) {
@@ -359,7 +417,7 @@ class PlayerVodActivity : Activity() {
                                 docRef.set(mapOf("historico_vod" to mapOf(idToSave to mapToSave)), SetOptions.merge())
                             }
                     }
-                }
+                 }
         }
     }
 
