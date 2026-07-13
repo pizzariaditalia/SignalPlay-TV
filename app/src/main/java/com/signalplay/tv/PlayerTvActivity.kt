@@ -1,14 +1,11 @@
 package com.signalplay.tv
 
 import android.app.Activity
-import android.app.PictureInPictureParams
-import android.content.res.Configuration
 import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.util.Base64
-import android.util.Rational
 import android.view.KeyEvent
 import android.view.View
 import android.view.Window
@@ -410,62 +407,6 @@ class PlayerTvActivity : Activity() {
         }
     }
 
-    // =========================================================================
-    // MÁGICA 1: Função que prepara as proporções e chama a TV para encolher a tela
-    // =========================================================================
-    private fun entrarModoPiP() {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            
-            // Verifica fisicamente se a TV Box tem o recurso de PiP instalado e habilitado
-            val supportsPiP = packageManager.hasSystemFeature(android.content.pm.PackageManager.FEATURE_PICTURE_IN_PICTURE)
-            
-            if (supportsPiP) {
-                try {
-                    // Garantimos que tudo está oculto antes da tela encolher
-                    painelCanais.visibility = View.GONE
-                    painelEpg.visibility = View.GONE
-                    osdContainer.visibility = View.GONE
-
-                    // Proporção de cinema (16:9) para o mini-player
-                    val aspectRatio = Rational(16, 9)
-                    val params = PictureInPictureParams.Builder()
-                        .setAspectRatio(aspectRatio)
-                        .build()
-                        
-                    // Tenta entrar no modo PiP e guarda a resposta do sistema
-                    val entrouNoPip = enterPictureInPictureMode(params)
-                    
-                    // ROTA DE FUGA 1: Se o sistema negar a entrada no PiP, fecha o canal
-                    if (!entrouNoPip) {
-                        finish()
-                    }
-                } catch (e: Exception) {
-                    // ROTA DE FUGA 2: Se o Android travar ao tentar criar a janela, fecha o canal
-                    finish()
-                }
-            } else {
-                // ROTA DE FUGA 3: Se a TV Box não suportar PiP nativamente, apenas fecha o canal
-                finish()
-            }
-        } else {
-            // ROTA DE FUGA 4: Se for uma TV Box muito antiga (Android 7 para baixo), fecha o canal
-            finish()
-        }
-    }
-
-    // =========================================================================
-    // MÁGICA 2: Avisa o aplicativo quando ele for encolhido ou expandido
-    // =========================================================================
-    override fun onPictureInPictureModeChanged(isInPictureInPictureMode: Boolean, newConfig: Configuration?) {
-        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
-        if (isInPictureInPictureMode) {
-            // Entrou no modo mini-player: Esconde qualquer painel visual para não poluir
-            painelCanais.visibility = View.GONE
-            painelEpg.visibility = View.GONE
-            osdContainer.visibility = View.GONE
-        }
-    }
-
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
         if (event.action == KeyEvent.ACTION_DOWN) {
             when (event.keyCode) {
@@ -523,15 +464,13 @@ class PlayerTvActivity : Activity() {
                     }
                 }
                 // =========================================================================
-                // MÁGICA 3: O pulo do gato! Intercepta o botão voltar.
+                // O botão voltar agora apenas fecha os painéis ou sai do vídeo
                 // =========================================================================
                 KeyEvent.KEYCODE_BACK -> {
-                    // Se estiver navegando nos painéis, feche-os.
                     if (painelCanais.visibility == View.VISIBLE) { painelCanais.visibility = View.GONE; return true }
                     if (painelEpg.visibility == View.VISIBLE) { painelEpg.visibility = View.GONE; return true }
                     
-                    // Se nenhum painel estava aberto, em vez de matar o vídeo, encolha-o!
-                    entrarModoPiP()
+                    finish()
                     return true
                 }
                 KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER -> {
